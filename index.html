@@ -77,16 +77,50 @@ button{border:0;background:none;padding:0;cursor:pointer}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(52,199,89,.6)}70%{box-shadow:0 0 0 8px rgba(52,199,89,0)}100%{box-shadow:0 0 0 0 rgba(52,199,89,0)}}
 .linkbtn{display:block;margin:12px auto 0;color:var(--blue);font-size:15px;padding:6px}
 
-/* Meter */
+/* Meter + fader (mixer strip) */
 .meter-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
 .meter-head .t{font-size:15px;font-weight:600}
 .db{font-size:13px;color:var(--label2);font-variant-numeric:tabular-nums}
-.meter{display:flex;flex-direction:column;gap:6px}
-.ch{position:relative;height:8px;border-radius:4px;overflow:hidden;
-  background:linear-gradient(90deg,var(--green) 0,var(--green) 70%,var(--yellow) 85%,var(--red) 97%)}
-.ch i{position:absolute;inset:0;background:var(--track);transform-origin:right center;transform:scaleX(1)}
-.meter.mono .ch:nth-child(2){display:none}
-.scale{display:flex;justify-content:space-between;font-size:11px;color:var(--label3);margin-top:6px;font-variant-numeric:tabular-nums}
+.db.hot{color:var(--red);font-weight:600}
+.strip{display:flex;justify-content:center;gap:24px}
+.col{display:flex;flex-direction:column;align-items:center}
+.vmeter{display:block;width:104px;height:236px;cursor:pointer}
+.hmeter{display:block;width:100%;height:34px;cursor:pointer}
+.cap-l{margin-top:10px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--label2)}
+.cap-v{font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:1px;padding:0 6px;border-radius:6px}
+.cap-v.hot{color:var(--red)}
+.fader{position:relative;width:96px;height:236px;touch-action:none;outline:none;cursor:grab}
+.fader:focus-visible .fcap{box-shadow:0 0 0 3px var(--blue)}
+.ftrack{position:absolute;left:62px;top:12px;bottom:12px;width:4px;margin-left:-2px;border-radius:2px;background:var(--track)}
+.ffill{position:absolute;left:62px;bottom:12px;width:4px;margin-left:-2px;border-radius:2px;background:var(--blue)}
+.fscale span{position:absolute;right:60px;transform:translateY(-50%);font-size:10px;font-weight:600;color:var(--label2);font-variant-numeric:tabular-nums;line-height:1}
+.fscale span::after{content:"";position:absolute;left:calc(100% + 5px);top:50%;width:8px;height:1px;background:var(--label3)}
+.fscale span.u{color:var(--label)}
+.fcap{position:absolute;left:62px;width:42px;height:24px;margin:-12px 0 0 -21px;border-radius:6px;
+  background:linear-gradient(#fff,#e9e9ee);box-shadow:0 1px 1px rgba(0,0,0,.08),0 3px 10px rgba(0,0,0,.2);pointer-events:none}
+.fcap::after{content:"";position:absolute;left:6px;right:6px;top:11px;height:2px;border-radius:1px;background:#1c1c1e}
+@media (prefers-color-scheme: dark){.fcap{background:linear-gradient(#8e8e93,#636366)}.fcap::after{background:#fff}}
+/* Tone auto-gain */
+.tone{display:flex;align-items:center;gap:12px;background:rgba(52,199,89,.13);border-radius:12px;padding:10px 12px;margin:-2px 0 14px;animation:in .3s ease}
+.tone.warn{background:rgba(255,149,0,.15)} .tone.warn .tone-ico{background:var(--orange)}
+.tone-ico{width:32px;height:32px;border-radius:50%;background:var(--green);color:#fff;display:grid;place-items:center;flex:none}
+.tone-ico svg{width:20px;height:20px}
+.tone-txt{min-width:0}
+.tone-txt b{display:block;font-size:15px;font-weight:600}
+.tone-txt span{display:block;font-size:13px;color:var(--label2);font-variant-numeric:tabular-nums}
+.tone button{margin-left:auto;color:var(--blue);font-size:15px;font-weight:500;padding:6px 2px;flex:none}
+.rl{display:flex;flex-direction:column;padding:10px 0}
+.rl small{font-size:13px;color:var(--label2);margin-top:2px}
+.rl small.on{color:var(--green)}
+.switch{position:relative;width:51px;height:31px;flex:none}
+.switch input{position:absolute;inset:0;opacity:0;margin:0;z-index:1;cursor:pointer}
+.switch span{position:absolute;inset:0;border-radius:16px;background:rgba(120,120,128,.18);transition:background .25s}
+.switch span::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;
+  box-shadow:0 3px 8px rgba(0,0,0,.15),0 3px 1px rgba(0,0,0,.06);transition:transform .25s cubic-bezier(.3,.8,.3,1)}
+.switch input:checked+span{background:var(--green)}
+.switch input:checked+span::after{transform:translateX(20px)}
+@media (prefers-color-scheme: dark){.switch span{background:rgba(120,120,128,.36)}}
+.meter-tip{font-size:12px;color:var(--label3);text-align:center;margin:12px 0 0}
 
 /* Grouped list */
 .group{background:var(--card);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
@@ -182,18 +216,47 @@ button{border:0;background:none;padding:0;cursor:pointer}
     </div>
 
     <div class="card">
-      <div class="meter-head"><span class="t">Input</span><span class="db" id="sendDb">–∞ dB</span></div>
-      <div class="meter" id="sendMeter"><div class="ch"><i></i></div><div class="ch"><i></i></div></div>
-      <div class="scale"><span>-60</span><span>-40</span><span>-20</span><span>-6</span><span>0</span></div>
+      <div class="meter-head"><span class="t">Input</span><span class="db" id="clipNote"></span></div>
+      <div class="tone" id="toneBanner" hidden>
+        <span class="tone-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M2 12c2.5-7 5-7 7.5 0s5 7 7.5 0 3.5-5 5-3"/></svg></span>
+        <div class="tone-txt"><b id="toneTitle">Tone detected</b><span id="toneSub"></span></div>
+        <button id="toneUndo">Undo</button>
+      </div>
+      <div class="strip">
+        <div class="col">
+          <canvas id="sendMeter" class="vmeter" aria-label="Input level meter"></canvas>
+          <div class="cap-l">Peak</div><div class="cap-v" id="sendDb">−∞</div>
+        </div>
+        <div class="col">
+          <div class="fader" id="fader" role="slider" tabindex="0" aria-label="Input gain">
+            <div class="fscale" id="fscale"></div>
+            <div class="ftrack"></div><div class="ffill" id="ffill"></div>
+            <div class="fcap" id="fcap"></div>
+          </div>
+          <div class="cap-l">Gain</div><button class="cap-v" id="gainVal">0.0 dB</button>
+        </div>
+      </div>
+      <p class="meter-tip">Tap the meter to clear peaks. Double-tap the fader for 0 dB.</p>
     </div>
 
     <div class="group">
       <div class="row"><span>Source</span><span class="selwrap"><select id="inputSel"><option>Default</option></select></span></div>
+      <div class="row"><span>Channels</span><span class="selwrap"><select id="routeSel">
+        <option value="auto">Auto</option><option value="stereo">Stereo</option><option value="sum">Mono (L+R)</option>
+        <option value="left">Left only</option><option value="right">Right only</option></select></span></div>
       <div class="row"><span>Quality</span>
         <div class="seg" id="qualitySeg"><span class="knob"></span><button data-mode="voice">Voice</button><button data-mode="studio">Studio</button></div>
       </div>
     </div>
     <p class="note" id="modeNote"></p>
+
+    <div class="group">
+      <div class="row">
+        <span class="rl">Auto-gain from tone<small id="toneState">Listening for tone</small></span>
+        <label class="switch"><input type="checkbox" id="toneSw" aria-label="Auto-gain from tone"><span></span></label>
+      </div>
+    </div>
+    <p class="note">Send a steady or stereo-ident tone from the mixer. When it’s found, gain is set so the tone reads −20 dBFS here.</p>
 
     <div class="spacer"></div>
     <p class="foot" data-awake>Keep this screen on while sending.</p>
@@ -228,8 +291,8 @@ button{border:0;background:none;padding:0;cursor:pointer}
       <button class="btn tinted" id="tapAudio" hidden>Tap to hear audio</button>
 
       <div class="card">
-        <div class="meter-head"><span class="t">Level</span><span class="db" id="listenDb">–∞ dB</span></div>
-        <div class="meter" id="listenMeter"><div class="ch"><i></i></div><div class="ch"><i></i></div></div>
+        <div class="meter-head"><span class="t">Level</span><span class="db" id="listenDb">−∞ dB</span></div>
+        <canvas id="listenMeter" class="hmeter" aria-label="Level meter"></canvas>
       </div>
 
       <div class="group">
@@ -273,7 +336,11 @@ const store = {
 };
 let ctx;
 function ensureCtx(){
-  if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+  if (!ctx) {
+    ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+    // iOS can suspend/interrupt the context (calls, Siri); resume so audio keeps flowing.
+    ctx.onstatechange = () => { if (ctx.state !== 'running' && (S.active || L.active)) ctx.resume().catch(()=>{}); };
+  }
   if (ctx.state !== 'running') ctx.resume().catch(()=>{});
   return ctx;
 }
@@ -327,39 +394,116 @@ function munge(sdp){
   return sdp.replace(m[0], m[0] + '\r\na=fmtp:' + pt + ' ' + Object.entries(want).map(([k,v]) => k + '=' + v).join(';'));
 }
 
-/* ============ Level meter ============ */
+/* ============ Level meter (mixer-style peak meter) ============ */
+// Piecewise scale like a console meter: more room near the top.
+const MARKS = [[-60,0],[-50,.07],[-40,.15],[-30,.26],[-20,.40],[-15,.49],[-10,.60],[-6,.71],[-3,.83],[0,1]];
+function pw(x, pts, a, b){
+  if (x <= pts[0][a]) return pts[0][b];
+  for (let i = 1; i < pts.length; i++) if (x <= pts[i][a]) { const p = pts[i-1], q = pts[i]; return p[b] + (x - p[a]) / (q[a] - p[a]) * (q[b] - p[b]); }
+  return pts[pts.length-1][b];
+}
+const dbPos = db => pw(db, MARKS, 0, 1), posDb = p => pw(p, MARKS, 1, 0);
+const V_LABELS = [0,-3,-6,-10,-20,-30,-40,-50,-60], H_LABELS = [-60,-40,-30,-20,-10,-6,-3,0];
+let PAL;
+function readPal(){
+  const cs = getComputedStyle(document.documentElement), g = k => cs.getPropertyValue(k).trim();
+  PAL = { green:g('--green'), yellow:g('--yellow'), red:g('--red'), label:g('--label2') };
+}
+readPal();
+matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', readPal);
+const segColor = db => db >= -3 ? PAL.red : db >= -12 ? PAL.yellow : PAL.green;
+const fmtDb = db => db <= -60 ? '−∞' : Math.abs(db) < 0.05 ? '0.0' : (db < 0 ? '−' : '+') + Math.abs(db).toFixed(1);
+function rr(g, x, y, w, h, r){ g.beginPath(); g.roundRect ? g.roundRect(x, y, w, h, r) : g.rect(x, y, w, h); g.fill(); }
+
 const meters = {};
-function startMeter(elId, dbId, stream, channels, onLevel){
+function startMeter(elId, dbId, input, channels, onLevel){
   stopMeter(elId);
-  const el = $(elId), dbEl = $(dbId);
-  el.classList.toggle('mono', channels < 2);
-  let src;
-  try { src = ensureCtx().createMediaStreamSource(stream) } catch { return; }
-  const split = ctx.createChannelSplitter(2);
-  src.connect(split);
+  const cv = $(elId), dbEl = $(dbId), vertical = cv.classList.contains('vmeter');
+  const c = ensureCtx(), own = !(input instanceof AudioNode);
+  let src; try { src = own ? c.createMediaStreamSource(input) : input; } catch { return; }
   const n = channels < 2 ? 1 : 2;
+  const split = c.createChannelSplitter(2); src.connect(split);
+  const sink = c.createGain(); sink.gain.value = 0; sink.connect(c.destination);
   const an = [];
-  const sink = ctx.createGain(); sink.gain.value = 0; sink.connect(ctx.destination);
-  for (let i = 0; i < n; i++){ const a = ctx.createAnalyser(); a.fftSize = 1024; split.connect(a, i); a.connect(sink); an.push(a); }
-  const buf = new Float32Array(1024), lv = [0,0], covers = el.querySelectorAll('.ch i');
-  let hold = -100, holdAt = 0, frame = 0;
-  const m = { src, split, sink, raf: 0 };
+  for (let i = 0; i < n; i++){ const a = c.createAnalyser(); a.fftSize = 1024; split.connect(a, i); a.connect(sink); an.push(a); }
+  const buf = new Float32Array(1024);
+  const st = { lvl:[-100,-100], hold:[-100,-100], holdAt:[0,0], clip:[false,false] };
+  const g = cv.getContext('2d');
+  let W = 0, H = 0;
+  const layout = () => {
+    const dpr = devicePixelRatio || 1; W = cv.clientWidth; H = cv.clientHeight;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  };
+  layout();
+  const ro = new ResizeObserver(layout); ro.observe(cv);
+  cv.onclick = () => { st.clip = [false,false]; st.hold = [-100,-100]; };
+
+  const draw = () => {
+    g.clearRect(0, 0, W, H);
+    g.font = '600 10px -apple-system, system-ui, sans-serif';
+    g.fillStyle = PAL.label;
+    if (vertical) {
+      const labelW = 28, barW = n === 2 ? 18 : 26, gap = 5, clipH = 8, top = clipH + 7, bot = 6, mh = H - top - bot;
+      const total = labelW + n * barW + (n - 1) * gap, x0 = Math.round((W - total) / 2);
+      g.textAlign = 'right'; g.textBaseline = 'middle';
+      V_LABELS.forEach(d => g.fillText(d === 0 ? '0' : String(d), x0 + labelW - 7, top + mh * (1 - dbPos(d))));
+      const step = 4, count = Math.floor(mh / step);
+      for (let ch = 0; ch < n; ch++){
+        const x = x0 + labelW + ch * (barW + gap), lit = dbPos(st.lvl[ch]);
+        for (let i = 0; i < count; i++){
+          const pc = (i + .5) / count, db = posDb(pc);
+          g.globalAlpha = pc <= lit ? 1 : .16; g.fillStyle = segColor(db);
+          g.fillRect(x, top + mh - (i + 1) * step + 1, barW, step - 1);
+        }
+        g.globalAlpha = 1;
+        if (st.hold[ch] > -60){ g.fillStyle = segColor(st.hold[ch]); g.fillRect(x, top + mh * (1 - dbPos(st.hold[ch])) - 1, barW, 2); }
+        g.globalAlpha = st.clip[ch] ? 1 : .18; g.fillStyle = PAL.red; rr(g, x, 0, barW, clipH, 2); g.globalAlpha = 1;
+      }
+    } else {
+      const clipW = 8, barH = 6, gap = 3, mw = W - clipW - 6, bh = n * barH + (n - 1) * gap;
+      const step = 4, count = Math.floor(mw / step);
+      for (let ch = 0; ch < n; ch++){
+        const y = ch * (barH + gap), lit = dbPos(st.lvl[ch]);
+        for (let i = 0; i < count; i++){
+          const pc = (i + .5) / count;
+          g.globalAlpha = pc <= lit ? 1 : .16; g.fillStyle = segColor(posDb(pc));
+          g.fillRect(i * step, y, step - 1, barH);
+        }
+        g.globalAlpha = 1;
+        if (st.hold[ch] > -60){ g.fillStyle = segColor(st.hold[ch]); g.fillRect(mw * dbPos(st.hold[ch]) - 1, y, 2, barH); }
+        g.globalAlpha = st.clip[ch] ? 1 : .18; g.fillStyle = PAL.red; rr(g, W - clipW, y, clipW, barH, 2); g.globalAlpha = 1;
+      }
+      g.fillStyle = PAL.label; g.textBaseline = 'top';
+      H_LABELS.forEach((d, k) => {
+        g.textAlign = k === 0 ? 'left' : k === H_LABELS.length - 1 ? 'right' : 'center';
+        g.fillText(String(d), mw * dbPos(d), bh + 8);
+      });
+    }
+  };
+
+  const m = { src, own, split, sink, ro, raf:0, last:performance.now(), frame:0, draw, st };
   const tick = () => {
-    let peakDb = -100, top = 0;
+    const now = performance.now(), dt = Math.min(.1, (now - m.last) / 1000); m.last = now;
+    let top = -100;
     an.forEach((a, i) => {
       a.getFloatTimeDomainData(buf);
       let p = 0; for (let k = 0; k < buf.length; k++){ const v = buf[k] < 0 ? -buf[k] : buf[k]; if (v > p) p = v; }
       const db = p > 0 ? 20 * Math.log10(p) : -100;
-      if (db > peakDb) peakDb = db;
-      const t = Math.min(1, Math.max(0, (db + 60) / 60));
-      lv[i] = t > lv[i] ? t : lv[i] * 0.9 + t * 0.1;
-      covers[i].style.transform = `scaleX(${1 - lv[i]})`;
-      if (lv[i] > top) top = lv[i];
+      st.lvl[i] = db >= st.lvl[i] ? db : Math.max(db, st.lvl[i] - 24 * dt);        // instant attack, 24 dB/s fall
+      if (db >= st.hold[i]) { st.hold[i] = db; st.holdAt[i] = now; }
+      else if (now - st.holdAt[i] > 1500) st.hold[i] = Math.max(st.lvl[i], st.hold[i] - 30 * dt); // 1.5 s peak hold
+      if (p >= 0.999) st.clip[i] = true;
+      if (st.lvl[i] > top) top = st.lvl[i];
     });
-    const now = performance.now();
-    if (peakDb >= hold || now - holdAt > 1200){ hold = peakDb; holdAt = now; }
-    if (++frame % 6 === 0) dbEl.textContent = hold <= -60 ? '–∞ dB' : `${Math.round(hold)} dB`;
-    onLevel && onLevel(top);
+    draw();
+    if (++m.frame % 6 === 0) {
+      const h = Math.max(...st.hold.slice(0, n)), clipped = st.clip.slice(0, n).some(Boolean);
+      dbEl.textContent = dbEl.id === 'sendDb' ? fmtDb(h) : fmtDb(h) + ' dB';
+      dbEl.classList.toggle('hot', h > -0.1);
+      if (elId === 'sendMeter') $('clipNote').textContent = clipped ? 'Clipping — lower the gain' : '';
+      if (elId === 'sendMeter') $('clipNote').classList.toggle('hot', clipped);
+    }
+    onLevel && onLevel(dbPos(top));
     m.raf = requestAnimationFrame(tick);
   };
   m.raf = requestAnimationFrame(tick);
@@ -367,9 +511,10 @@ function startMeter(elId, dbId, stream, channels, onLevel){
 }
 function stopMeter(elId){
   const m = meters[elId]; if (!m) return;
-  cancelAnimationFrame(m.raf);
-  try { m.src.disconnect(); m.split.disconnect(); m.sink.disconnect(); } catch {}
-  $(elId).querySelectorAll('.ch i').forEach(c => c.style.transform = 'scaleX(1)');
+  cancelAnimationFrame(m.raf); m.ro.disconnect();
+  try { m.own ? m.src.disconnect() : m.src.disconnect(m.split); } catch {}
+  try { m.split.disconnect(); m.sink.disconnect(); } catch {}
+  m.st.lvl = [-100,-100]; m.st.hold = [-100,-100]; m.st.clip = [false,false]; m.draw();
   delete meters[elId];
 }
 
@@ -384,7 +529,9 @@ function paintSeg(mode){
 
 /* ============ SEND (mixer phone) ============ */
 const S = { active:false, peer:null, stream:null, code:null, mode: store.get('ic-mode') || 'voice',
-            deviceId: store.get('ic-device') || '', listeners: new Map(), idRetries: 0 };
+            deviceId: store.get('ic-device') || '', listeners: new Map(), idRetries: 0,
+            routeSel: store.get('ic-route') || 'auto', autoRoute: 'stereo',
+            gainDb: Number.isFinite(parseFloat(store.get('ic-gain'))) ? parseFloat(store.get('ic-gain')) : 0 };
 
 async function getStream(mode, deviceId){
   const a = { echoCancellation:false, noiseSuppression:false, autoGainControl:false,
@@ -396,28 +543,128 @@ async function getStream(mode, deviceId){
     if (deviceId && (e.name === 'OverconstrainedError' || e.name === 'NotFoundError')) { delete a.deviceId; s = await navigator.mediaDevices.getUserMedia({ audio:a }); }
     else throw e;
   }
-  let t = s.getAudioTracks()[0];
-  // Voice mode: fold a stereo source down to true mono so it encodes as mono.
-  if (MODES[mode].channels === 1 && (t.getSettings().channelCount || 1) > 1) {
-    const c = ensureCtx(), src = c.createMediaStreamSource(s);
-    const dst = c.createMediaStreamDestination();
-    dst.channelCount = 1; dst.channelCountMode = 'explicit'; dst.channelInterpretation = 'speakers';
-    src.connect(dst);
-    const mono = dst.stream;
-    mono._raw = s;                                  // keep the device stream so we can stop it later
-    mono._chans = 1;
-    s = mono; t = mono.getAudioTracks()[0];
+  // Web Audio chain: input → channel routing (L/R matrix) → gain → always-2-channel stream.
+  // Sending 2 identical channels for mono keeps both ears playing on every receiver.
+  const c = ensureCtx();
+  const src = c.createMediaStreamSource(s);
+  const split = c.createChannelSplitter(2); src.connect(split);
+  const merger = c.createChannelMerger(2);
+  const mx = {};                                     // mx['01'] = input L → output R
+  for (let i = 0; i < 2; i++) for (let o = 0; o < 2; o++) {
+    const g = c.createGain(); g.gain.value = 0; split.connect(g, i); g.connect(merger, 0, o); mx[`${i}${o}`] = g;
   }
-  try { t.contentHint = MODES[mode].hint } catch {}
-  return s;
+  const lvl = [0, 1].map(i => { const a = c.createAnalyser(); a.fftSize = 2048; split.connect(a, i); return a; });
+  const sink = c.createGain(); sink.gain.value = 0; lvl.forEach(a => a.connect(sink)); sink.connect(c.destination);
+  const gain = c.createGain(); gain.gain.value = dbToGain(S.gainDb);
+  const tap = c.createGain(); tap.channelCount = 2; tap.channelCountMode = 'explicit'; tap.channelInterpretation = 'speakers';
+  const dst = c.createMediaStreamDestination(); dst.channelCount = 2; dst.channelCountMode = 'explicit'; dst.channelInterpretation = 'speakers';
+  merger.connect(gain); gain.connect(tap); tap.connect(dst);
+  const pre = c.createGain(); merger.connect(pre);   // pre-gain copy for tone detection
+  const out = dst.stream;
+  Object.assign(out, { _raw:s, _src:src, _gain:gain, _tap:tap, _pre:pre, _mx:mx, _lvl:lvl, _sink:sink });
+  try { out.getAudioTracks()[0].contentHint = MODES[mode].hint } catch {}
+  applyRoute(out, mode);
+  return out;
 }
-const stopStream = s => { s?.getTracks().forEach(t => t.stop()); s?._raw?.getTracks().forEach(t => t.stop()); };
-const chans = () => S.stream?._chans || S.stream?.getAudioTracks()[0]?.getSettings().channelCount || MODES[S.mode].channels;
+const stopStream = s => {
+  s?.getTracks().forEach(t => t.stop()); s?._raw?.getTracks().forEach(t => t.stop());
+  try { s?._src?.disconnect(); s?._sink?.disconnect(); } catch {}
+};
+
+/* ---- Channel routing ----
+   auto: watches L/R input; if one side is silent (e.g. mixer sends only on USB 1), that side is fed to both. */
+const ROUTES = { stereo:{ '00':1, '11':1 }, sum:{ '00':.5, '01':.5, '10':.5, '11':.5 }, left:{ '00':1, '01':1 }, right:{ '10':1, '11':1 } };
+function effRoute(mode = S.mode){
+  let r = S.routeSel === 'auto' ? S.autoRoute : S.routeSel;
+  if (MODES[mode].channels === 1 && r === 'stereo') r = 'sum';   // Voice is always mono
+  return r;
+}
+function applyRoute(stream = S.stream, mode = S.mode){
+  if (!stream?._mx) return;
+  const r = ROUTES[effRoute(mode)], t = stream._mx['00'].context.currentTime;
+  for (const k in stream._mx) stream._mx[k].gain.setTargetAtTime(r[k] || 0, t, 0.01);
+}
+const chans = () => effRoute() === 'stereo' ? 2 : 1;
+function routeChanged(){
+  applyRoute();
+  if (!S.stream) return;
+  startMeter('sendMeter', 'sendDb', S.stream._tap, chans()); attachTone(S.stream._pre, chans());
+  S.listeners.forEach(e => { try { e.conn.send({ type:'mode', mode:S.mode, channels:chans() }) } catch {} });
+  paintModeNote();
+}
+const RM = { l:0, r:0, both:0, buf:new Float32Array(2048), timer:null };
+function routeTick(){
+  const an = S.stream?._lvl; if (!an) return;
+  const [L, R] = an.map(a => {
+    a.getFloatTimeDomainData(RM.buf); let s2 = 0; for (const v of RM.buf) s2 += v * v;
+    const r = Math.sqrt(s2 / RM.buf.length); return r > 0 ? 20 * Math.log10(r) : -120;
+  });
+  const dt = 0.25;
+  RM.l = L > -60 && R < L - 30 ? RM.l + dt : 0;
+  RM.r = R > -60 && L < R - 30 ? RM.r + dt : 0;
+  RM.both = L > -60 && R > -60 && Math.abs(L - R) < 20 ? RM.both + dt : 0;
+  let next = S.autoRoute;
+  if (RM.l >= 1.5) next = 'left'; else if (RM.r >= 1.5) next = 'right'; else if (RM.both >= 1) next = 'stereo';
+  if (next !== S.autoRoute) { S.autoRoute = next; if (S.routeSel === 'auto') routeChanged(); }
+}
 const deviceOf = s => (s?._raw || s)?.getAudioTracks()[0]?.getSettings().deviceId;
+
+/* ---- Input gain fader ---- */
+const FADER = [[-80,0],[-40,.15],[-20,.35],[-10,.55],[0,.75],[6,.875],[12,1]];
+const faderPos = db => pw(db, FADER, 0, 1), faderDb = p => pw(p, FADER, 1, 0);
+const dbToGain = db => db <= -79.9 ? 0 : Math.pow(10, db / 20);
+const gainText = db => db <= -79.9 ? '−∞ dB' : (Math.abs(db) < 0.05 ? '0.0' : (db < 0 ? '−' : '+') + Math.abs(db).toFixed(1)) + ' dB';
+function setGain(db){
+  S.gainDb = Math.max(-80, Math.min(12, db));
+  store.set('ic-gain', String(S.gainDb));
+  const gn = S.stream?._gain;
+  if (gn) gn.gain.setTargetAtTime(dbToGain(S.gainDb), gn.context.currentTime, 0.01);
+  paintFader();
+}
+function paintFader(){
+  const k = 1 - faderPos(S.gainDb);
+  $('fcap').style.top = `calc(12px + (100% - 24px) * ${k})`;
+  $('ffill').style.height = `calc((100% - 24px) * ${1 - k})`;
+  $('gainVal').textContent = gainText(S.gainDb);
+  $('fader').setAttribute('aria-valuetext', gainText(S.gainDb));
+}
+(function initFader(){
+  $('fscale').innerHTML = [12,6,0,-10,-20,-40,-80].map(d =>
+    `<span class="${d === 0 ? 'u' : ''}" style="top:calc(12px + (100% - 24px) * ${1 - faderPos(d)})">${d === -80 ? '−∞' : d > 0 ? '+' + d : d === 0 ? '0' : '−' + (-d)}</span>`).join('');
+  const f = $('fader');
+  let sy = 0, sp = 0, moved = false, lastTap = 0, dragging = false;
+  f.addEventListener('pointerdown', e => {
+    dragging = true; moved = false; sy = e.clientY; sp = faderPos(S.gainDb);
+    f.setPointerCapture(e.pointerId); f.style.cursor = 'grabbing';
+  });
+  f.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    const dy = e.clientY - sy; if (Math.abs(dy) > 3) moved = true;
+    let p = Math.max(0, Math.min(1, sp - dy / (f.clientHeight - 24)));
+    if (Math.abs(p - .75) < .015) p = .75;                 // detent at 0 dB
+    let db = faderDb(p); if (p > 0.001) db = Math.round(db * 2) / 2; else db = -80;   // 0.5 dB steps
+    setGain(db);
+  });
+  const end = () => {
+    if (!dragging) return; dragging = false; f.style.cursor = '';
+    if (!moved) { const now = Date.now(); if (now - lastTap < 320) setGain(0); lastTap = now; }
+  };
+  f.addEventListener('pointerup', end); f.addEventListener('pointercancel', end);
+  f.addEventListener('keydown', e => {
+    const step = e.shiftKey ? 3 : 0.5;
+    if (e.key === 'ArrowUp' || e.key === 'ArrowRight') { setGain((S.gainDb <= -79.9 ? -60 : S.gainDb) + step); e.preventDefault(); }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') { setGain(S.gainDb - step < -60 ? -80 : S.gainDb - step); e.preventDefault(); }
+    if (e.key === '0') setGain(0);
+  });
+  $('gainVal').addEventListener('click', () => setGain(0));
+  paintFader();
+})();
 
 function paintModeNote(){
   let n = MODES[S.mode].note;
-  if (S.mode === 'studio' && S.stream && chans() < 2) n += ' This source only gives the browser mono.';
+  const r = effRoute();
+  if (S.routeSel === 'auto' && r === 'left')  n += ' Right input is silent, so Left is sent to both sides.';
+  if (S.routeSel === 'auto' && r === 'right') n += ' Left input is silent, so Right is sent to both sides.';
   $('modeNote').textContent = n;
 }
 
@@ -450,9 +697,10 @@ async function startSend(){
   catch (e) { setPill($('sendPill'), micError(e), 'err'); return; }
   if (!S.active) { stopStream(S.stream); S.stream = null; return; }
   paintModeNote(); fillInputs();
-  startMeter('sendMeter', 'sendDb', S.stream, chans());
+  startMeter('sendMeter', 'sendDb', S.stream._tap, chans()); attachTone(S.stream._pre, chans());
   S.code = store.get('ic-code') || String(1000 + Math.floor(Math.random() * 9000));
   S.idRetries = 0;
+  clearInterval(RM.timer); RM.timer = setInterval(routeTick, 250);
   openHostPeer();
 }
 
@@ -548,7 +796,7 @@ async function swapStream(ns){
   }
   const old = S.stream; S.stream = ns;
   stopStream(old);
-  startMeter('sendMeter', 'sendDb', S.stream, chans());
+  startMeter('sendMeter', 'sendDb', S.stream._tap, chans()); attachTone(S.stream._pre, chans());
   S.listeners.forEach(e => { try { e.conn.send({ type:'mode', mode:S.mode, channels:chans() }) } catch {} });
   paintModeNote();
 }
@@ -560,14 +808,129 @@ async function setMode(mode){
   try { await swapStream(await getStream(mode, S.deviceId)); } catch (e) { setPill($('sendPill'), micError(e), 'err'); }
 }
 
+/* ---- Tone detection → auto gain ----
+   Looks for a pure, steady sine (continuous or stereo ident with gaps) for ~1.5 s,
+   measures its level before the gain stage, then sets gain so it reads TONE_TARGET. */
+const TONE_TARGET = -20;                  // dBFS the reference tone should read after gain
+const Tone = { on: store.get('ic-autotone') !== '0', an: [], nodes: null, timer: null, hist: [[],[]],
+               state: 'listening', prevGain: 0, quietSince: 0, hideT: null, lockHz: 0 };
+const median = a => { const b = [...a].sort((x, y) => x - y), m = b.length >> 1; return b.length % 2 ? b[m] : (b[m-1] + b[m]) / 2; };
+const fmtHz = hz => hz >= 990 ? `${(hz / 1000).toFixed(Math.abs(hz - Math.round(hz / 1000) * 1000) < 10 ? 0 : 2)} kHz` : `${Math.round(hz)} Hz`;
+
+function attachTone(node, channels){
+  detachTone();
+  const c = ensureCtx(), n = channels < 2 ? 1 : 2;
+  const split = c.createChannelSplitter(2); node.connect(split);
+  const sink = c.createGain(); sink.gain.value = 0; sink.connect(c.destination);
+  Tone.an = [];
+  for (let i = 0; i < n; i++){ const a = c.createAnalyser(); a.fftSize = 4096; a.smoothingTimeConstant = 0; split.connect(a, i); a.connect(sink); Tone.an.push(a); }
+  Tone.nodes = { node, split, sink };
+  Tone.td = new Float32Array(4096); Tone.fd = new Float32Array(2048);
+  Tone.hist = [[],[]]; Tone.state = 'listening'; Tone.quietSince = 0;
+  Tone.timer = setInterval(toneTick, 100);
+  paintToneState();
+}
+function detachTone(){
+  clearInterval(Tone.timer); Tone.timer = null;
+  const nd = Tone.nodes; Tone.nodes = null; Tone.an = [];
+  if (nd) { try { nd.node.disconnect(nd.split) } catch {} try { nd.split.disconnect(); nd.sink.disconnect(); } catch {} }
+}
+function analyseTone(a){
+  const td = Tone.td, fd = Tone.fd;
+  a.getFloatTimeDomainData(td);
+  let sum = 0; for (let i = 0; i < td.length; i++) sum += td[i] * td[i];
+  const rms = Math.sqrt(sum / td.length), rmsDb = rms > 0 ? 20 * Math.log10(rms) : -120;
+  if (rmsDb < -70) return { rmsDb, tone:false };
+  a.getFloatFrequencyData(fd);
+  let k = 2, max = -Infinity;
+  for (let i = 2; i < fd.length - 1; i++) if (fd[i] > max) { max = fd[i]; k = i; }
+  let tot = 0, pk = 0;
+  for (let i = 1; i < fd.length; i++){ const p = Math.pow(10, fd[i] / 10); tot += p; if (Math.abs(i - k) <= 5) pk += p; }
+  const purity = tot > 0 ? pk / tot : 0;
+  const y1 = fd[k-1], y2 = fd[k], y3 = fd[k+1], den = y1 - 2 * y2 + y3;
+  const hz = (k + (den ? 0.5 * (y1 - y3) / den : 0)) * a.context.sampleRate / a.fftSize;
+  return { rmsDb, hz, tone: purity > 0.97 && hz >= 60 && hz <= 12000 };
+}
+function toneTick(){
+  if (!Tone.an.length) return;
+  const now = performance.now();
+  const fr = Tone.an.map(analyseTone);
+  fr.forEach((f, i) => { const h = Tone.hist[i]; h.push({ t:now, ...f }); while (h.length && now - h[0].t > 2000) h.shift(); });
+  const anyTone = fr.some(f => f.tone);
+
+  if (Tone.state === 'locked') {
+    if (anyTone) {
+      Tone.quietSince = 0;
+      const lv = Math.max(...fr.filter(f => f.tone).map(f => f.rmsDb)) + 3.01 + S.gainDb;
+      $('toneSub').textContent = `${fmtHz(Tone.lockHz)} · gain ${gainText(S.gainDb)} · reads ${fmtDb(lv)}`;
+    } else if (!Tone.quietSince) Tone.quietSince = now;
+    else if (now - Tone.quietSince > 1200) {
+      Tone.state = 'listening'; Tone.hist = [[],[]]; paintToneState();
+      if (!$('toneBanner').hidden) {
+        $('toneTitle').textContent = 'Level set';
+        $('toneSub').textContent = `Tone ended · gain ${gainText(S.gainDb)}`;
+        clearTimeout(Tone.hideT); Tone.hideT = setTimeout(() => $('toneBanner').hidden = true, 8000);
+      }
+    }
+    return;
+  }
+  if (!Tone.on) return;
+
+  let best = null;
+  Tone.hist.forEach((h, ch) => {
+    if (ch >= Tone.an.length || h.length < 15 || now - h[0].t < 1500) return;
+    const tf = h.filter(f => f.tone);
+    if (tf.length < h.length * 0.75) return;                        // allows ident gaps
+    const hz = median(tf.map(f => f.hz));
+    if (tf.some(f => Math.abs(f.hz - hz) / hz > 0.02)) return;       // steady pitch
+    const lv = tf.map(f => f.rmsDb).sort((a, b) => a - b);
+    const L = median(lv.slice(lv.length >> 1));
+    if (lv.filter(x => Math.abs(x - L) <= 0.5).length < tf.length * 0.6) return;   // steady level
+    const db = L + 3.01;                                             // sine RMS → peak dBFS
+    if (!best || db > best.db) best = { db, hz };
+  });
+  if (best) applyTone(best);
+}
+function applyTone({ db, hz }){
+  Tone.prevGain = S.gainDb;
+  const want = Math.round((TONE_TARGET - db) * 10) / 10;
+  setGain(want);
+  Tone.state = 'locked'; Tone.lockHz = hz; Tone.quietSince = 0;
+  clearTimeout(Tone.hideT);
+  const b = $('toneBanner');
+  b.hidden = false;
+  b.classList.toggle('warn', want > 12 || want < -80);
+  $('toneTitle').textContent = want > 12 ? 'Tone too low — raise the mixer output'
+                             : want < -80 ? 'Tone too hot — lower the mixer output'
+                             : 'Tone detected';
+  $('toneSub').textContent = `${fmtHz(hz)} · gain set to ${gainText(S.gainDb)}`;
+  try { navigator.vibrate?.(40) } catch {}
+  paintToneState();
+}
+function paintToneState(){
+  const el = $('toneState');
+  $('toneSw').checked = Tone.on;
+  el.textContent = !Tone.on ? 'Off' : Tone.state === 'locked' ? 'Tone locked' : 'Listening for tone';
+  el.classList.toggle('on', Tone.on && Tone.state === 'locked');
+}
+$('toneSw').addEventListener('change', e => {
+  Tone.on = e.target.checked; store.set('ic-autotone', Tone.on ? '1' : '0');
+  if (Tone.on) { Tone.state = 'listening'; Tone.hist = [[],[]]; }
+  paintToneState();
+});
+$('toneUndo').addEventListener('click', () => { setGain(Tone.prevGain); $('toneBanner').hidden = true; });
+paintToneState();
+
 function stopSend(){
   S.active = false;
   S.listeners.forEach((_, id) => dropListener(id));
   try { S.peer?.destroy() } catch {} S.peer = null;
   stopStream(S.stream); S.stream = null;
-  stopMeter('sendMeter'); releaseAwake(); show('home');
+  stopMeter('sendMeter'); detachTone(); clearInterval(RM.timer); RM.timer = null; releaseAwake(); show('home');
 }
 
+$('routeSel').value = S.routeSel;
+$('routeSel').addEventListener('change', e => { S.routeSel = e.target.value; store.set('ic-route', S.routeSel); routeChanged(); });
 $('qualitySeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setMode(b.dataset.mode); });
 $('inputSel').addEventListener('change', async e => {
   S.deviceId = e.target.value; store.set('ic-device', S.deviceId);
