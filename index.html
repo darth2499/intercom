@@ -60,6 +60,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
 .tile p{font-size:15px;color:var(--label2);margin:2px 0 0}
 .tile .chev{margin-left:auto;color:var(--label3);width:9px;height:16px;flex:none}
 .foot{color:var(--label2);font-size:13px;text-align:center;margin:8px 0 0}
+.foot.warn{color:var(--orange)}
 .foot.ver{color:var(--label3);font-size:12px;margin:2px 0 0;font-variant-numeric:tabular-nums}
 
 /* Code */
@@ -317,6 +318,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
     <p class="note" id="toneNote"></p>
 
     <div class="spacer"></div>
+    <p class="foot relay-note" id="relayNote">Relay backup: Checking…</p>
     <p class="foot" data-awake>Keep this screen on while sending.</p>
     <button class="btn danger" id="stopSend">Stop</button>
     </div>
@@ -401,6 +403,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
         <div class="row"><span>Bitrate</span><span class="v" id="stRate">–</span></div>
         <div class="row"><span>Format</span><span class="v" id="stFmt">–</span></div>
         <div class="row"><span>Route</span><span class="v" id="stRoute">–</span></div>
+        <div class="row"><span>Relay backup</span><span class="v ell" id="stRelay">Checking…</span></div>
       </div>
 
       <div id="senderInfo" style="display:contents" hidden>
@@ -413,6 +416,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
           <div class="row"><span>Channels</span><span class="v" id="sxRoute">–</span></div>
           <div class="row"><span>Gain</span><span class="v" id="sxGain">–</span></div>
           <div class="row"><span>Tone auto-gain</span><span class="v" id="sxAuto">–</span></div>
+          <div class="row"><span>Relay backup</span><span class="v ell" id="sxRelay">–</span></div>
           <div class="row"><span>App version</span><span class="v" id="sxVer">–</span></div>
         </div>
       </div>
@@ -427,15 +431,58 @@ button{border:0;background:none;padding:0;cursor:pointer}
 <script>window.Peer || document.write('<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"><\/script>')</script>
 <script>
 /* ============ Config ============ */
-const VERSION = '0.9.1-beta';                     // shown on the home screen — go to 1.0.0 when ready
+const VERSION = '0.2.0-beta';                     // shown on the home screen — go to 1.0.0 when ready
 const PREFIX = 'asahina-intercom-';            // namespace for room ids on the PeerJS server
 const ICE = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
   { urls: 'stun:stun.cloudflare.com:3478' },
-  // If phones on cellular can't connect, add a TURN relay here, e.g.:
-  // { urls: 'turn:YOUR_HOST:3478', username: 'USER', credential: 'PASS' },
 ];
+
+/* ---- Relay (TURN) backup via your Cloudflare Worker ----
+   The Worker hands out 6-hour relay passes and stops at your monthly cap.
+   Phones still connect directly when they can; the relay is only used when that fails.
+   Add ?relay to the page address to force the relay (for testing). */
+const RELAY_URL = 'https://intercom-turn.imsk8erboi.workers.dev/';
+const FORCE_RELAY = new URLSearchParams(location.search).has('relay');
+const Relay = { servers: null, exp: 0, status: 'checking', reason: '' };
+async function getRelay(){
+  if (Date.now() < Relay.exp) return;
+  try {
+    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 4000);
+    const r = await fetch(RELAY_URL, { signal: ctl.signal, cache: 'no-store' });
+    clearTimeout(t);
+    const j = await r.json();
+    const turn = (j.iceServers || []).filter(x => [].concat(x.urls).some(u => /^turns?:/.test(u)));
+    if (j.relay && turn.length) {
+      Object.assign(Relay, { servers: turn, status: 'ready', reason: '', exp: Date.now() + ((j.ttl || 21600) - 900) * 1000 });
+    } else {
+      Object.assign(Relay, { servers: null, status: 'off', reason: j.reason || j.error || 'unavailable', exp: Date.now() + 5 * 60e3 });
+    }
+  } catch {
+    Object.assign(Relay, { servers: null, status: 'off', reason: 'can’t reach relay', exp: Date.now() + 60e3 });
+  }
+  paintRelay();
+}
+async function iceConfig(){
+  await getRelay();
+  return { iceServers: ICE.concat(Relay.servers || []), iceTransportPolicy: FORCE_RELAY && Relay.servers ? 'relay' : 'all' };
+}
+// Keep long sessions supplied with a fresh pass (new connections pick it up).
+setInterval(async () => {
+  if (!S.active && !L.active) return;
+  const cfg = await iceConfig();
+  [S.peer, L.peer].forEach(p => { if (p && !p.destroyed && p.options) p.options.config = cfg; });
+  if (S.active) broadcastState();
+}, 10 * 60e3);
+const relayText = () => Relay.status === 'ready' ? (FORCE_RELAY ? 'Ready · forced on' : 'Ready')
+                      : Relay.status === 'off' ? `Off · ${Relay.reason}` : 'Checking…';
+function paintRelay(){
+  const t = relayText();
+  if ($('relayNote')) { $('relayNote').textContent = `Relay backup: ${t}`; $('relayNote').classList.toggle('warn', Relay.status === 'off'); }
+  if ($('stRelay')) { $('stRelay').textContent = t; $('stRelay').classList.toggle('warn', Relay.status === 'off'); }
+  if (typeof S !== 'undefined' && S.active) broadcastState();
+}
 const MODES = {
   voice:  { label: 'Voice',  channels: 1, bitrate: 64000,  jitterMs: 0,  hint: 'speech',
             note: 'Mono, 64 kbps. Lowest delay — best for cues and talent monitoring.' },
@@ -737,7 +784,7 @@ const gainText = db => db <= -79.9 ? '−∞ dB' : (Math.abs(db) < 0.05 ? '0.0' 
 /* ---- Share the sender's settings with listeners ---- */
 const ROUTE_NAMES = { auto:'Auto', stereo:'Stereo', sum:'Mono (L+R)', left:'Left only', right:'Right only' };
 function hostState(){
-  return { type:'mode', mode:S.mode, channels:chans(), ver:VERSION,
+  return { type:'mode', mode:S.mode, channels:chans(), ver:VERSION, relay: relayText(),
            src: $('inputSel').selectedOptions[0]?.textContent || 'Default',
            route:S.routeSel, eff:effRoute(), gain:S.gainDb,
            auto: typeof Tone !== 'undefined' ? Tone.on : true,
@@ -847,9 +894,11 @@ function renderCode(code){
   $('codeOut').innerHTML = (code || '––––').split('').map(c => `<span>${c}</span>`).join('');
 }
 
-function openHostPeer(){
+async function openHostPeer(){
+  const cfg = await iceConfig();
+  if (!S.active) return;
   renderCode(S.code);
-  const peer = new Peer(PREFIX + S.code, { config:{ iceServers: ICE }, debug: 0 });
+  const peer = new Peer(PREFIX + S.code, { config: cfg, debug: 0 });
   S.peer = peer;
   peer.on('open', () => { store.set('ic-code', S.code); S.idRetries = 0; paintSendStatus(); });
   peer.on('connection', onListener);
@@ -1212,11 +1261,13 @@ function teardownListener(){
   stopMeter('listenMeter');
 }
 
-function connectListener(){
+async function connectListener(){
   teardownListener();
   const gen = L.gen;
   const ok = () => gen === L.gen && L.active;
-  const peer = new Peer({ config:{ iceServers: ICE }, debug: 0 });
+  const cfg = await iceConfig();
+  if (!ok()) return;
+  const peer = new Peer({ config: cfg, debug: 0 });
   L.peer = peer;
   peer.on('open', () => {
     if (!ok()) return;
@@ -1339,6 +1390,8 @@ function onHostData(d){
     $('sxGain').textContent = gainText(d.gain ?? 0);
     $('sxAuto').textContent = d.auto ? `On · −${-(d.toneRef ?? -20)} dBFS` : 'Off';
     $('sxVer').textContent = d.ver;
+    $('sxRelay').textContent = d.relay || '–';
+    $('sxRelay').classList.toggle('warn', /^Off/.test(d.relay || ''));
     $('sxVer').classList.toggle('warn', d.ver !== VERSION);
   }
 }
