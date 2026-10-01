@@ -470,6 +470,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
             <div class="row"><span>Gain</span><span class="v" id="cxGainV">–</span></div>
             <div class="row slider-row"><input type="range" id="cxGain" min="-40" max="12" step="0.5" value="0" aria-label="Sender gain"></div>
             <div class="row"><span>Mute sender</span><label class="switch mute"><input type="checkbox" id="cxMute" aria-label="Mute sender"><span></span></label></div>
+            <div class="row"><span class="rl">Lock sender screen<small>Blocks stray touches on the sending phone</small></span><label class="switch"><input type="checkbox" id="cxScreen" aria-label="Lock sender screen"><span></span></label></div>
             <div class="row"><span>Tone auto-gain</span><label class="switch"><input type="checkbox" id="cxAuto" aria-label="Tone auto-gain"><span></span></label></div>
             <div class="row"><span>Tone reads</span><span class="selwrap"><select id="cxRef">
               <option value="-20">−20 dBFS</option><option value="-18">−18 dBFS</option>
@@ -512,7 +513,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
               sender watchdog re-acquires a lost input, listener auto-resyncs a bloated buffer. */
 
 /* ============ Config ============ */
-const VERSION = '0.6.1-beta';                     // shown on the home screen — go to 1.0.0 when ready
+const VERSION = '0.6.3-beta';                     // shown on the home screen — go to 1.0.0 when ready
 const PREFIX = 'asahina-intercom-';            // namespace for room ids on the PeerJS server
 const ICE = [
   { urls: 'stun:stun.l.google.com:19302' },
@@ -690,8 +691,9 @@ function startMeter(elId, dbId, input, channels, onLevel){
   const split = c.createChannelSplitter(2); src.connect(split);
   const sink = c.createGain(); sink.gain.value = 0; sink.connect(c.destination);
   const an = [];
-  for (let i = 0; i < n; i++){ const a = c.createAnalyser(); a.fftSize = 1024; split.connect(a, i); a.connect(sink); an.push(a); }
-  const buf = new Float32Array(1024);
+  // 30 fps; a 2048-sample (~43 ms) window covers the 33 ms between frames, so no peak is missed
+  for (let i = 0; i < n; i++){ const a = c.createAnalyser(); a.fftSize = 2048; split.connect(a, i); a.connect(sink); an.push(a); }
+  const buf = new Float32Array(2048);
   const st = { lvl:[-100,-100], hold:[-100,-100], holdAt:[0,0], clip:[false,false] };
   const g = cv.getContext('2d');
   let W = 0, H = 0;
@@ -748,7 +750,9 @@ function startMeter(elId, dbId, input, channels, onLevel){
 
   const m = { src, own, split, sink, ro, raf:0, last:performance.now(), frame:0, draw, st };
   const tick = () => {
-    const now = performance.now(), dt = Math.min(.1, (now - m.last) / 1000); m.last = now;
+    const now = performance.now();
+    if (now - m.last < 30) { m.raf = requestAnimationFrame(tick); return; }   // cap at ~30 fps
+    const dt = Math.min(.1, (now - m.last) / 1000); m.last = now;
     let top = -100;
     an.forEach((a, i) => {
       a.getFloatTimeDomainData(buf);
@@ -761,7 +765,7 @@ function startMeter(elId, dbId, input, channels, onLevel){
       if (st.lvl[i] > top) top = st.lvl[i];
     });
     draw();
-    if (++m.frame % 6 === 0) {
+    if (++m.frame % 3 === 0) {
       const h = Math.max(...st.hold.slice(0, n)), clipped = st.clip.slice(0, n).some(Boolean);
       dbEl.textContent = dbEl.id === 'sendDb' ? fmtDb(h) : fmtDb(h) + ' dB';
       dbEl.classList.toggle('hot', h > -0.1);
@@ -919,6 +923,7 @@ async function applyCtl(key, v){
   else if (key === 'gain' && Number.isFinite(Number(v))) setGain(Number(v));
   else if (key === 'auto') setAutoTone(!!v);
   else if (key === 'mute') setMute(!!v);
+  else if (key === 'lock') setLock(!!v);
   else if (key === 'toneRef' && [-20, -18, -14, -12].includes(Number(v))) setToneRef(Number(v));
   else if (key === 'src' && [...$('inputSel').options].some(o => o.value === v)) {
     $('inputSel').value = v; S.deviceId = v; store.set('ic-device', v);
@@ -935,7 +940,7 @@ function hostState(full){
   if (full) Object.assign(st, {                    // settings only go to listeners who unlocked with the password
     full: true, relay: relayText(),
     src: $('inputSel').value, devices: [...$('inputSel').options].map(o => ({ id:o.value, label:o.textContent })),
-    route:S.routeSel, eff:effRoute(), gain:S.gainDb,
+    route:S.routeSel, eff:effRoute(), gain:S.gainDb, locked: !$('lockScreen').hidden,
     auto: typeof Tone !== 'undefined' ? Tone.on : true,
     toneRef: typeof TONE_TARGET !== 'undefined' ? TONE_TARGET : -20 });
   return st;
@@ -1052,6 +1057,7 @@ function micError(e){
 
 async function startSend(){
   if (S.active) return show('send');
+  Tone.on = store.get('ic-autotone') !== '0'; Tone.autoDone = false;   // re-arm auto-gain for each session
   show('send'); paintSeg(S.mode); paintModeNote();
   setPill($('sendPill'), 'Starting…');
   S.active = true; ensureCtx(); keepAwake();
@@ -1291,12 +1297,12 @@ function attachTone(node, channels){
   Tone.nodes = { node, split, sink };
   Tone.td = new Float32Array(4096); Tone.fd = new Float32Array(2048);
   Tone.hist = [[],[]]; Tone.state = 'listening'; Tone.quietSince = 0;
-  Tone.timer = setInterval(toneTick, 100);
+  setToneRate();
   paintToneState();
 }
 function detachTone(){
   if (Tone.present) { Tone.present = false; broadcastState(); }
-  clearInterval(Tone.timer); Tone.timer = null;
+  clearInterval(Tone.timer); Tone.timer = null; Tone.rate = 0;
   const nd = Tone.nodes; Tone.nodes = null; Tone.an = [];
   if (nd) { try { nd.node.disconnect(nd.split) } catch {} try { nd.split.disconnect(); nd.sink.disconnect(); } catch {} }
 }
@@ -1326,8 +1332,8 @@ function toneTick(){
   // Fast check (0.5 s of steady pure tone) so listeners can duck right away — works even with auto-gain off.
   let qHz = 0;
   const quick = Tone.hist.slice(0, Tone.an.length).some(h => {
-    const last = h.slice(-5);
-    if (last.length < 5 || !last.every(f => f.tone)) return false;
+    const last = h.filter(f => now - f.t <= 560);    // ~0.5 s, whatever the check rate
+    if (last.length < 3 || !last.every(f => f.tone)) return false;
     const m = median(last.map(f => f.hz)); qHz = m;
     return last.every(f => Math.abs(f.hz - m) / m < 0.02);
   });
@@ -1382,17 +1388,28 @@ function applyTone({ db, hz }){
                              : 'Tone detected';
   $('toneSub').textContent = `${fmtHz(hz)} · gain set to ${gainText(S.gainDb)}`;
   try { navigator.vibrate?.(40) } catch {}
+  // Calibrated → auto-gain switches itself off, so later tones (or a sustained note) can't move the gain.
+  // (Only for this session — your saved preference stays on, so the next shoot is armed again.)
+  if (want <= 12 && want >= -80) { Tone.on = false; Tone.autoDone = true; setToneRate(); broadcastState(); }
   paintToneState();
 }
 function paintToneState(){
   const el = $('toneState');
   $('toneSw').checked = Tone.on;
-  el.textContent = !Tone.on ? 'Off' : Tone.state === 'locked' ? 'Tone locked' : 'Listening for tone';
-  el.classList.toggle('on', Tone.on && Tone.state === 'locked');
+  el.textContent = !Tone.on ? (Tone.autoDone ? 'Off · gain set from tone — turn on to redo' : 'Off') : Tone.state === 'locked' ? 'Tone locked' : 'Listening for tone';
+  el.classList.toggle('on', (Tone.on && Tone.state === 'locked') || !!Tone.autoDone);
+}
+// 10×/s while auto-gain is armed; 4×/s otherwise (enough to lower listeners' volume on tone).
+function setToneRate(){
+  if (!Tone.an.length) return;
+  const ms = Tone.on ? 100 : 250;
+  if (Tone.rate === ms && Tone.timer) return;
+  clearInterval(Tone.timer); Tone.rate = ms; Tone.timer = setInterval(toneTick, ms);
 }
 function setAutoTone(on){
   Tone.on = on; store.set('ic-autotone', on ? '1' : '0');
-  if (on) { Tone.state = 'listening'; Tone.hist = [[],[]]; }
+  if (on) { Tone.state = 'listening'; Tone.hist = [[],[]]; Tone.autoDone = false; }
+  setToneRate();
   paintToneState(); broadcastState();
 }
 function setToneRef(v){
@@ -1444,6 +1461,7 @@ function setLock(on){
       $('lockLevel').style.width = (dbPos(p > 0 ? 20 * Math.log10(p * dbToGain(S.gainDb)) : -100) * 100) + '%';
     }, 250);
   } else if (S.stream) startMeter('sendMeter', 'sendDb', S.stream._tap, chans());
+  broadcastState();
 }
 $('lockBtn').addEventListener('click', () => setLock(true));
 (() => {
@@ -1788,6 +1806,7 @@ function paintCtlUI(d){
   $('cxGainV').textContent = gainText(d.gain ?? 0);
   $('cxAuto').checked = !!d.auto;
   $('cxMute').checked = !!d.muted;
+  $('cxScreen').checked = !!d.locked;
   if (document.activeElement !== $('cxRef')) $('cxRef').value = String(d.toneRef ?? -20);
   $('sxRelay').textContent = d.relay || '–';
   $('sxRelay').classList.toggle('warn', /^Off/.test(d.relay || ''));
@@ -1807,6 +1826,7 @@ $('cxRoute').addEventListener('change', e => ctl('route', e.target.value));
 $('cxRef').addEventListener('change', e => ctl('toneRef', Number(e.target.value)));
 $('cxAuto').addEventListener('change', e => ctl('auto', e.target.checked));
 $('cxMute').addEventListener('change', e => ctl('mute', e.target.checked));
+$('cxScreen').addEventListener('change', e => ctl('lock', e.target.checked));
 $('cxMode').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { paintSeg(b.dataset.mode, $('cxMode'), 'mode'); ctl('mode', b.dataset.mode); } });
 $('pwGo').addEventListener('click', unlock);
 $('pwIn').addEventListener('keydown', e => { if (e.key === 'Enter') unlock(); });
