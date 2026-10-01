@@ -7,6 +7,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Intercom">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <title>Intercom</title>
@@ -246,6 +249,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
   #home .tile .chev{position:absolute;right:30px;top:36px;width:11px;height:20px}
   #home .tile:hover{transform:translateY(-3px)}
   #home .foot{grid-column:1/-1;margin-top:10px}
+  #home .install{grid-column:1/-1;max-width:440px;justify-self:center;width:100%}
   #home .resume{grid-column:1/-1;max-width:440px;justify-self:center}
 
   /* Two-column screens */
@@ -317,6 +321,10 @@ button{border:0;background:none;padding:0;cursor:pointer}
     <button class="btn primary resume" id="resumeBtn" hidden>Resume sending</button>
     <div class="spacer"></div>
     <p class="foot">Audio goes directly between the two phones.</p>
+    <div class="install" id="installBox" hidden>
+      <button class="btn tinted" id="installBtn" hidden>Install app</button>
+      <p class="foot" id="installTip" hidden>Install: tap <b>Share</b>, then <b>Add to Home Screen</b>.</p>
+    </div>
     <p class="foot ver" id="ver"></p>
   </section>
 
@@ -411,7 +419,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
       <p class="hint">Enter the code shown on the sending phone.</p>
       <div class="entry" id="entry">
         <div class="box"></div><div class="box"></div><div class="box"></div><div class="box"></div>
-        <input id="codeIn" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" maxlength="4" aria-label="Room code">
+        <input id="codeIn" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" aria-label="Room code">
       </div>
       <p class="err-text" id="joinErr"></p>
       <div class="spacer"></div>
@@ -520,7 +528,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
               sender watchdog re-acquires a lost input, listener auto-resyncs a bloated buffer. */
 
 /* ============ Config ============ */
-const VERSION = '0.7.0-beta';                     // shown on the home screen — go to 1.0.0 when ready
+const VERSION = '0.9.0-beta';                     // shown on the home screen — go to 1.0.0 when ready
 const PREFIX = 'asahina-intercom-';            // namespace for room ids on the PeerJS server
 const ICE = [
   { urls: 'stun:stun.l.google.com:19302' },
@@ -670,6 +678,98 @@ function opusFmtp(sdp){
   }
   return sdp.replace(m[0], m[0] + '\r\na=fmtp:' + pt + ' ' + Object.entries(want).map(([k,v]) => k + '=' + v).join(';'));
 }
+
+/* ============ Reliable audio over the data link (Stable) ============
+   Sender: Web Audio → capture worklet → Opus encoder (WebCodecs) → each Stable listener's data link
+           (resends anything lost, so audio is never dropped — only delayed).
+   Listener: Opus decoder → player worklet with a ~1 s buffer. Stalls shorter than the buffer are
+           inaudible; if it ever runs dry it pauses and refills (no glitches); a backlog skips to live.
+   Built so the delivery part can later move to Cloudflare's SFU (publish once, fan out). */
+const DL_FRAME_MS = 60;                               // bigger packets = less overhead (we have a big buffer)
+const DL_TARGET_S = 1.0;                              // listener buffer
+const WORKLET_SRC = `
+class Capture extends AudioWorkletProcessor {
+  constructor(o){ super(); this.n = o.processorOptions.frames; this.ch = o.processorOptions.channels;
+    this.buf = [new Float32Array(this.n), new Float32Array(this.n)]; this.i = 0;
+    this.port.onmessage = ({ data }) => { if (data.stop) this.dead = true; }; }
+  process(inputs){
+    if (this.dead) return false;
+    const inp = inputs[0]; if (!inp || !inp.length) return true;
+    const a = inp[0], b = inp[1] || inp[0];
+    for (let k = 0; k < a.length; k++){
+      this.buf[0][this.i] = a[k]; this.buf[1][this.i] = b[k];
+      if (++this.i === this.n){
+        const out = this.ch === 2 ? [this.buf[0], this.buf[1]] : [this.buf[0]];
+        this.port.postMessage(out, out.map(x => x.buffer));
+        this.buf = [new Float32Array(this.n), new Float32Array(this.n)]; this.i = 0;
+      }
+    }
+    return true;
+  }
+}
+class Player extends AudioWorkletProcessor {
+  constructor(o){ super();
+    this.target = o.processorOptions.target * sampleRate; this.cap = sampleRate * 12;
+    this.L = new Float32Array(this.cap); this.R = new Float32Array(this.cap);
+    this.w = 0; this.r = 0; this.n = 0; this.playing = false; this.ramp = 1; this.under = 0; this.k = 0;
+    this.port.onmessage = ({ data }) => {
+      if (data.stop){ this.dead = true; return; }
+      if (data.flush){ this.r = this.w; this.n = 0; this.playing = false; return; }
+      if (data.target){ this.target = data.target * sampleRate; return; }
+      const a = data.pcm[0], b = data.pcm[1] || a, ratio = data.sr / sampleRate, outN = Math.floor(a.length / ratio);
+      for (let i = 0; i < outN; i++){
+        const x = i * ratio, i0 = x | 0, i1 = Math.min(i0 + 1, a.length - 1), f = x - i0;
+        this.L[this.w] = a[i0] + (a[i1] - a[i0]) * f; this.R[this.w] = b[i0] + (b[i1] - b[i0]) * f;
+        this.w = (this.w + 1) % this.cap;
+        if (this.n < this.cap) this.n++; else this.r = (this.r + 1) % this.cap;
+      }
+      const max = this.target + sampleRate * 8;            // only a very long outage (8 s+ behind) skips to live
+      if (this.n > max){ const drop = this.n - this.target; this.r = (this.r + drop) % this.cap; this.n -= drop; this.ramp = 0; }
+    };
+  }
+  process(_, outs){
+    if (this.dead) return false;                         // stopped: let the browser free it
+    const o = outs[0], l = o[0], r = o[1] || o[0], m = l.length;
+    if (!this.playing && this.n >= this.target){ this.playing = true; this.ramp = 0; }
+    if (this.playing && this.n < m){ this.playing = false; this.under++; }   // ran dry: pause and refill
+    // Behind after a stall? Catch up by skipping only near-silent stretches — no audible sound is dropped.
+    if (this.playing){
+      let guard = 0;
+      while (this.n - this.target > sampleRate * 0.25 && this.n > 2 * m && guard++ < 16){
+        let pk = 0;
+        for (let i = 0, j = this.r; i < m; i++, j = (j + 1) % this.cap){ const v = Math.max(Math.abs(this.L[j]), Math.abs(this.R[j])); if (v > pk) pk = v; }
+        if (pk > 0.003) break;
+        this.r = (this.r + m) % this.cap; this.n -= m;
+      }
+    }
+    if (!this.playing){ l.fill(0); if (r !== l) r.fill(0); }
+    else for (let i = 0; i < m; i++){
+      const g = this.ramp < 1 ? (this.ramp = Math.min(1, this.ramp + 1 / 480)) : 1;   // 10 ms fade-in after a pause/skip
+      l[i] = this.L[this.r] * g; r[i] = this.R[this.r] * g; this.r = (this.r + 1) % this.cap;
+    }
+    if (this.playing) this.n -= m;
+    if (++this.k % 40 === 0) this.port.postMessage({ buffered: this.n / sampleRate, playing: this.playing, under: this.under });
+    return true;
+  }
+}
+registerProcessor('ic-capture', Capture); registerProcessor('ic-player', Player);`;
+let workletP = null;
+function ensureWorklet(){
+  const c = ensureCtx();
+  if (!workletP || workletP.ctx !== c) {
+    workletP = c.audioWorklet.addModule(URL.createObjectURL(new Blob([WORKLET_SRC], { type: 'application/javascript' })));
+    workletP.ctx = c;
+  }
+  return workletP;
+}
+// Can this phone do reliable Stable? (needs WebCodecs Opus + AudioWorklet). ?classic forces the old Stable.
+const CLASSIC = new URLSearchParams(location.search).has('classic');
+const dlCan = { enc: null, dec: null };
+(async () => {
+  if (CLASSIC || typeof AudioWorkletNode === 'undefined') { dlCan.enc = dlCan.dec = false; return; }
+  try { dlCan.enc = typeof AudioEncoder === 'function' && (await AudioEncoder.isConfigSupported({ codec:'opus', sampleRate:48000, numberOfChannels:2, bitrate:64000 })).supported; } catch { dlCan.enc = false; }
+  try { dlCan.dec = typeof AudioDecoder === 'function' && (await AudioDecoder.isConfigSupported({ codec:'opus', sampleRate:48000, numberOfChannels:2 })).supported; } catch { dlCan.dec = false; }
+})();
 
 /* ============ Level meter (mixer-style peak meter) ============ */
 // Piecewise scale like a console meter: more room near the top.
@@ -871,6 +971,7 @@ const chans = () => effRoute() === 'stereo' ? 2 : 1;
 function routeChanged(){
   applyRoute();
   if (!S.stream) return;
+  if (DL.cfg && DL.cfg.ch !== chans()) dlRestart();
   startMeter('sendMeter', 'sendDb', S.stream._tap, chans()); attachTone(S.stream._pre, chans());
   broadcastState();
   paintModeNote();
@@ -1099,13 +1200,13 @@ function senderIssue(){
 async function linkCheck(){
   const now = performance.now();
   for (const e of S.listeners.values()) {
-    const pc = e.call?.peerConnection;
+    const pc = e.dl ? e.conn.peerConnection : e.call?.peerConnection;
     if (!e.live || !pc) continue;
     let rx = null;
     try { (await pc.getStats()).forEach(r => { if (r.type === 'transport') rx = r.bytesReceived; }); } catch { continue; }
     if (rx == null) continue;
     if (!e.rx || e.rx.pc !== pc || rx !== e.rx.v) { e.rx = { pc, v: rx, at: now }; continue; }
-    if (now - e.rx.at > 2500) { e.rx.at = now + 4000; e.live = false; paintSendStatus(); refreshHostSignal(); setTimeout(recallStale, 600); }
+    if (now - e.rx.at > (e.stable ? 6000 : 2500)) { e.rx.at = now + 4000; e.live = false; paintSendStatus(); refreshHostSignal(); setTimeout(recallStale, 600); }
   }
 }
 async function senderWatchdog(){
@@ -1175,10 +1276,11 @@ function onListener(conn){
   conn.on('open', () => {
     if (!S.stream) return conn.close();
     const prev = S.listeners.get(conn.peer);          // same phone reconnecting after a network change
-    entry = { conn, call:null, live:false, stable: !!conn.metadata?.stable };
+    entry = { conn, call:null, live:false, stable: !!conn.metadata?.stable, direct: !!conn.metadata?.direct, wantDl: !!conn.metadata?.dl };
     S.listeners.set(conn.peer, entry);
     startCall(entry, prev ? () => setTimeout(() => closeEntry(prev), 1500) : null);
     sendState(conn, entry);
+    dlSync();
     paintSendStatus(); paintCtl();
   });
   conn.on('data', d => {
@@ -1187,7 +1289,12 @@ function onListener(conn){
     // Listener saw its delay balloon → new call starts with an empty buffer.
     if (d?.type === 'resync') freshCall();
     // Listener switched Low delay ↔ Stable → new call with/without redundant packets.
-    if (d?.type === 'prefs') { entry.stable = !!d.stable; freshCall(); }
+    if (d?.type === 'prefs') {
+      const directChanged = !!d.direct !== entry.direct, leavingDl = entry.dl && !d.stable;
+      entry.stable = !!d.stable; entry.direct = !!d.direct; entry.wantDl = !!d.dl;
+      if (directChanged || leavingDl || !(entry.stable && entry.wantDl && dlCan.enc)) freshCall();   // packet size / redundancy need a new call
+      dlSync();
+    }
     if (d?.type === 'auth') handleAuth(entry, d.pw);
     if (d?.type === 'ctl' && entry.authed && S.ctlOn) applyCtl(d.key, d.value);
   });
@@ -1206,7 +1313,7 @@ function startCall(entry, onUp){
   const onState = () => {
     if (entry.call !== call) return;                   // an older call being replaced
     const st = pc.connectionState || pc.iceConnectionState;
-    if (st === 'connected' || st === 'completed') { clearTimeout(dropTimer); entry.live = true; applyBitrate(pc, 0, entry.stable); if (onUp) { const f = onUp; onUp = null; f(); } }
+    if (st === 'connected' || st === 'completed') { clearTimeout(dropTimer); entry.live = true; applyBitrate(pc, 0, entry.stable); applyEntryTrack(entry); if (onUp) { const f = onUp; onUp = null; f(); } }
     else if (st === 'disconnected') { entry.live = false; refreshHostSignal(); clearTimeout(dropTimer); dropTimer = setTimeout(() => entry.call === call && dropListener(entry), 20000); }
     else if (st === 'failed' || st === 'closed') { entry.live = false; if (st === 'failed') refreshHostSignal(); }   // listener will reconnect; its data link decides when it's gone
     paintSendStatus();
@@ -1238,10 +1345,90 @@ const hostNetPoke = () => { if (S.active) setTimeout(refreshHostSignal, 800); };
 window.addEventListener('online', hostNetPoke);
 navigator.connection?.addEventListener?.('change', hostNetPoke);
 
+/* ---- Sender side of reliable Stable ---- */
+const DL = { enc: null, node: null, sink: null, cfg: null, cfgId: 0, seq: 0, ts: 0, starting: null, hist: [] };
+const DL_HIST = Math.ceil(10000 / DL_FRAME_MS);       // ~10 s of packets kept for replay
+const dlEntries = () => [...S.listeners.values()].filter(e => e.dl && e.conn.open);
+// Data-link listeners get their audio as data, so their call carries no audio (saves upload).
+function applyEntryTrack(e){
+  const pc = e.call?.peerConnection; if (!pc || !S.stream) return;
+  const want = e.dl ? null : S.stream.getAudioTracks()[0];
+  pc.getSenders().forEach(snd => { if (snd.track !== want && (snd.track?.kind === 'audio' || (!snd.track && !e.dl))) snd.replaceTrack(want).catch(() => {}); });
+}
+function dlSync(){
+  S.listeners.forEach(e => {
+    const dl = !!(e.stable && e.wantDl && dlCan.enc && S.stream);
+    if (dl !== !!e.dl) { e.dl = dl; try { e.conn.send({ t:'dlmode', on: dl }) } catch {} if (dl && DL.cfg) { dlSendCfg(e); dlReplay(e); } }
+    applyEntryTrack(e);
+  });
+  // Keep encoding for 30 s after the last reliable listener drops, so one that re-links (e.g. after a
+  // network switch) gets everything it missed replayed instead of a gap.
+  clearTimeout(DL.idleT);
+  if (!S.active) return dlStop();
+  const want = [...S.listeners.values()].some(e => e.dl);
+  if (want) dlStart();
+  else if (DL.enc || DL.starting) DL.idleT = setTimeout(() => { if (![...S.listeners.values()].some(e => e.dl)) dlStop(); }, 30000);
+}
+async function dlStart(){
+  if (DL.enc || DL.starting || !S.stream) return;
+  DL.starting = (async () => {
+    try {
+      await ensureWorklet();
+      const c = ensureCtx(), ch = chans(), sr = c.sampleRate;
+      let cfg = { codec:'opus', sampleRate:sr, numberOfChannels:ch, bitrate:MODES[S.mode].bitrate, opus:{ frameDuration: DL_FRAME_MS * 1000 } };
+      if (!(await AudioEncoder.isConfigSupported(cfg)).supported) { delete cfg.opus; if (!(await AudioEncoder.isConfigSupported(cfg)).supported) throw new Error('opus'); }
+      DL.enc = new AudioEncoder({ output: dlOut, error: () => { dlStop(); setTimeout(dlSync, 1500); } });
+      DL.enc.configure(cfg);
+      DL.cfg = { id: ++DL.cfgId, sr, ch }; DL.seq = 0; DL.ts = 0; DL.hist = [];
+      DL.node = new AudioWorkletNode(c, 'ic-capture', { numberOfInputs:1, numberOfOutputs:1, outputChannelCount:[1],
+        channelCount:2, channelCountMode:'explicit', processorOptions:{ frames: Math.round(sr * 0.02), channels: ch } });
+      DL.sink = c.createGain(); DL.sink.gain.value = 0; DL.node.connect(DL.sink); DL.sink.connect(c.destination);
+      DL.node.port.onmessage = ({ data }) => {
+        if (DL.enc?.state !== 'configured') return;
+        const n = data[0].length, buf = new Float32Array(n * ch);
+        data.forEach((a, i) => buf.set(a, i * n));
+        const ad = new AudioData({ format:'f32-planar', sampleRate:sr, numberOfFrames:n, numberOfChannels:ch, timestamp:DL.ts, data:buf });
+        DL.ts += n / sr * 1e6; DL.enc.encode(ad); ad.close();
+      };
+      S.stream._mute.connect(DL.node);                // after gain + mute, same as what's sent on calls
+      dlEntries().forEach(dlSendCfg);
+    } catch { dlCan.enc = false; dlStop(); dlSync(); }  // can't encode here → those listeners fall back to classic Stable
+    finally { DL.starting = null; }
+  })();
+}
+function dlStop(){
+  try { DL.enc?.state !== 'closed' && DL.enc?.close(); } catch {}
+  try { DL.node.port.onmessage = null; DL.node.port.postMessage({ stop: true }); } catch {}
+  if (DL.node) { try { S.stream?._mute.disconnect(DL.node); } catch {} try { DL.node.disconnect(); DL.sink?.disconnect(); } catch {} }
+  DL.enc = DL.node = DL.sink = null; DL.cfg = null;
+}
+function dlRestart(){ if (DL.enc || DL.starting) { dlStop(); dlSync(); } }
+// A listener that re-linked tells us the last packet it got; send everything after it (nothing is lost).
+function dlReplay(e){
+  const m = e.conn.metadata || {};
+  if (!DL.cfg || m.dlCfg !== DL.cfg.id || !(m.dlSeq >= 0)) return;
+  const miss = DL.hist.filter(p => p.s > m.dlSeq);
+  if (DL.hist.length && DL.hist[0].s > m.dlSeq + 1) { try { e.conn.send({ ...DL.hist[0], gap: 1 }) } catch {} miss.shift(); }   // older than our history
+  miss.forEach(p => { try { e.conn.send(p) } catch {} });
+}
+function dlSendCfg(e){ try { e.conn.send({ t:'acfg', id: DL.cfg.id, sr: DL.cfg.sr, ch: DL.cfg.ch }) } catch {} }
+function dlOut(chunk){
+  const d = new Uint8Array(chunk.byteLength); chunk.copyTo(d);
+  const pkt = { t:'a', c: DL.cfg?.id, s: DL.seq++, d };
+  DL.hist.push(pkt); if (DL.hist.length > DL_HIST) DL.hist.shift();
+  const maxBacklog = MODES[S.mode].bitrate / 8 * 8;  // ~8 s queued (link stalled) → stop queueing; listener skips to live
+  for (const e of dlEntries()) {
+    const dc = e.conn.dataChannel;
+    if (dc && dc.bufferedAmount > maxBacklog) { e.dlGap = true; continue; }
+    try { e.conn.send(e.dlGap ? { ...pkt, gap: 1 } : pkt); e.dlGap = false; } catch {}
+  }
+}
+
 function closeEntry(e){ try { e.call?.close() } catch {} try { e.conn.close() } catch {} }
 function dropListener(entry){
   if (S.listeners.get(entry.conn.peer) === entry) S.listeners.delete(entry.conn.peer);
   closeEntry(entry);
+  setTimeout(dlSync, 0);
   paintSendStatus(); paintCtl();
 }
 
@@ -1268,11 +1455,13 @@ async function swapStream(ns){
   const nt = ns.getAudioTracks()[0];
   for (const e of S.listeners.values()){
     const pc = e.call?.peerConnection; if (!pc) continue;
-    for (const s of pc.getSenders()) if (s.track?.kind === 'audio') await s.replaceTrack(nt).catch(()=>{});
+    if (!e.dl) for (const s of pc.getSenders()) if (s.track?.kind === 'audio') await s.replaceTrack(nt).catch(()=>{});
     applyBitrate(pc, 0, e.stable);
   }
   const old = S.stream; S.stream = ns;
+  if (DL.node) { try { old?._mute.disconnect(DL.node) } catch {} ns._mute.connect(DL.node); }
   stopStream(old);
+  if (DL.cfg && (DL.cfg.ch !== chans())) dlRestart();
   startMeter('sendMeter', 'sendDb', S.stream._tap, chans()); attachTone(S.stream._pre, chans());
   broadcastState();
   paintModeNote();
@@ -1282,7 +1471,7 @@ async function setMode(mode){
   if (mode === S.mode) return;
   S.mode = mode; store.set('ic-mode', mode); paintSeg(mode); paintModeNote();
   if (!S.stream) return;
-  try { await swapStream(await getStream(mode, S.deviceId)); } catch (e) { setPill($('sendPill'), micError(e), 'err'); }
+  try { await swapStream(await getStream(mode, S.deviceId)); dlRestart(); } catch (e) { setPill($('sendPill'), micError(e), 'err'); }
 }
 
 /* ---- Tone detection → auto gain ----
@@ -1445,6 +1634,7 @@ function stopSend(){
   S.active = false; S.issue = '';
   clearInterval(S.watch); store.set('ic-sending', '0');
   [...S.listeners.values()].forEach(dropListener);
+  dlStop();
   try { S.peer?.destroy() } catch {} S.peer = null;
   stopStream(S.stream); S.stream = null;
   stopMeter('sendMeter'); detachTone(); clearInterval(RM.timer); RM.timer = null; releaseAwake(); show('home');
@@ -1517,9 +1707,10 @@ function paintEntry(){
   });
   $('joinBtn').disabled = v.length !== 4;
 }
+let prevCode = '';
 function setCode(v){
   const inp = $('codeIn');
-  inp.value = v.replace(/\D/g, '').slice(0, 4);
+  inp.value = prevCode = v.replace(/\D/g, '').slice(0, 4);
   try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch {}
   $('joinErr').textContent = ''; paintEntry();
 }
@@ -1536,7 +1727,18 @@ $('codeIn').addEventListener('beforeinput', e => {
     e.preventDefault(); const p = editPos; editPos = null; setCode(inp.value.slice(0, p));
   } else { editPos = null; }
 });
-$('codeIn').addEventListener('input', e => { editPos = null; setCode(e.target.value); });
+// Fallback for keyboards that skip beforeinput (iOS): work out what was typed from the change.
+$('codeIn').addEventListener('input', e => {
+  const v = e.target.value.replace(/\D/g, '');
+  if (editPos !== null && v.length > prevCode.length && v.startsWith(prevCode)) {
+    let out = prevCode, p = editPos;
+    for (const d of v.slice(prevCode.length)) { if (p > 3) break; out = out.slice(0, p) + d + out.slice(p + 1); p++; }
+    editPos = p > 3 ? null : p;
+    return setCode(out);
+  }
+  if (editPos !== null && v.length < prevCode.length) { const p = editPos; editPos = null; return setCode(prevCode.slice(0, p)); }
+  editPos = null; setCode(v);
+});
 $('codeIn').addEventListener('pointerdown', e => {
   const inp = $('codeIn'), boxes = [...$('entry').querySelectorAll('.box')];
   let i = boxes.findIndex(b => e.clientX < b.getBoundingClientRect().right + 6);
@@ -1552,6 +1754,7 @@ function openListen(){
   show('listen');
   $('joinView').hidden = false; $('liveView').hidden = true; $('listen').classList.remove('is-live');
   if (!$('codeIn').value) $('codeIn').value = store.get('ic-last') || '';
+  prevCode = $('codeIn').value;
   paintEntry();
   setTimeout(() => $('codeIn').focus(), 350);
 }
@@ -1649,7 +1852,7 @@ async function connectListener(){
 
 function openLink(){
   const peer = L.peer, gen = L.gen;
-  const conn = peer.connect(PREFIX + L.code, { reliable: true, metadata: { stable: L.stable, direct: isDirect() } });
+  const conn = peer.connect(PREFIX + L.code, { reliable: true, metadata: { stable: L.stable, direct: isDirect(), dl: !!dlCan.dec, dlCfg: RX.cfg?.id, dlSeq: RX.cfg ? RX.lastSeq : undefined } });
   const mine = () => gen === L.gen && L.active && L.conn === conn;
   const old = L.conn;
   if (old && !old.open) try { old.close() } catch {}           // a link that never opened
@@ -1762,11 +1965,12 @@ function setSenderOpen(open){
 $('sxToggle').addEventListener('click', () => setSenderOpen($('sxGroup').hidden));
 setSenderOpen(store.get('ic-sxopen') === '1');      // collapsed unless opened before
 
-const NET_HINT = { direct: 'Least delay · plays straight to the speaker', low: 'Low delay', stable: 'Fewer dropouts · for driving' };
+const NET_HINT = { direct: 'Least delay · plays straight to the speaker', low: 'Low delay', stable: 'Never drops audio · ~1 s delay · for driving' };
 const NET_NAME = { direct: 'Direct', low: 'Low delay', stable: 'Stable' };
 function paintFmt(){
   $('netHint').textContent = NET_HINT[L.net];
-  $('stFmt').textContent = `${MODES[L.mode].label} · ${L.channels > 1 ? 'Stereo' : 'Mono'}${L.net !== 'low' ? ' · ' + NET_NAME[L.net] : ''}`;
+  $('stFmt').textContent = `${MODES[L.mode].label} · ${L.channels > 1 ? 'Stereo' : 'Mono'}${L.net !== 'low' ? ' · ' + NET_NAME[L.net] : ''}${L.stable ? (L.dl ? ' (reliable)' : ' (classic)') : ''}`;
+  if (L.stable && !L.dl && L.everLive) $('netHint').textContent = 'Fewer dropouts · classic mode (reliable mode not available)';
   $('boostRow').classList.toggle('off', isDirect()); $('duckRow').classList.toggle('off', isDirect());
   $('boostNote').textContent = isDirect()
     ? 'Direct plays the feed straight to the speaker for the least delay, so Boost and the tone volume drop are off. Use the phone’s volume buttons.'
@@ -1781,7 +1985,7 @@ function setNet(net){
   if (L.conn?.open) {                                   // new call: redundancy for Stable, 10 ms packets for Direct
     L.resyncing = !wasDirect && !isDirect();            // crossfade only works through the Web Audio path
     L.lastResync = performance.now();
-    try { L.conn.send({ type:'prefs', stable: L.stable, direct: isDirect() }); } catch {}
+    try { L.conn.send({ type:'prefs', stable: L.stable, direct: isDirect(), dl: !!dlCan.dec }); } catch {}
     notice(`Switching to ${NET_NAME[net]}…`, 'info', 3000);
   }
 }
@@ -1856,6 +2060,9 @@ $('pwIn').addEventListener('keydown', e => { if (e.key === 'Enter') unlock(); })
 $('cxLock').addEventListener('click', () => { L.authed = false; store.set('ic-pw-' + L.code, ''); paintLock(); });
 
 function onHostData(d){
+  if (d?.t === 'a') return rxPacket(d);
+  if (d?.t === 'acfg') return rxConfig(d);
+  if (d?.t === 'dlmode') return setDl(!!d.on);
   if (d?.type === 'auth') return onAuth(d);
   if (d?.type !== 'mode') return;
   const mode = MODES[d.mode] ? d.mode : 'voice', channels = d.channels || MODES[mode].channels;
@@ -1864,7 +2071,8 @@ function onHostData(d){
   paintFmt();
   if (changed) {
     tuneReceiver();
-    if (audioEl.srcObject && L.call) startMeter('listenMeter', 'listenDb', audioEl.srcObject, L.channels, lvl => $('orbWrap').style.setProperty('--lvl', lvl.toFixed(3)));
+    if (L.dl && RX.node) startMeter('listenMeter', 'listenDb', RX.node, 2, lvl => $('orbWrap').style.setProperty('--lvl', lvl.toFixed(3)));
+    else if (audioEl.srcObject && L.call) startMeter('listenMeter', 'listenDb', audioEl.srcObject, L.channels, lvl => $('orbWrap').style.setProperty('--lvl', lvl.toFixed(3)));
   }
   if ('muted' in d && !!d.muted !== !!L.senderMuted) {
     L.senderMuted = !!d.muted;
@@ -1975,7 +2183,7 @@ function onRemoteStream(stream, call, old){
   const isResync = !!(old && LB.cur && L.resyncing);
   L.resyncing = false;
   L.everLive = true;
-  playStream(stream, isResync ? call.peerConnection : null).then(() => {
+  (L.dl ? (LB.stream = stream, Promise.resolve()) : playStream(stream, isResync ? call.peerConnection : null)).then(() => {
     setTimeout(() => { try { old?.close() } catch {} }, 300);
     if (isResync) { notice('Resynced · delay reset', 'info', 5000, 'resync'); L.resyncShown = true; }
     else if (L.dropped) notice('Reconnected', 'ok', 3000);
@@ -1985,7 +2193,7 @@ function onRemoteStream(stream, call, old){
   audioEl.play().then(() => $('tapAudio').hidden = true).catch(() => $('tapAudio').hidden = false);
   setLive('Live', true);
   tuneReceiver();
-  startMeter('listenMeter', 'listenDb', stream, L.channels, lvl => $('orbWrap').style.setProperty('--lvl', lvl.toFixed(3)));
+  if (!L.dl) startMeter('listenMeter', 'listenDb', stream, L.channels, lvl => $('orbWrap').style.setProperty('--lvl', lvl.toFixed(3)));
   clearInterval(L.stats);
   L.stats = setInterval(pollStats, 1000);
   clearInterval(L.stallT); L.stall = null;
@@ -1995,6 +2203,11 @@ function onRemoteStream(stream, call, old){
 // The sender always sends packets (even muted — silence still flows), so ~1.2 s with none means the
 // link is dead. ICE alone takes 5–10 s to notice on phones.
 async function stallCheck(){
+  if (L.dl) {                                          // data-link: the buffer covers short stalls — wait 5 s
+    // A re-link costs nothing audible here (the sender replays what we missed), so act after 1.5 s.
+    if (L.everLive && !L.repairing && !L.retry && !L.issue && RX.cfg && performance.now() - RX.last > 1500) { RX.last = performance.now() + 4000; repair('no data'); }
+    return;
+  }
   const pc = L.call?.peerConnection;
   if (!pc || !L.everLive || L.repairing || L.retry || L.issue) return;
   let pk = null;
@@ -2005,6 +2218,66 @@ async function stallCheck(){
   if (now - L.stall.at > 1200) { L.stall.at = now + 4000; repair('no packets'); }
 }
 
+/* ---- Listener side of reliable Stable ---- */
+const RX = { dec: null, cfg: null, node: null, last: 0, bytes: 0, buffered: 0, under: 0, pending: null, lastSeq: -1 };
+function setDl(on){
+  if (on === !!L.dl) return;
+  L.dl = on;
+  if (on) { rxStart(); }
+  else {
+    rxStop();
+    if (LB.stream) playStream(LB.stream, null);        // back to the call's audio
+  }
+  paintFmt();
+}
+async function rxStart(){
+  try {
+    await ensureWorklet();
+    if (!L.dl) return;
+    if (!RX.node) {
+      RX.node = new AudioWorkletNode(ctx, 'ic-player', { numberOfInputs:0, numberOfOutputs:1, outputChannelCount:[2], processorOptions:{ target: DL_TARGET_S } });
+      RX.node.port.onmessage = ({ data }) => { RX.buffered = data.buffered; RX.under = data.under; RX.playing = data.playing; };
+      RX.node.connect(pbChain().g);
+    }
+    pbRemove(LB.cur); LB.cur = null;                   // stop playing the call's audio
+    audioEl.muted = true;
+    RX.last = performance.now();
+    startMeter('listenMeter', 'listenDb', RX.node, 2, lvl => $('orbWrap').style.setProperty('--lvl', lvl.toFixed(3)));
+    if (RX.pending) { const c = RX.pending; RX.pending = null; rxConfig(c); }
+  } catch { L.dl = false; }
+}
+function rxStop(){
+  try { RX.dec?.state !== 'closed' && RX.dec?.close(); } catch {}
+  try { RX.node.port.onmessage = null; RX.node.port.postMessage({ stop: true }); RX.node.disconnect(); } catch {}
+  RX.dec = RX.node = null; RX.cfg = null; RX.buffered = 0; RX.under = 0;
+}
+function rxConfig(c){
+  if (!RX.node) { RX.pending = c; return; }
+  if (RX.cfg?.id === c.id && RX.dec?.state === 'configured') return;
+  try { RX.dec?.state !== 'closed' && RX.dec?.close(); } catch {}
+  RX.dec = new AudioDecoder({
+    output: ad => {
+      const n = ad.numberOfFrames, pcm = [];
+      for (let i = 0; i < ad.numberOfChannels; i++) { const a = new Float32Array(n); ad.copyTo(a, { planeIndex: i, format: 'f32-planar' }); pcm.push(a); }
+      RX.node?.port.postMessage({ pcm, sr: ad.sampleRate }, pcm.map(a => a.buffer));
+      ad.close();
+    },
+    error: () => { RX.cfg = null; },
+  });
+  RX.dec.configure({ codec:'opus', sampleRate: c.sr, numberOfChannels: c.ch });
+  RX.cfg = c; RX.lastSeq = -1;
+}
+function rxPacket(p){
+  if (!L.dl || !RX.dec || RX.dec.state !== 'configured' || p.c !== RX.cfg?.id) return;
+  RX.last = performance.now(); RX.bytes += p.d.byteLength;
+  if (p.s <= RX.lastSeq && !p.gap) return;            // already have it (old and new link both delivered)
+  if (RX.lastSeq >= 0 && p.s !== RX.lastSeq + 1) RX.missed = (RX.missed || 0) + (p.s - RX.lastSeq - 1);   // diagnostics: should stay 0
+  RX.lastSeq = p.s;
+  if (p.gap) RX.node?.port.postMessage({ flush: true });   // the sender skipped a long backlog → start fresh
+  try { RX.dec.decode(new EncodedAudioChunk({ type: 'key', timestamp: p.s * DL_FRAME_MS * 1000, data: p.d })); } catch {}
+  if (!L.everLive || $('liveTitle').textContent !== 'Live') { L.everLive = true; L.repairing = false; if (!L.senderMuted) setLive('Live', true); }
+}
+
 const DELAY = { target: 300, resyncAbove: 500, holdMs: 6000, cooldownMs: 60000 };
 const STABLE = { jitterMs: 250, target: 500, resyncAbove: 900 };   // bigger buffer for driving
 L.net = store.get('ic-net') || (store.get('ic-stable') === '1' ? 'stable' : 'low');   // 'direct' | 'low' | 'stable'
@@ -2012,6 +2285,7 @@ Object.defineProperty(L, 'stable', { get: () => L.net === 'stable' });
 const isDirect = () => L.net === 'direct';
 L.autoResync = store.get('ic-autoresync') !== '0';
 async function pollStats(){
+  if (L.dl) return pollDlStats();
   const pc = L.call?.peerConnection; if (!pc) return;
   let r; try { r = await pc.getStats() } catch { return; }
   let rtt, inb, pair;
@@ -2053,6 +2327,27 @@ async function pollStats(){
   if (L.autoResync && L.highSince && now - L.highSince > DELAY.holdMs && now - (L.lastResync || 0) > DELAY.cooldownMs) resync();
   if (L.resyncShown && !L.resyncing) { L.resyncShown = false; if (noticeOn() && $('lnotice').dataset.tag === 'resync') $('lnoticeTxt').textContent = `Resynced · now ≈ ${Math.round(est)} ms`; }
 }
+async function pollDlStats(){
+  const pc = L.conn?.peerConnection; if (!pc) return;
+  let rtt = null, pair;
+  try {
+    const r = await pc.getStats();
+    r.forEach(s => { if (s.type === 'transport' && s.selectedCandidatePairId) pair = r.get(s.selectedCandidatePairId); });
+    if (!pair) r.forEach(s => { if (s.type === 'candidate-pair' && s.state === 'succeeded' && (s.nominated || s.selected)) pair = s; });
+    if (pair) {
+      rtt = pair.currentRoundTripTime;
+      const lc = r.get(pair.localCandidateId), rc = r.get(pair.remoteCandidateId);
+      $('stRoute').textContent = lc?.candidateType === 'relay' || rc?.candidateType === 'relay' ? 'Relayed'
+        : lc?.candidateType === 'host' && rc?.candidateType === 'host' ? 'Direct · Local network' : 'Direct';
+    }
+  } catch {}
+  const now = performance.now();
+  if (L.dlPrev) $('stRate').textContent = `${Math.round((RX.bytes - L.dlPrev.b) * 8 / (now - L.dlPrev.t))} kbps`;
+  L.dlPrev = { b: RX.bytes, t: now };
+  const est = RX.buffered * 1000 + (rtt != null ? rtt * 500 : 0) + DL_FRAME_MS + 30;
+  $('stDelay').textContent = `≈ ${Math.round(est)} ms`;
+  $('stDelay').classList.toggle('warn', est > 2500);
+}
 function resync(){
   if (!L.conn?.open) return;
   L.highSince = 0; L.lastResync = performance.now(); L.jbHist = [];
@@ -2065,6 +2360,7 @@ function resync(){
 function leave(){
   L.active = false;
   teardownListener();
+  rxStop(); L.dl = false; L.dlPrev = null;
   L.toneOn = false; L.duckSkip = false; L.issue = ''; L.senderMuted = false; L.repairing = false; L.authed = false; L.ctlAvail = undefined;
   $('senderInfo').hidden = true; paintLock();
   teardownPlayback(); hideNotice(true); L.dropped = false; L.resyncing = false;
@@ -2081,11 +2377,30 @@ $('duckSw').checked = L.duckPref;
 $('netSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setNet(b.dataset.net); });
 $('duckSw').addEventListener('change', e => { L.duckPref = e.target.checked; store.set('ic-duck', L.duckPref ? '1' : '0'); L.duckSkip = false; applyDuck(); });
 $('autoResync').addEventListener('change', e => { L.autoResync = e.target.checked; store.set('ic-autoresync', L.autoResync ? '1' : '0'); });
-$('delayRow').addEventListener('click', () => { if (L.everLive && performance.now() - (L.lastResync || 0) > 3000) resync(); });
+$('delayRow').addEventListener('click', () => { if (L.dl) { RX.node?.port.postMessage({ flush: true }); notice('Skipped to live', 'info', 2500); return; } if (L.everLive && performance.now() - (L.lastResync || 0) > 3000) resync(); });
 $('leaveBtn').addEventListener('click', leave);
 $('tapAudio').addEventListener('click', () => { ensureCtx(); audioEl.play().then(() => $('tapAudio').hidden = true).catch(()=>{}); });
 
 $('ver').textContent = 'Version ' + VERSION;
+
+/* ============ Install as an app ============
+   The service worker keeps the app on the phone (opens instantly, even with bad signal). */
+if ('serviceWorker' in navigator && window.isSecureContext) navigator.serviceWorker.register('sw.js').catch(() => {});
+const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+let installEvt = null;
+window.addEventListener('beforeinstallprompt', e => {        // Android / Chrome: real Install button
+  e.preventDefault(); installEvt = e;
+  $('installBox').hidden = false; $('installBtn').hidden = false; $('installTip').hidden = true;
+});
+$('installBtn').addEventListener('click', async () => {
+  if (!installEvt) return;
+  installEvt.prompt(); await installEvt.userChoice.catch(() => {}); installEvt = null; $('installBox').hidden = true;
+});
+window.addEventListener('appinstalled', () => { $('installBox').hidden = true; });
+// iPhone/iPad Safari has no install button — show how to do it.
+if (!standalone && /iP(hone|ad|od)/.test(navigator.userAgent) && /Safari/.test(navigator.userAgent) && !/CriOS|FxiOS/.test(navigator.userAgent)) {
+  $('installBox').hidden = false; $('installTip').hidden = false;
+}
 
 /* ============ Navigation ============ */
 $('goSend').addEventListener('click', startSend);
