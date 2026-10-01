@@ -185,6 +185,69 @@ button{border:0;background:none;padding:0;cursor:pointer}
 .notice.warn{background:rgba(255,149,0,.15);color:var(--orange)}
 .notice.ok{background:rgba(52,199,89,.14);color:var(--green)}
 .live-sub{font-size:15px;color:var(--label2);text-align:center;margin:2px 0 6px}
+
+/* Columns: invisible on phones (normal single column), side-by-side on desktop */
+.pane{display:contents}
+@media (max-width: 859px){
+  #send .code-card{order:1} #send .strip-card{order:2} #send .pane-a > :not(.code-card){order:3}
+  #liveView .pane-a > *{order:1} #liveView .pane-b > *, #senderInfo > *{order:2}
+  #liveView .pane-a > .spacer, #liveView .pane-a > #leaveBtn{order:3}
+}
+
+@media (hover:hover){
+  .tile:hover{box-shadow:0 2px 4px rgba(0,0,0,.05),0 14px 34px rgba(0,0,0,.09)}
+  .btn:hover{filter:brightness(1.06)}
+  .linkbtn:hover,.back:hover,.disclose:hover{opacity:.75}
+}
+
+@media (min-width: 860px){
+  .app{max-width:1060px;padding-left:40px;padding-right:40px}
+  .screen{min-height:0;gap:18px}
+  .spacer{display:none}
+  .navbar{margin:8px 0 6px}
+  .nav-title{font-size:20px}
+
+  /* Home: hero + two big tiles */
+  #home.active{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-content:center;min-height:calc(100dvh - 60px)}
+  #home .large-title{grid-column:1/-1;text-align:center;padding:0 0 18px}
+  #home .large-title h1{font-size:60px;line-height:68px;letter-spacing:-.01em}
+  #home .large-title p{font-size:22px;margin-top:8px}
+  #home .tile{position:relative;flex-direction:column;align-items:flex-start;gap:22px;padding:32px;min-height:230px;border-radius:26px}
+  #home .tile .ico{width:64px;height:64px;border-radius:17px}
+  #home .tile .ico svg{width:34px;height:34px}
+  #home .tile h2{font-size:24px}
+  #home .tile p{font-size:17px;margin-top:6px}
+  #home .tile .chev{position:absolute;right:30px;top:36px;width:11px;height:20px}
+  #home .tile:hover{transform:translateY(-3px)}
+  #home .foot{grid-column:1/-1;margin-top:10px}
+
+  /* Two-column screens */
+  .pane{display:flex;flex-direction:column;gap:14px;min-width:0}
+  #send.active{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);column-gap:28px;align-items:start}
+  #send > .navbar{grid-column:1/-1}
+  #send .code-card{padding:30px 24px 22px}
+  #send .code span{font-size:72px;line-height:80px;width:58px}
+  #send .strip-card{position:sticky;top:20px;padding:24px 24px 20px}
+  #send .vmeter{width:150px;height:440px}
+  #send .fader{width:110px;height:440px}
+  #send .strip{gap:56px}
+  #send .pane-a .foot{margin-top:4px}
+
+  #listen.is-live.active{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:28px;align-items:start}
+  #listen.is-live > .navbar{grid-column:1/-1}
+  #liveView .pane-a{background:var(--card);border-radius:26px;padding:28px 28px 24px;box-shadow:var(--shadow);position:sticky;top:20px}
+  #liveView .pane-a .card{background:var(--bg);box-shadow:none}
+  #liveView .orb-wrap{width:260px;height:260px;margin:8px auto 0}
+  #liveView .orb{width:140px;height:140px}
+  #liveView .live-title{font-size:32px}
+  #liveView #leaveBtn{margin-top:6px}
+
+  /* Join: centered column */
+  #joinView > *{width:100%;max-width:440px;align-self:center}
+  #joinView .hint{margin-top:60px;font-size:17px}
+  #joinView .entry .box{width:76px;height:92px;font-size:48px}
+  #joinView .entry{gap:16px}
+}
 </style>
 </head>
 <body>
@@ -222,35 +285,13 @@ button{border:0;background:none;padding:0;cursor:pointer}
       <span class="nav-title">Send</span><span></span>
     </nav>
 
+    <div class="pane pane-a">
+
     <div class="card code-card">
       <p class="eyebrow">Room code</p>
       <div class="code" id="codeOut"><span>–</span><span>–</span><span>–</span><span>–</span></div>
       <div class="pill" id="sendPill"><span class="dot"></span><span class="txt">Starting…</span></div>
       <button class="linkbtn" id="shareBtn">Share link</button>
-    </div>
-
-    <div class="card">
-      <div class="meter-head"><span class="t">Input</span><span class="db" id="clipNote"></span></div>
-      <div class="tone" id="toneBanner" hidden>
-        <span class="tone-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M2 12c2.5-7 5-7 7.5 0s5 7 7.5 0 3.5-5 5-3"/></svg></span>
-        <div class="tone-txt"><b id="toneTitle">Tone detected</b><span id="toneSub"></span></div>
-        <button id="toneUndo">Undo</button>
-      </div>
-      <div class="strip">
-        <div class="col">
-          <canvas id="sendMeter" class="vmeter" aria-label="Input level meter"></canvas>
-          <div class="cap-l">Peak</div><div class="cap-v" id="sendDb">−∞</div>
-        </div>
-        <div class="col">
-          <div class="fader" id="fader" role="slider" tabindex="0" aria-label="Input gain">
-            <div class="fscale" id="fscale"></div>
-            <div class="ftrack"></div><div class="ffill" id="ffill"></div>
-            <div class="fcap" id="fcap"></div>
-          </div>
-          <div class="cap-l">Gain</div><button class="cap-v" id="gainVal">0.0 dB</button>
-        </div>
-      </div>
-      <p class="meter-tip">Tap the meter to clear peaks. Double-tap the fader for 0 dB.</p>
     </div>
 
     <div class="group">
@@ -278,6 +319,33 @@ button{border:0;background:none;padding:0;cursor:pointer}
     <div class="spacer"></div>
     <p class="foot" data-awake>Keep this screen on while sending.</p>
     <button class="btn danger" id="stopSend">Stop</button>
+    </div>
+
+    <div class="pane pane-b">
+    <div class="card strip-card">
+      <div class="meter-head"><span class="t">Input</span><span class="db" id="clipNote"></span></div>
+      <div class="tone" id="toneBanner" hidden>
+        <span class="tone-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M2 12c2.5-7 5-7 7.5 0s5 7 7.5 0 3.5-5 5-3"/></svg></span>
+        <div class="tone-txt"><b id="toneTitle">Tone detected</b><span id="toneSub"></span></div>
+        <button id="toneUndo">Undo</button>
+      </div>
+      <div class="strip">
+        <div class="col">
+          <canvas id="sendMeter" class="vmeter" aria-label="Input level meter"></canvas>
+          <div class="cap-l">Peak</div><div class="cap-v" id="sendDb">−∞</div>
+        </div>
+        <div class="col">
+          <div class="fader" id="fader" role="slider" tabindex="0" aria-label="Input gain">
+            <div class="fscale" id="fscale"></div>
+            <div class="ftrack"></div><div class="ffill" id="ffill"></div>
+            <div class="fcap" id="fcap"></div>
+          </div>
+          <div class="cap-l">Gain</div><button class="cap-v" id="gainVal">0.0 dB</button>
+        </div>
+      </div>
+      <p class="meter-tip">Tap the meter to clear peaks. Double-tap the fader for 0 dB.</p>
+    </div>
+    </div>
   </section>
 
   <!-- LISTEN -->
@@ -299,6 +367,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
     </div>
 
     <div id="liveView" style="display:contents" hidden>
+      <div class="pane pane-a">
       <div class="orb-wrap wait" id="orbWrap">
         <span class="ring"></span><span class="ring r2"></span>
         <span class="orb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14v-2a9 9 0 0 1 18 0v2"/><path d="M21 15a2 2 0 0 1-2 2h-1v-6h1a2 2 0 0 1 2 2zM3 15a2 2 0 0 0 2 2h1v-6H5a2 2 0 0 0-2 2z"/></svg></span>
@@ -312,11 +381,16 @@ button{border:0;background:none;padding:0;cursor:pointer}
         <div class="meter-head"><span class="t">Level</span><span class="db" id="listenDb">−∞ dB</span></div>
         <canvas id="listenMeter" class="hmeter" aria-label="Level meter"></canvas>
       </div>
-
+      <div class="spacer"></div>
+      <button class="btn danger" id="leaveBtn">Leave</button>
+      </div>
+      <div class="pane pane-b">
       <div class="group">
         <div class="row"><span>Boost</span>
           <div class="seg" id="boostSeg"><span class="knob"></span><button data-boost="0">Off</button><button data-boost="6">+6</button><button data-boost="12">+12</button><button data-boost="18">+18</button></div>
         </div>
+        <div class="row"><span class="rl">Lower volume on tone<small>When the mixer sends line-up tone</small></span>
+          <label class="switch"><input type="checkbox" id="duckSw" aria-label="Lower volume on tone"><span></span></label></div>
       </div>
       <p class="note">Makes the feed louder on this phone. A limiter keeps peaks from distorting.</p>
 
@@ -342,8 +416,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
           <div class="row"><span>App version</span><span class="v" id="sxVer">–</span></div>
         </div>
       </div>
-      <div class="spacer"></div>
-      <button class="btn danger" id="leaveBtn">Leave</button>
+      </div>
     </div>
   </section>
 </div>
@@ -354,7 +427,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
 <script>window.Peer || document.write('<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"><\/script>')</script>
 <script>
 /* ============ Config ============ */
-const VERSION = '0.8.6-beta';                     // shown on the home screen — go to 1.0.0 when ready
+const VERSION = '0.9.1-beta';                     // shown on the home screen — go to 1.0.0 when ready
 const PREFIX = 'asahina-intercom-';            // namespace for room ids on the PeerJS server
 const ICE = [
   { urls: 'stun:stun.l.google.com:19302' },
@@ -668,7 +741,8 @@ function hostState(){
            src: $('inputSel').selectedOptions[0]?.textContent || 'Default',
            route:S.routeSel, eff:effRoute(), gain:S.gainDb,
            auto: typeof Tone !== 'undefined' ? Tone.on : true,
-           toneRef: typeof TONE_TARGET !== 'undefined' ? TONE_TARGET : -20 };
+           toneRef: typeof TONE_TARGET !== 'undefined' ? TONE_TARGET : -20,
+           tone: typeof Tone !== 'undefined' && !!Tone.present, toneHz: typeof Tone !== 'undefined' ? Tone.presentHz || 0 : 0 };
 }
 function sendState(conn){ try { conn.open && conn.send(hostState()) } catch {} }
 let stateT = 0;
@@ -918,6 +992,7 @@ function attachTone(node, channels){
   paintToneState();
 }
 function detachTone(){
+  if (Tone.present) { Tone.present = false; broadcastState(); }
   clearInterval(Tone.timer); Tone.timer = null;
   const nd = Tone.nodes; Tone.nodes = null; Tone.an = [];
   if (nd) { try { nd.node.disconnect(nd.split) } catch {} try { nd.split.disconnect(); nd.sink.disconnect(); } catch {} }
@@ -944,6 +1019,18 @@ function toneTick(){
   const fr = Tone.an.map(analyseTone);
   fr.forEach((f, i) => { const h = Tone.hist[i]; h.push({ t:now, ...f }); while (h.length && now - h[0].t > 2000) h.shift(); });
   const anyTone = fr.some(f => f.tone);
+
+  // Fast check (0.5 s of steady pure tone) so listeners can duck right away — works even with auto-gain off.
+  let qHz = 0;
+  const quick = Tone.hist.slice(0, Tone.an.length).some(h => {
+    const last = h.slice(-5);
+    if (last.length < 5 || !last.every(f => f.tone)) return false;
+    const m = median(last.map(f => f.hz)); qHz = m;
+    return last.every(f => Math.abs(f.hz - m) / m < 0.02);
+  });
+  if (quick) { Tone.lastSeen = now; Tone.presentHz = qHz; }
+  const present = quick || (Tone.present && now - (Tone.lastSeen || 0) < 1200);
+  if (present !== !!Tone.present) { Tone.present = present; broadcastState(); }
 
   if (Tone.state === 'locked') {
     if (anyTone) {
@@ -1086,7 +1173,7 @@ $('codeIn').addEventListener('keydown', e => { if (e.key === 'Enter' && !$('join
 
 function openListen(){
   show('listen');
-  $('joinView').hidden = false; $('liveView').hidden = true;
+  $('joinView').hidden = false; $('liveView').hidden = true; $('listen').classList.remove('is-live');
   if (!$('codeIn').value) $('codeIn').value = store.get('ic-last') || '';
   paintEntry();
   setTimeout(() => $('codeIn').focus(), 350);
@@ -1102,7 +1189,7 @@ function join(){
   // Unlock playback inside this tap so iOS lets the stream play later.
   try { audioEl.srcObject = ctx.createMediaStreamDestination().stream; audioEl.play().catch(()=>{}); } catch {}
   Object.assign(L, { active:true, code, everLive:false });
-  $('joinView').hidden = true; $('liveView').hidden = false;
+  $('joinView').hidden = true; $('liveView').hidden = false; $('listen').classList.add('is-live');
   $('liveSub').textContent = 'Room ' + code;
   ['stDelay','stRate','stFmt','stRoute'].forEach(id => $(id).textContent = '–');
   setLive('Connecting…', false);
@@ -1174,12 +1261,43 @@ function connectListener(){
 }
 
 let noticeT = 0;
-function notice(text, kind = 'info', ms = 0){
+function notice(text, kind = 'info', ms = 0, tag = ''){
   const n = $('lnotice'); clearTimeout(noticeT);
-  n.className = 'notice ' + kind; $('lnoticeTxt').textContent = text; n.hidden = false;
+  n.className = 'notice ' + kind; n.dataset.tag = tag; $('lnoticeTxt').textContent = text; n.hidden = false;
+  n.style.cursor = tag === 'tone' ? 'pointer' : '';
   if (ms) noticeT = setTimeout(hideNotice, ms);
 }
-function hideNotice(){ clearTimeout(noticeT); $('lnotice').hidden = true; }
+function hideNotice(force){
+  clearTimeout(noticeT); $('lnotice').hidden = true; $('lnotice').dataset.tag = '';
+  if (!force && L.toneOn) paintToneNotice();      // tone still on → bring its notice back
+}
+
+/* ---- Tone on the line → lower the listener's volume ---- */
+const DUCK_DB = -24;                               // how much quieter the tone plays here
+L.duckPref = store.get('ic-duck') !== '0'; L.toneOn = false; L.duckSkip = false;
+const duckActive = () => L.toneOn && L.duckPref && !L.duckSkip;
+function applyDuck(){
+  if (LB.nodes) LB.nodes.duck.gain.setTargetAtTime(duckActive() ? dbToGain(DUCK_DB) : 1, ctx.currentTime, 0.06);
+  paintToneNotice();
+}
+function paintToneNotice(){
+  const n = $('lnotice');
+  if (!L.toneOn) { if (n.dataset.tag === 'tone') hideNotice(true); return; }
+  if (!n.hidden && n.dataset.tag !== 'tone' && n.dataset.tag !== '') return;   // let a resync/drop notice finish
+  const hz = L.toneHz ? ` (${fmtHz(L.toneHz)})` : '';
+  notice(duckActive() ? `Tone on line${hz} · volume lowered — tap to hear`
+                      : `Tone on line${hz}${L.duckPref ? ' · full volume — tap to lower' : ''}`, 'warn', 0, 'tone');
+}
+function setToneOn(on, hz){
+  if (hz) L.toneHz = hz;
+  if (on === L.toneOn) return;
+  L.toneOn = on; if (!on) L.duckSkip = false;
+  applyDuck();
+}
+$('lnotice').addEventListener('click', () => {
+  if ($('lnotice').dataset.tag !== 'tone' || !L.duckPref) return;
+  L.duckSkip = !L.duckSkip; applyDuck();
+});
 
 function lost(){
   if (!L.active || L.retry) return;
@@ -1211,6 +1329,7 @@ function onHostData(d){
     tuneReceiver();
     if (audioEl.srcObject && L.call) startMeter('listenMeter', 'listenDb', audioEl.srcObject, L.channels, lvl => $('orbWrap').style.setProperty('--lvl', lvl.toFixed(3)));
   }
+  if ('tone' in d) setToneOn(!!d.tone, d.toneHz);
   if (d.ver) {                                    // older senders don't share settings
     $('senderInfo').hidden = false;
     $('sxSrc').textContent = d.src || '–';
@@ -1243,8 +1362,9 @@ function pbChain(){
   const c = ensureCtx(), g = c.createGain(), lim = c.createDynamicsCompressor();
   g.gain.value = dbToGain(LB.db);
   lim.threshold.value = LB.db > 0 ? -2 : -0.5; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.002; lim.release.value = 0.15;
-  g.connect(lim); lim.connect(c.destination);
-  return LB.nodes = { g, lim };
+  const duck = c.createGain(); duck.gain.value = duckActive() ? dbToGain(DUCK_DB) : 1;
+  g.connect(duck); duck.connect(lim); lim.connect(c.destination);
+  return LB.nodes = { g, duck, lim };
 }
 function pbAdd(stream){
   const c = ensureCtx(), n = pbChain();
@@ -1261,7 +1381,7 @@ function pbRemove(e){
 }
 function teardownPlayback(){
   pbRemove(LB.cur); LB.cur = null; LB.stream = null;
-  if (LB.nodes) { try { LB.nodes.g.disconnect(); LB.nodes.lim.disconnect(); } catch {} LB.nodes = null; }
+  if (LB.nodes) { try { LB.nodes.g.disconnect(); LB.nodes.duck.disconnect(); LB.nodes.lim.disconnect(); } catch {} LB.nodes = null; }
 }
 async function waitFlowing(pc){
   // Resolve once the new connection is actually delivering audio (or after 4 s).
@@ -1373,16 +1493,19 @@ function resync(){
 function leave(){
   L.active = false;
   teardownListener();
-  teardownPlayback(); hideNotice(); L.dropped = false; L.resyncing = false;
+  L.toneOn = false; L.duckSkip = false;
+  teardownPlayback(); hideNotice(true); L.dropped = false; L.resyncing = false;
   audioEl.pause(); audioEl.srcObject = null; audioEl.muted = false;
   $('tapAudio').hidden = true;
   releaseAwake();
-  $('joinView').hidden = false; $('liveView').hidden = true;
+  $('joinView').hidden = false; $('liveView').hidden = true; $('listen').classList.remove('is-live');
   paintEntry();
 }
 
 $('joinBtn').addEventListener('click', join);
 $('autoResync').checked = L.autoResync;
+$('duckSw').checked = L.duckPref;
+$('duckSw').addEventListener('change', e => { L.duckPref = e.target.checked; store.set('ic-duck', L.duckPref ? '1' : '0'); L.duckSkip = false; applyDuck(); });
 $('autoResync').addEventListener('change', e => { L.autoResync = e.target.checked; store.set('ic-autoresync', L.autoResync ? '1' : '0'); });
 $('delayRow').addEventListener('click', () => { if (L.everLive && performance.now() - (L.lastResync || 0) > 3000) resync(); });
 $('leaveBtn').addEventListener('click', leave);
