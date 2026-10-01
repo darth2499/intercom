@@ -128,6 +128,11 @@ button{border:0;background:none;padding:0;cursor:pointer}
 .row{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:50px;padding:0 16px;position:relative;font-size:17px}
 .row+.row::before{content:"";position:absolute;top:0;left:16px;right:0;height:.5px;background:var(--sep)}
 .row .v.warn{color:var(--orange)}
+.row .v.ell{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.disclose{display:flex;align-items:center;gap:6px;align-self:flex-start;padding:4px 0;margin-bottom:-4px !important}
+.disclose svg{width:7px;height:12px;transition:transform .25s}
+.disclose[aria-expanded="true"] svg{transform:rotate(90deg)}
+.sect{font-size:13px;color:var(--label2);text-transform:uppercase;letter-spacing:.03em;margin:8px 16px -8px}
 .row .v{color:var(--label2);font-variant-numeric:tabular-nums;text-align:right}
 .selwrap{position:relative;min-width:0;flex:1;display:flex;justify-content:flex-end}
 .selwrap select{appearance:none;-webkit-appearance:none;border:0;background:none;color:var(--label2);
@@ -174,6 +179,11 @@ button{border:0;background:none;padding:0;cursor:pointer}
 .orb-wrap.wait .orb{background:linear-gradient(180deg,#b8b8bd,#8e8e93);box-shadow:none}
 @keyframes breathe{0%,100%{transform:scale(.6);opacity:.12}50%{transform:scale(.75);opacity:.2}}
 .live-title{font-size:28px;font-weight:700;text-align:center;margin:6px 0 0}
+.notice{align-self:center;display:inline-flex;align-items:center;gap:8px;padding:7px 14px;border-radius:99px;font-size:14px;font-weight:500;
+  margin:-2px 0 4px;animation:in .3s ease;background:rgba(0,122,255,.12);color:var(--blue)}
+.notice .ndot{width:7px;height:7px;border-radius:50%;background:currentColor}
+.notice.warn{background:rgba(255,149,0,.15);color:var(--orange)}
+.notice.ok{background:rgba(52,199,89,.14);color:var(--green)}
 .live-sub{font-size:15px;color:var(--label2);text-align:center;margin:2px 0 6px}
 </style>
 </head>
@@ -295,6 +305,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
       </div>
       <h2 class="live-title" id="liveTitle">Connecting…</h2>
       <p class="live-sub" id="liveSub">Room ––––</p>
+      <div class="notice" id="lnotice" hidden><span class="ndot"></span><span id="lnoticeTxt"></span></div>
       <button class="btn tinted" id="tapAudio" hidden>Tap to hear audio</button>
 
       <div class="card">
@@ -310,10 +321,26 @@ button{border:0;background:none;padding:0;cursor:pointer}
       <p class="note">Makes the feed louder on this phone. A limiter keeps peaks from distorting.</p>
 
       <div class="group">
+        <div class="row"><span class="rl">Auto-resync<small>Trims delay if it builds up</small></span>
+          <label class="switch"><input type="checkbox" id="autoResync" aria-label="Auto-resync"><span></span></label></div>
         <div class="row" id="delayRow" style="cursor:pointer"><span>Est. delay</span><span class="v" id="stDelay">–</span></div>
         <div class="row"><span>Bitrate</span><span class="v" id="stRate">–</span></div>
         <div class="row"><span>Format</span><span class="v" id="stFmt">–</span></div>
         <div class="row"><span>Route</span><span class="v" id="stRoute">–</span></div>
+      </div>
+
+      <div id="senderInfo" style="display:contents" hidden>
+        <button class="sect disclose" id="sxToggle" aria-expanded="false" aria-controls="sxGroup">
+          Sender settings<svg viewBox="0 0 9 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5 7.5 8l-6 6.5"/></svg>
+        </button>
+        <div class="group" id="sxGroup" hidden>
+          <div class="row"><span>Source</span><span class="v ell" id="sxSrc">–</span></div>
+          <div class="row"><span>Quality</span><span class="v" id="sxMode">–</span></div>
+          <div class="row"><span>Channels</span><span class="v" id="sxRoute">–</span></div>
+          <div class="row"><span>Gain</span><span class="v" id="sxGain">–</span></div>
+          <div class="row"><span>Tone auto-gain</span><span class="v" id="sxAuto">–</span></div>
+          <div class="row"><span>App version</span><span class="v" id="sxVer">–</span></div>
+        </div>
       </div>
       <div class="spacer"></div>
       <button class="btn danger" id="leaveBtn">Leave</button>
@@ -327,7 +354,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
 <script>window.Peer || document.write('<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"><\/script>')</script>
 <script>
 /* ============ Config ============ */
-const VERSION = '0.7.0-beta';                     // shown on the home screen — go to 1.0.0 when ready
+const VERSION = '0.8.6-beta';                     // shown on the home screen — go to 1.0.0 when ready
 const PREFIX = 'asahina-intercom-';            // namespace for room ids on the PeerJS server
 const ICE = [
   { urls: 'stun:stun.l.google.com:19302' },
@@ -609,7 +636,7 @@ function routeChanged(){
   applyRoute();
   if (!S.stream) return;
   startMeter('sendMeter', 'sendDb', S.stream._tap, chans()); attachTone(S.stream._pre, chans());
-  S.listeners.forEach(e => { try { e.conn.send({ type:'mode', mode:S.mode, channels:chans() }) } catch {} });
+  broadcastState();
   paintModeNote();
 }
 const RM = { l:0, r:0, both:0, buf:new Float32Array(2048), timer:null };
@@ -634,12 +661,29 @@ const FADER = [[-80,0],[-40,.15],[-20,.35],[-10,.55],[0,.75],[6,.875],[12,1]];
 const faderPos = db => pw(db, FADER, 0, 1), faderDb = p => pw(p, FADER, 1, 0);
 const dbToGain = db => db <= -79.9 ? 0 : Math.pow(10, db / 20);
 const gainText = db => db <= -79.9 ? '−∞ dB' : (Math.abs(db) < 0.05 ? '0.0' : (db < 0 ? '−' : '+') + Math.abs(db).toFixed(1)) + ' dB';
+/* ---- Share the sender's settings with listeners ---- */
+const ROUTE_NAMES = { auto:'Auto', stereo:'Stereo', sum:'Mono (L+R)', left:'Left only', right:'Right only' };
+function hostState(){
+  return { type:'mode', mode:S.mode, channels:chans(), ver:VERSION,
+           src: $('inputSel').selectedOptions[0]?.textContent || 'Default',
+           route:S.routeSel, eff:effRoute(), gain:S.gainDb,
+           auto: typeof Tone !== 'undefined' ? Tone.on : true,
+           toneRef: typeof TONE_TARGET !== 'undefined' ? TONE_TARGET : -20 };
+}
+function sendState(conn){ try { conn.open && conn.send(hostState()) } catch {} }
+let stateT = 0;
+function broadcastState(){           // throttled so fader drags don't flood the data channel
+  if (stateT) return;
+  stateT = setTimeout(() => { stateT = 0; S.listeners.forEach(e => sendState(e.conn)); }, 150);
+}
+
 function setGain(db){
   S.gainDb = Math.max(-80, Math.min(12, db));
   store.set('ic-gain', String(S.gainDb));
   const gn = S.stream?._gain;
   if (gn) gn.gain.setTargetAtTime(dbToGain(S.gainDb), gn.context.currentTime, 0.01);
   paintFader();
+  broadcastState();
 }
 function paintFader(){
   const k = 1 - faderPos(S.gainDb);
@@ -700,6 +744,7 @@ async function fillInputs(){
     sel.appendChild(o);
   });
   if (!devs.length) sel.innerHTML = '<option>Default</option>';
+  broadcastState();
 }
 
 function micError(e){
@@ -768,13 +813,13 @@ function onListener(conn){
     const entry = { conn, call:null, live:false };
     S.listeners.set(conn.peer, entry);
     startCall(entry);
-    conn.send({ type:'mode', mode:S.mode, channels:chans() });
+    sendState(conn);
     paintSendStatus();
   });
   conn.on('data', d => {
     // Listener saw its delay balloon: replace the media call to start with an empty buffer.
     const e = S.listeners.get(conn.peer);
-    if (d?.type === 'resync' && e && S.stream) { const old = e.call; startCall(e, () => setTimeout(() => { try { old?.close() } catch {} }, 1500)); }
+    if (d?.type === 'resync' && e && S.stream) { const old = e.call; startCall(e, () => setTimeout(() => { try { old?.close() } catch {} }, 4000)); }
   });
   conn.on('close', () => dropListener(conn.peer));
   conn.on('error', () => dropListener(conn.peer));
@@ -834,7 +879,7 @@ async function swapStream(ns){
   const old = S.stream; S.stream = ns;
   stopStream(old);
   startMeter('sendMeter', 'sendDb', S.stream._tap, chans()); attachTone(S.stream._pre, chans());
-  S.listeners.forEach(e => { try { e.conn.send({ type:'mode', mode:S.mode, channels:chans() }) } catch {} });
+  broadcastState();
   paintModeNote();
 }
 
@@ -958,12 +1003,12 @@ function paintToneState(){
 $('toneSw').addEventListener('change', e => {
   Tone.on = e.target.checked; store.set('ic-autotone', Tone.on ? '1' : '0');
   if (Tone.on) { Tone.state = 'listening'; Tone.hist = [[],[]]; }
-  paintToneState();
+  paintToneState(); broadcastState();
 });
 $('toneRef').addEventListener('change', e => {
   const prev = TONE_TARGET; TONE_TARGET = Number(e.target.value); store.set('ic-toneref', String(TONE_TARGET));
   setGain(S.gainDb + (TONE_TARGET - prev));     // keep an already-calibrated level in step
-  paintToneRef();
+  paintToneRef(); broadcastState();
 });
 paintToneRef();
 $('toneUndo').addEventListener('click', () => { setGain(Tone.prevGain); $('toneBanner').hidden = true; });
@@ -997,17 +1042,46 @@ const L = { active:false, gen:0, peer:null, conn:null, call:null, code:'', everL
             mode:'voice', channels:1, stats:null, prev:null };
 const audioEl = $('remoteAudio');
 
+/* Code entry: tap any box to overwrite from that digit — the rest of the code stays.
+   Opening Listen with a saved code starts overwriting at the first box. */
+let editPos = null;                                   // box being overwritten, or null = normal typing
 function paintEntry(){
-  const v = $('codeIn').value;
+  const inp = $('codeIn'), v = inp.value, focused = document.activeElement === inp;
   [...$('entry').querySelectorAll('.box')].forEach((b, i) => {
     b.textContent = v[i] || '';
-    b.classList.toggle('cur', document.activeElement === $('codeIn') && i === Math.min(v.length, 3));
+    b.classList.toggle('cur', focused && i === (editPos ?? (v.length < 4 ? v.length : -1)));   // full code → no outline
   });
   $('joinBtn').disabled = v.length !== 4;
 }
-$('codeIn').addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, '').slice(0,4); $('joinErr').textContent = ''; paintEntry(); });
-$('codeIn').addEventListener('focus', paintEntry);
-$('codeIn').addEventListener('blur', paintEntry);
+function setCode(v){
+  const inp = $('codeIn');
+  inp.value = v.replace(/\D/g, '').slice(0, 4);
+  try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch {}
+  $('joinErr').textContent = ''; paintEntry();
+}
+$('codeIn').addEventListener('beforeinput', e => {
+  if (editPos === null) return;
+  const inp = $('codeIn');
+  if (e.inputType === 'insertText' && e.data) {
+    e.preventDefault();
+    let v = inp.value, p = editPos;
+    for (const d of e.data.replace(/\D/g, '')) { if (p > 3) break; v = v.slice(0, p) + d + v.slice(p + 1); p++; }
+    editPos = p > 3 ? null : p;
+    setCode(v);
+  } else if (e.inputType.startsWith('delete')) {
+    e.preventDefault(); const p = editPos; editPos = null; setCode(inp.value.slice(0, p));
+  } else { editPos = null; }
+});
+$('codeIn').addEventListener('input', e => { editPos = null; setCode(e.target.value); });
+$('codeIn').addEventListener('pointerdown', e => {
+  const inp = $('codeIn'), boxes = [...$('entry').querySelectorAll('.box')];
+  let i = boxes.findIndex(b => e.clientX < b.getBoundingClientRect().right + 6);
+  if (i < 0) i = boxes.length - 1;
+  if (i < inp.value.length) { e.preventDefault(); inp.focus(); editPos = i; paintEntry(); }
+  else { inp.focus(); editPos = null; paintEntry(); }
+});
+$('codeIn').addEventListener('focus', () => { editPos = $('codeIn').value.length === 4 ? 0 : null; paintEntry(); });
+$('codeIn').addEventListener('blur', () => { editPos = null; paintEntry(); });
 $('codeIn').addEventListener('keydown', e => { if (e.key === 'Enter' && !$('joinBtn').disabled) join(); });
 
 function openListen(){
@@ -1069,10 +1143,9 @@ function connectListener(){
     if (!ok()) return;
     const old = L.call;
     L.call = call;
-    try { old?.close() } catch {}
     const cur = () => ok() && L.call === call;
     call.answer(undefined, { sdpTransform: munge });
-    call.on('stream', s => cur() && onRemoteStream(s));
+    call.on('stream', s => { if (cur()) onRemoteStream(s, call, old); else try { old?.close() } catch {} });
     call.on('close', () => cur() && lost());
     const pc = call.peerConnection;
     if (pc) {
@@ -1100,9 +1173,18 @@ function connectListener(){
   setTimeout(() => { if (ok() && !L.call) lost(); }, 20000);
 }
 
+let noticeT = 0;
+function notice(text, kind = 'info', ms = 0){
+  const n = $('lnotice'); clearTimeout(noticeT);
+  n.className = 'notice ' + kind; $('lnoticeTxt').textContent = text; n.hidden = false;
+  if (ms) noticeT = setTimeout(hideNotice, ms);
+}
+function hideNotice(){ clearTimeout(noticeT); $('lnotice').hidden = true; }
+
 function lost(){
   if (!L.active || L.retry) return;
   setLive(L.everLive ? 'Reconnecting…' : 'Connecting…', false);
+  if (L.everLive) { L.dropped = true; notice('Signal dropped — reconnecting', 'warn'); }
   scheduleRetry(2000);
 }
 function scheduleRetry(ms){
@@ -1110,13 +1192,36 @@ function scheduleRetry(ms){
   L.retry = setTimeout(() => { L.retry = null; if (L.active) connectListener(); }, ms);
 }
 
+function setSenderOpen(open){
+  $('sxGroup').hidden = !open;
+  $('sxToggle').setAttribute('aria-expanded', String(open));
+  store.set('ic-sxopen', open ? '1' : '0');
+}
+$('sxToggle').addEventListener('click', () => setSenderOpen($('sxGroup').hidden));
+setSenderOpen(store.get('ic-sxopen') === '1');      // collapsed unless opened before
+
+const EFF_NAMES = { stereo:'Stereo', sum:'Mono (L+R)', left:'Left to both', right:'Right to both' };
 function onHostData(d){
   if (d?.type !== 'mode') return;
-  L.mode = MODES[d.mode] ? d.mode : 'voice';
-  L.channels = d.channels || MODES[L.mode].channels;
+  const mode = MODES[d.mode] ? d.mode : 'voice', channels = d.channels || MODES[mode].channels;
+  const changed = mode !== L.mode || channels !== L.channels;
+  L.mode = mode; L.channels = channels;
   $('stFmt').textContent = `${MODES[L.mode].label} · ${L.channels > 1 ? 'Stereo' : 'Mono'}`;
-  tuneReceiver();
-  if (audioEl.srcObject && L.call) startMeter('listenMeter', 'listenDb', audioEl.srcObject, L.channels, lvl => $('orbWrap').style.setProperty('--lvl', lvl.toFixed(3)));
+  if (changed) {
+    tuneReceiver();
+    if (audioEl.srcObject && L.call) startMeter('listenMeter', 'listenDb', audioEl.srcObject, L.channels, lvl => $('orbWrap').style.setProperty('--lvl', lvl.toFixed(3)));
+  }
+  if (d.ver) {                                    // older senders don't share settings
+    $('senderInfo').hidden = false;
+    $('sxSrc').textContent = d.src || '–';
+    $('sxMode').textContent = `${MODES[mode].label} · ${Math.round(MODES[mode].bitrate / 1000)} kbps`;
+    const r = d.route || 'auto', eff = EFF_NAMES[d.eff] || '';
+    $('sxRoute').textContent = r === 'auto' ? `Auto${eff ? ' · ' + eff : ''}` : (ROUTE_NAMES[r] || r);
+    $('sxGain').textContent = gainText(d.gain ?? 0);
+    $('sxAuto').textContent = d.auto ? `On · −${-(d.toneRef ?? -20)} dBFS` : 'Off';
+    $('sxVer').textContent = d.ver;
+    $('sxVer').classList.toggle('warn', d.ver !== VERSION);
+  }
 }
 
 function tuneReceiver(){
@@ -1130,39 +1235,79 @@ function tuneReceiver(){
   });
 }
 
-/* ---- Listener boost: stream → gain → limiter → speaker ---- */
-var LB = { db: Number.isFinite(parseFloat(store.get('ic-boost'))) ? parseFloat(store.get('ic-boost')) : 6, nodes: null, stream: null };
-function teardownPlayback(){
-  const n = LB.nodes; LB.nodes = null;
-  if (n) { try { n.src.disconnect(); n.g.disconnect(); n.lim.disconnect(); } catch {} }
+/* ---- Listener playback: each stream → fade → boost gain → limiter → speaker ----
+   Two streams can play at once so a resync crossfades instead of cutting out. */
+var LB = { db: Number.isFinite(parseFloat(store.get('ic-boost'))) ? parseFloat(store.get('ic-boost')) : 6, nodes: null, cur: null, stream: null };
+function pbChain(){
+  if (LB.nodes) return LB.nodes;
+  const c = ensureCtx(), g = c.createGain(), lim = c.createDynamicsCompressor();
+  g.gain.value = dbToGain(LB.db);
+  lim.threshold.value = LB.db > 0 ? -2 : -0.5; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.002; lim.release.value = 0.15;
+  g.connect(lim); lim.connect(c.destination);
+  return LB.nodes = { g, lim };
 }
-function routePlayback(){
-  teardownPlayback();
-  const stream = LB.stream;
-  if (!stream || LB.db <= 0) { audioEl.muted = false; return; }
-  try {
-    const c = ensureCtx(), src = c.createMediaStreamSource(stream);
-    const g = c.createGain(); g.gain.value = dbToGain(LB.db);
-    const lim = c.createDynamicsCompressor();
-    lim.threshold.value = -2; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.002; lim.release.value = 0.15;
-    src.connect(g); g.connect(lim); lim.connect(c.destination);
-    LB.nodes = { src, g, lim };
-    audioEl.muted = c.state === 'running';   // element keeps the stream flowing (needed by Chrome)
-  } catch { audioEl.muted = false; }
+function pbAdd(stream){
+  const c = ensureCtx(), n = pbChain();
+  const el = document.createElement('audio');            // keeps the stream flowing in Chrome
+  el.muted = true; el.playsInline = true; el.setAttribute('playsinline', ''); el.srcObject = stream; el.play().catch(() => {});
+  const src = c.createMediaStreamSource(stream), fade = c.createGain();
+  fade.gain.value = 0; src.connect(fade); fade.connect(n.g);
+  return { stream, el, src, fade };
+}
+function pbRemove(e){
+  if (!e) return;
+  try { e.src.disconnect(); e.fade.disconnect(); } catch {}
+  try { e.el.pause(); e.el.srcObject = null; } catch {}
+}
+function teardownPlayback(){
+  pbRemove(LB.cur); LB.cur = null; LB.stream = null;
+  if (LB.nodes) { try { LB.nodes.g.disconnect(); LB.nodes.lim.disconnect(); } catch {} LB.nodes = null; }
+}
+async function waitFlowing(pc){
+  // Resolve once the new connection is actually delivering audio (or after 4 s).
+  const t0 = performance.now();
+  while (performance.now() - t0 < 4000) {
+    try {
+      let ok = false;
+      (await pc.getStats()).forEach(r => { if (r.type === 'inbound-rtp' && r.kind === 'audio' && r.packetsReceived > 15 && r.jitterBufferEmittedCount > 0) ok = true; });
+      if (ok) return;
+    } catch {}
+    await new Promise(r => setTimeout(r, 100));
+  }
+}
+async function playStream(stream, crossfadeFrom){
+  let e;
+  try { e = pbAdd(stream); } catch { audioEl.srcObject = stream; audioEl.muted = false; return; }
+  const prev = LB.cur; LB.cur = e; LB.stream = stream;
+  audioEl.srcObject = stream; audioEl.muted = ctx.state === 'running';   // plain player only if Web Audio is paused
+  if (!crossfadeFrom || !prev) { e.fade.gain.setValueAtTime(1, ctx.currentTime); pbRemove(prev); return; }
+  await waitFlowing(crossfadeFrom);
+  const t = ctx.currentTime + 0.05, X = 0.2;            // 200 ms equal-length crossfade
+  e.fade.gain.setValueAtTime(0, t); e.fade.gain.linearRampToValueAtTime(1, t + X);
+  prev.fade.gain.setValueAtTime(1, t); prev.fade.gain.linearRampToValueAtTime(0, t + X);
+  await new Promise(r => setTimeout(r, (X + 0.15) * 1000));
+  pbRemove(prev);
 }
 function setBoost(db){
   LB.db = db; store.set('ic-boost', String(db));
   paintSeg(db, $('boostSeg'), 'boost');
-  if (!LB.stream) return;
-  if (LB.nodes && db > 0) LB.nodes.g.gain.setTargetAtTime(dbToGain(db), ctx.currentTime, 0.02);
-  else routePlayback();
+  if (LB.nodes) {
+    LB.nodes.g.gain.setTargetAtTime(dbToGain(db), ctx.currentTime, 0.02);
+    LB.nodes.lim.threshold.setValueAtTime(db > 0 ? -2 : -0.5, ctx.currentTime);
+  }
 }
 $('boostSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setBoost(Number(b.dataset.boost)); });
 
-function onRemoteStream(stream){
+function onRemoteStream(stream, call, old){
+  const isResync = !!(old && LB.cur && L.resyncing);
+  L.resyncing = false;
   L.everLive = true;
-  audioEl.srcObject = stream;
-  LB.stream = stream; routePlayback();
+  playStream(stream, isResync ? call.peerConnection : null).then(() => {
+    setTimeout(() => { try { old?.close() } catch {} }, 300);
+    if (isResync) notice(`Resynced · delay reset`, 'info', 5000), L.resyncShown = true;
+    else if (L.dropped) notice('Reconnected', 'ok', 3000);
+    L.dropped = false;
+  });
   requestAnimationFrame(() => paintSeg(LB.db, $('boostSeg'), 'boost'));
   audioEl.play().then(() => $('tapAudio').hidden = true).catch(() => $('tapAudio').hidden = false);
   setLive('Live', true);
@@ -1172,7 +1317,8 @@ function onRemoteStream(stream){
   L.stats = setInterval(pollStats, 1000);
 }
 
-const DELAY = { target: 300, resyncAbove: 400, holdMs: 3000, cooldownMs: 15000 };
+const DELAY = { target: 300, resyncAbove: 500, holdMs: 6000, cooldownMs: 60000 };
+L.autoResync = store.get('ic-autoresync') !== '0';
 async function pollStats(){
   const pc = L.call?.peerConnection; if (!pc) return;
   let r; try { r = await pc.getStats() } catch { return; }
@@ -1207,21 +1353,27 @@ async function pollStats(){
 
   // Buffer ballooned but the network is fine again → ask for a fresh call to drop the backlog.
   const now = performance.now();
-  if (jbMs > DELAY.resyncAbove && rtt < 0.25) { if (!L.highSince) L.highSince = now; }
+  // Only when it's stuck high: network calm, and the buffer isn't already shrinking on its own.
+  L.jbHist = (L.jbHist || []).concat(jbMs).slice(-4);
+  const shrinking = L.jbHist.length === 4 && L.jbHist[0] - jbMs > 40;
+  if (jbMs > DELAY.resyncAbove && rtt < 0.25 && !shrinking) { if (!L.highSince) L.highSince = now; }
   else L.highSince = 0;
-  if (L.highSince && now - L.highSince > DELAY.holdMs && now - (L.lastResync || 0) > DELAY.cooldownMs) resync();
+  if (L.autoResync && L.highSince && now - L.highSince > DELAY.holdMs && now - (L.lastResync || 0) > DELAY.cooldownMs) resync();
+  if (L.resyncShown && !L.resyncing) { L.resyncShown = false; if (!$('lnotice').hidden) $('lnoticeTxt').textContent = `Resynced · now ≈ ${Math.round(est)} ms`; }
 }
 function resync(){
   if (!L.conn?.open) return;
-  L.highSince = 0; L.lastResync = performance.now();
+  L.highSince = 0; L.lastResync = performance.now(); L.jbHist = [];
+  L.resyncing = true;
   try { L.conn.send({ type:'resync' }); } catch {}
   $('stDelay').textContent = 'Resyncing…';
+  notice('Resyncing to cut delay…', 'info');
 }
 
 function leave(){
   L.active = false;
   teardownListener();
-  teardownPlayback(); LB.stream = null;
+  teardownPlayback(); hideNotice(); L.dropped = false; L.resyncing = false;
   audioEl.pause(); audioEl.srcObject = null; audioEl.muted = false;
   $('tapAudio').hidden = true;
   releaseAwake();
@@ -1230,6 +1382,8 @@ function leave(){
 }
 
 $('joinBtn').addEventListener('click', join);
+$('autoResync').checked = L.autoResync;
+$('autoResync').addEventListener('change', e => { L.autoResync = e.target.checked; store.set('ic-autoresync', L.autoResync ? '1' : '0'); });
 $('delayRow').addEventListener('click', () => { if (L.everLive && performance.now() - (L.lastResync || 0) > 3000) resync(); });
 $('leaveBtn').addEventListener('click', leave);
 $('tapAudio').addEventListener('click', () => { ensureCtx(); audioEl.play().then(() => $('tapAudio').hidden = true).catch(()=>{}); });
