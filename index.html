@@ -104,7 +104,10 @@ button{border:0;background:none;padding:0;cursor:pointer}
 .fcap::after{content:"";position:absolute;left:6px;right:6px;top:11px;height:2px;border-radius:1px;background:#1c1c1e}
 @media (prefers-color-scheme: dark){.fcap{background:linear-gradient(#8e8e93,#636366)}.fcap::after{background:#fff}}
 /* Tone auto-gain */
-.tone{display:flex;align-items:center;gap:12px;background:rgba(52,199,89,.13);border-radius:12px;padding:10px 12px;margin:-2px 0 14px;animation:in .3s ease}
+.slide{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows .34s cubic-bezier(.3,.7,.2,1),opacity .22s ease}
+.slide.show{grid-template-rows:1fr;opacity:1}
+.slide-in{min-height:0;overflow:hidden}
+.tone{display:flex;align-items:center;gap:12px;background:rgba(52,199,89,.13);border-radius:12px;padding:10px 12px;margin:0 0 14px;transition:background .25s}
 .tone.warn{background:rgba(255,149,0,.15)} .tone.warn .tone-ico{background:var(--orange)}
 .tone-ico{width:32px;height:32px;border-radius:50%;background:var(--green);color:#fff;display:grid;place-items:center;flex:none}
 .tone-ico svg{width:20px;height:20px}
@@ -157,7 +160,11 @@ button{border:0;background:none;padding:0;cursor:pointer}
 .seg{display:flex;background:var(--fill);border-radius:9px;padding:2px;position:relative}
 .seg button{position:relative;z-index:1;font-size:13px;font-weight:500;padding:6px 16px;border-radius:7px;min-width:78px;transition:color .2s}
 #boostSeg button{min-width:50px;padding:6px 10px}
-#netSeg button{min-width:0;padding:6px 12px}
+.net-row{flex-direction:column;align-items:stretch;gap:0;padding-bottom:12px}
+.net-row .rl{padding-bottom:8px}
+#netSeg button{flex:1;min-width:0;padding:7px 6px;white-space:nowrap}
+.row.off{opacity:.38;pointer-events:none;transition:opacity .25s}
+.row{transition:opacity .25s}
 .seg .knob{position:absolute;top:2px;bottom:2px;left:2px;border-radius:7px;background:var(--seg-on);
   box-shadow:0 3px 8px rgba(0,0,0,.12),0 3px 1px rgba(0,0,0,.04);transition:transform .28s cubic-bezier(.3,.8,.3,1)}
 .seg button.on{font-weight:600}
@@ -369,11 +376,11 @@ button{border:0;background:none;padding:0;cursor:pointer}
     <div class="pane pane-b">
     <div class="card strip-card">
       <div class="meter-head"><span class="t">Input</span><span class="db" id="clipNote"></span></div>
-      <div class="tone" id="toneBanner" hidden>
+      <div class="slide" id="toneWrap"><div class="slide-in"><div class="tone" id="toneBanner">
         <span class="tone-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M2 12c2.5-7 5-7 7.5 0s5 7 7.5 0 3.5-5 5-3"/></svg></span>
         <div class="tone-txt"><b id="toneTitle">Tone detected</b><span id="toneSub"></span></div>
         <button id="toneUndo">Undo</button>
-      </div>
+      </div></div></div>
       <div class="strip">
         <div class="col">
           <canvas id="sendMeter" class="vmeter" aria-label="Input level meter"></canvas>
@@ -431,16 +438,16 @@ button{border:0;background:none;padding:0;cursor:pointer}
       </div>
       <div class="pane pane-b">
       <div class="group">
-        <div class="row"><span>Boost</span>
+        <div class="row net-row"><span class="rl">Connection<small id="netHint">Low delay</small></span>
+          <div class="seg" id="netSeg"><span class="knob"></span><button data-net="direct">Direct</button><button data-net="low">Low delay</button><button data-net="stable">Stable</button></div>
+        </div>
+        <div class="row" id="boostRow"><span>Boost</span>
           <div class="seg" id="boostSeg"><span class="knob"></span><button data-boost="0">Off</button><button data-boost="6">+6</button><button data-boost="12">+12</button><button data-boost="18">+18</button></div>
         </div>
-        <div class="row"><span class="rl">Connection<small id="netHint">Low delay</small></span>
-          <div class="seg" id="netSeg"><span class="knob"></span><button data-net="low">Low delay</button><button data-net="stable">Stable</button></div>
-        </div>
-        <div class="row"><span class="rl">Lower volume on tone<small>When the mixer sends line-up tone</small></span>
+        <div class="row" id="duckRow"><span class="rl">Lower volume on tone<small>When the mixer sends line-up tone</small></span>
           <label class="switch"><input type="checkbox" id="duckSw" aria-label="Lower volume on tone"><span></span></label></div>
       </div>
-      <p class="note">Makes the feed louder on this phone. A limiter keeps peaks from distorting.</p>
+      <p class="note" id="boostNote">Boost makes the feed louder on this phone; a limiter keeps peaks from distorting.</p>
 
       <div class="group">
         <div class="row"><span class="rl">Auto-resync<small>Trims delay if it builds up</small></span>
@@ -513,7 +520,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
               sender watchdog re-acquires a lost input, listener auto-resyncs a bloated buffer. */
 
 /* ============ Config ============ */
-const VERSION = '0.6.3-beta';                     // shown on the home screen — go to 1.0.0 when ready
+const VERSION = '0.7.0-beta';                     // shown on the home screen — go to 1.0.0 when ready
 const PREFIX = 'asahina-intercom-';            // namespace for room ids on the PeerJS server
 const ICE = [
   { urls: 'stun:stun.l.google.com:19302' },
@@ -586,7 +593,7 @@ function ensureCtx(){
     ctx.onstatechange = () => {
       if (ctx.state !== 'running' && (S.active || L.active)) ctx.resume().catch(()=>{});
       // Listener boost runs through Web Audio; if iOS pauses it, fall back to the plain player.
-      if (window.LB?.nodes) audioEl.muted = ctx.state === 'running';
+      if (window.LB?.cur && L.net !== 'direct') audioEl.muted = ctx.state === 'running';
     };
   }
   if (ctx.state !== 'running') ctx.resume().catch(()=>{});
@@ -632,8 +639,13 @@ document.addEventListener('visibilitychange', () => {
 });
 
 /* Opus: allow stereo + high bitrate + FEC on both ends */
-function munge(sdp, red = false){
-  return preferRed(opusFmtp(sdp), red);
+function munge(sdp, red = false, short = false){
+  return shortFrames(preferRed(opusFmtp(sdp), red), short);
+}
+// Direct: ask the sender for 10 ms packets (half the packet wait, ~15% more data).
+function shortFrames(sdp, on){
+  if (!on || /a=ptime:/.test(sdp)) return sdp;
+  return sdp.replace(/(a=rtpmap:\d+ opus\/48000\/2\r?\n)/i, '$1a=ptime:10\r\n');
 }
 // Stable mode: put RED (each packet also carries the previous one) first, so a lost packet costs nothing.
 function preferRed(sdp, red){
@@ -1349,10 +1361,10 @@ function toneTick(){
     } else if (!Tone.quietSince) Tone.quietSince = now;
     else if (now - Tone.quietSince > 1200) {
       Tone.state = 'listening'; Tone.hist = [[],[]]; paintToneState();
-      if (!$('toneBanner').hidden) {
+      if (toneShown()) {
         $('toneTitle').textContent = 'Level set';
         $('toneSub').textContent = `Tone ended · gain ${gainText(S.gainDb)}`;
-        clearTimeout(Tone.hideT); Tone.hideT = setTimeout(() => $('toneBanner').hidden = true, 8000);
+        clearTimeout(Tone.hideT); Tone.hideT = setTimeout(() => showToneBanner(false), 8000);
       }
     }
     return;
@@ -1374,6 +1386,8 @@ function toneTick(){
   });
   if (best) applyTone(best);
 }
+const toneShown = () => $('toneWrap').classList.contains('show');
+function showToneBanner(on){ $('toneWrap').classList.toggle('show', on); }
 function applyTone({ db, hz }){
   Tone.prevGain = S.gainDb;
   const want = Math.round((TONE_TARGET - db) * 10) / 10;
@@ -1381,7 +1395,7 @@ function applyTone({ db, hz }){
   Tone.state = 'locked'; Tone.lockHz = hz; Tone.quietSince = 0;
   clearTimeout(Tone.hideT);
   const b = $('toneBanner');
-  b.hidden = false;
+  showToneBanner(true);
   b.classList.toggle('warn', want > 12 || want < -80);
   $('toneTitle').textContent = want > 12 ? 'Tone too low — raise the mixer output'
                              : want < -80 ? 'Tone too hot — lower the mixer output'
@@ -1420,7 +1434,7 @@ function setToneRef(v){
 $('toneSw').addEventListener('change', e => setAutoTone(e.target.checked));
 $('toneRef').addEventListener('change', e => setToneRef(Number(e.target.value)));
 paintToneRef();
-$('toneUndo').addEventListener('click', () => { setGain(Tone.prevGain); $('toneBanner').hidden = true; });
+$('toneUndo').addEventListener('click', () => { setGain(Tone.prevGain); showToneBanner(false); });
 paintToneState();
 paintCtl();
 
@@ -1598,7 +1612,7 @@ async function connectListener(){
     const old = L.call;
     L.call = call;
     const cur = () => ok() && L.call === call;
-    call.answer(undefined, { sdpTransform: sdp => munge(sdp, L.stable) });
+    call.answer(undefined, { sdpTransform: sdp => munge(sdp, L.stable, isDirect()) });
     call.on('stream', s => { if (cur()) onRemoteStream(s, call, old); else try { old?.close() } catch {} });
     call.on('close', () => cur() && repair('call closed'));
     const pc = call.peerConnection;
@@ -1635,7 +1649,7 @@ async function connectListener(){
 
 function openLink(){
   const peer = L.peer, gen = L.gen;
-  const conn = peer.connect(PREFIX + L.code, { reliable: true, metadata: { stable: L.stable } });
+  const conn = peer.connect(PREFIX + L.code, { reliable: true, metadata: { stable: L.stable, direct: isDirect() } });
   const mine = () => gen === L.gen && L.active && L.conn === conn;
   const old = L.conn;
   if (old && !old.open) try { old.close() } catch {}           // a link that never opened
@@ -1704,7 +1718,7 @@ function hideNotice(force){
 /* ---- Tone on the line → lower the listener's volume ---- */
 const DUCK_DB = -24;                               // how much quieter the tone plays here
 L.duckPref = store.get('ic-duck') !== '0'; L.toneOn = false; L.duckSkip = false;
-const duckActive = () => L.toneOn && L.duckPref && !L.duckSkip;
+const duckActive = () => L.toneOn && L.duckPref && !L.duckSkip && L.net !== 'direct';
 function applyDuck(){
   if (LB.nodes) LB.nodes.duck.gain.setTargetAtTime(duckActive() ? dbToGain(DUCK_DB) : 1, ctx.currentTime, 0.06);
   paintToneNotice();
@@ -1715,7 +1729,7 @@ function paintToneNotice(){
   if (noticeOn() && n.dataset.tag !== 'tone' && n.dataset.tag !== '') return;   // let a resync/drop notice finish
   const hz = L.toneHz ? ` (${fmtHz(L.toneHz)})` : '';
   notice(duckActive() ? `Tone on line${hz} · volume lowered — tap to hear`
-                      : `Tone on line${hz}${L.duckPref ? ' · full volume — tap to lower' : ''}`, 'warn', 0, 'tone');
+                      : `Tone on line${hz}${L.duckPref && L.net !== 'direct' ? ' · full volume — tap to lower' : ''}`, 'warn', 0, 'tone');
 }
 function setToneOn(on, hz){
   if (hz) L.toneHz = hz;
@@ -1724,7 +1738,7 @@ function setToneOn(on, hz){
   applyDuck();
 }
 $('lnotice').addEventListener('click', () => {
-  if ($('lnotice').dataset.tag !== 'tone' || !L.duckPref) return;
+  if ($('lnotice').dataset.tag !== 'tone' || !L.duckPref || L.net === 'direct') return;
   L.duckSkip = !L.duckSkip; applyDuck();
 });
 
@@ -1748,18 +1762,27 @@ function setSenderOpen(open){
 $('sxToggle').addEventListener('click', () => setSenderOpen($('sxGroup').hidden));
 setSenderOpen(store.get('ic-sxopen') === '1');      // collapsed unless opened before
 
+const NET_HINT = { direct: 'Least delay · plays straight to the speaker', low: 'Low delay', stable: 'Fewer dropouts · for driving' };
+const NET_NAME = { direct: 'Direct', low: 'Low delay', stable: 'Stable' };
 function paintFmt(){
-  $('netHint').textContent = L.stable ? 'Fewer dropouts · for driving' : 'Lowest delay';
-  $('stFmt').textContent = `${MODES[L.mode].label} · ${L.channels > 1 ? 'Stereo' : 'Mono'}${L.stable ? ' · Stable' : ''}`;
+  $('netHint').textContent = NET_HINT[L.net];
+  $('stFmt').textContent = `${MODES[L.mode].label} · ${L.channels > 1 ? 'Stereo' : 'Mono'}${L.net !== 'low' ? ' · ' + NET_NAME[L.net] : ''}`;
+  $('boostRow').classList.toggle('off', isDirect()); $('duckRow').classList.toggle('off', isDirect());
+  $('boostNote').textContent = isDirect()
+    ? 'Direct plays the feed straight to the speaker for the least delay, so Boost and the tone volume drop are off. Use the phone’s volume buttons.'
+    : 'Boost makes the feed louder on this phone; a limiter keeps peaks from distorting.';
 }
-function setStable(on){
-  L.stable = on; store.set('ic-stable', on ? '1' : '0');
-  paintSeg(on ? 'stable' : 'low', $('netSeg'), 'net');
+function setNet(net){
+  if (!NET_NAME[net] || net === L.net) return;
+  const wasDirect = isDirect();
+  L.net = net; store.set('ic-net', net);
+  paintSeg(net, $('netSeg'), 'net');
   paintFmt(); tuneReceiver();
-  if (L.conn?.open) {                                   // ask for a new call with/without redundancy (crossfaded)
-    L.resyncing = true; L.lastResync = performance.now();
-    try { L.conn.send({ type:'prefs', stable: on }); } catch {}
-    notice(on ? 'Switching to Stable…' : 'Switching to Low delay…', 'info', 3000);
+  if (L.conn?.open) {                                   // new call: redundancy for Stable, 10 ms packets for Direct
+    L.resyncing = !wasDirect && !isDirect();            // crossfade only works through the Web Audio path
+    L.lastResync = performance.now();
+    try { L.conn.send({ type:'prefs', stable: L.stable, direct: isDirect() }); } catch {}
+    notice(`Switching to ${NET_NAME[net]}…`, 'info', 3000);
   }
 }
 /* ---- Remote control (listener side) ---- */
@@ -1920,6 +1943,11 @@ async function waitFlowing(pc){
   }
 }
 async function playStream(stream, crossfadeFrom){
+  if (isDirect()) {                                   // straight to the speaker: no Web Audio buffering
+    pbRemove(LB.cur); LB.cur = null; LB.stream = stream;
+    audioEl.srcObject = stream; audioEl.muted = false;
+    return;
+  }
   let e;
   try { e = pbAdd(stream); } catch { audioEl.srcObject = stream; audioEl.muted = false; return; }
   const prev = LB.cur; LB.cur = e; LB.stream = stream;
@@ -1953,7 +1981,7 @@ function onRemoteStream(stream, call, old){
     else if (L.dropped) notice('Reconnected', 'ok', 3000);
     L.dropped = false;
   });
-  requestAnimationFrame(() => { paintSeg(LB.db, $('boostSeg'), 'boost'); paintSeg(L.stable ? 'stable' : 'low', $('netSeg'), 'net'); });
+  requestAnimationFrame(() => { paintSeg(LB.db, $('boostSeg'), 'boost'); paintSeg(L.net, $('netSeg'), 'net'); paintFmt(); });
   audioEl.play().then(() => $('tapAudio').hidden = true).catch(() => $('tapAudio').hidden = false);
   setLive('Live', true);
   tuneReceiver();
@@ -1979,7 +2007,9 @@ async function stallCheck(){
 
 const DELAY = { target: 300, resyncAbove: 500, holdMs: 6000, cooldownMs: 60000 };
 const STABLE = { jitterMs: 250, target: 500, resyncAbove: 900 };   // bigger buffer for driving
-L.stable = store.get('ic-stable') === '1';
+L.net = store.get('ic-net') || (store.get('ic-stable') === '1' ? 'stable' : 'low');   // 'direct' | 'low' | 'stable'
+Object.defineProperty(L, 'stable', { get: () => L.net === 'stable' });
+const isDirect = () => L.net === 'direct';
 L.autoResync = store.get('ic-autoresync') !== '0';
 async function pollStats(){
   const pc = L.call?.peerConnection; if (!pc) return;
@@ -2048,7 +2078,7 @@ function leave(){
 $('joinBtn').addEventListener('click', join);
 $('autoResync').checked = L.autoResync;
 $('duckSw').checked = L.duckPref;
-$('netSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setStable(b.dataset.net === 'stable'); });
+$('netSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setNet(b.dataset.net); });
 $('duckSw').addEventListener('change', e => { L.duckPref = e.target.checked; store.set('ic-duck', L.duckPref ? '1' : '0'); L.duckSkip = false; applyDuck(); });
 $('autoResync').addEventListener('change', e => { L.autoResync = e.target.checked; store.set('ic-autoresync', L.autoResync ? '1' : '0'); });
 $('delayRow').addEventListener('click', () => { if (L.everLive && performance.now() - (L.lastResync || 0) > 3000) resync(); });
@@ -2072,7 +2102,7 @@ document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click'
   if (L.active) leave();
   show('home');
 }));
-window.addEventListener('resize', () => { if (S.active) paintSeg(S.mode); if (L.active) { paintSeg(LB.db, $('boostSeg'), 'boost'); paintSeg(L.stable ? 'stable' : 'low', $('netSeg'), 'net'); } });
+window.addEventListener('resize', () => { if (S.active) paintSeg(S.mode); if (L.active) { paintSeg(LB.db, $('boostSeg'), 'boost'); paintSeg(L.net, $('netSeg'), 'net'); } });
 window.addEventListener('pagehide', e => { if (!e.persisted) try { S.peer?.destroy(); L.peer?.destroy(); } catch {} });
 window.addEventListener('pageshow', e => { if (e.persisted && (S.active || L.active)) location.reload(); });
 
