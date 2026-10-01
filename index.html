@@ -122,6 +122,14 @@ button{border:0;background:none;padding:0;cursor:pointer}
 .switch input:checked+span{background:var(--green)}
 .switch input:checked+span::after{transform:translateX(20px)}
 @media (prefers-color-scheme: dark){.switch span{background:rgba(120,120,128,.36)}}
+.pw{display:flex;align-items:center;gap:14px}
+.pw b{font-family:ui-rounded,"SF Pro Rounded",-apple-system,system-ui,sans-serif;font-size:20px;letter-spacing:.02em}
+.linkbtn.sm{display:inline;margin:0;padding:4px 2px;font-size:15px}
+.pwrow{gap:10px}
+.pwin{flex:1;min-width:0;border:0;background:none;font-size:17px;padding:14px 0;outline:none;color:var(--label)}
+.pwin::placeholder{color:var(--label3)}
+.slider-row input[type=range]{width:100%;accent-color:var(--blue);margin:6px 0 12px}
+.lockbtn{color:var(--red);font-size:17px;padding:14px 0;width:100%;text-align:left}
 .meter-tip{font-size:12px;color:var(--label3);text-align:center;margin:12px 0 0}
 
 /* Grouped list */
@@ -146,6 +154,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
 .seg{display:flex;background:var(--fill);border-radius:9px;padding:2px;position:relative}
 .seg button{position:relative;z-index:1;font-size:13px;font-weight:500;padding:6px 16px;border-radius:7px;min-width:78px;transition:color .2s}
 #boostSeg button{min-width:50px;padding:6px 10px}
+#netSeg button{min-width:0;padding:6px 12px}
 .seg .knob{position:absolute;top:2px;bottom:2px;left:2px;border-radius:7px;background:var(--seg-on);
   box-shadow:0 3px 8px rgba(0,0,0,.12),0 3px 1px rgba(0,0,0,.04);transition:transform .28s cubic-bezier(.3,.8,.3,1)}
 .seg button.on{font-weight:600}
@@ -191,7 +200,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
 .pane{display:contents}
 @media (max-width: 859px){
   #send .code-card{order:1} #send .strip-card{order:2} #send .pane-a > :not(.code-card){order:3}
-  #liveView .pane-a > *{order:1} #liveView .pane-b > *, #senderInfo > *{order:2}
+  #liveView .pane-a > *{order:1} #liveView .pane-b > *, #senderInfo > *, #sxGroup > *{order:2}
   #liveView .pane-a > .spacer, #liveView .pane-a > #leaveBtn{order:3}
 }
 
@@ -221,6 +230,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
   #home .tile .chev{position:absolute;right:30px;top:36px;width:11px;height:20px}
   #home .tile:hover{transform:translateY(-3px)}
   #home .foot{grid-column:1/-1;margin-top:10px}
+  #home .resume{grid-column:1/-1;max-width:440px;justify-self:center}
 
   /* Two-column screens */
   .pane{display:flex;flex-direction:column;gap:14px;min-width:0}
@@ -274,6 +284,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
       <span><h2>Listen</h2><p>Hear the mixer feed from anywhere</p></span>
       <svg class="chev" viewBox="0 0 9 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5 7.5 8l-6 6.5"/></svg>
     </button>
+    <button class="btn primary resume" id="resumeBtn" hidden>Resume sending</button>
     <div class="spacer"></div>
     <p class="foot">Audio goes directly between the two phones.</p>
     <p class="foot ver" id="ver"></p>
@@ -316,6 +327,13 @@ button{border:0;background:none;padding:0;cursor:pointer}
         <option value="-14">−14 dBFS</option><option value="-12">−12 dBFS</option></select></span></div>
     </div>
     <p class="note" id="toneNote"></p>
+
+    <div class="group">
+      <div class="row"><span class="rl">Remote control<small id="ctlState">Listeners with the password can change settings</small></span>
+        <label class="switch"><input type="checkbox" id="ctlSw" aria-label="Remote control"><span></span></label></div>
+      <div class="row" id="pwRow"><span>Password</span><span class="pw"><b id="pwOut">–</b><button class="linkbtn sm" id="pwNew">New</button></span></div>
+    </div>
+    <p class="note" id="ctlNote">Give this to anyone who should see and adjust the sender settings from the Listen page.</p>
 
     <div class="spacer"></div>
     <p class="foot relay-note" id="relayNote">Relay backup: Checking…</p>
@@ -391,6 +409,9 @@ button{border:0;background:none;padding:0;cursor:pointer}
         <div class="row"><span>Boost</span>
           <div class="seg" id="boostSeg"><span class="knob"></span><button data-boost="0">Off</button><button data-boost="6">+6</button><button data-boost="12">+12</button><button data-boost="18">+18</button></div>
         </div>
+        <div class="row"><span class="rl">Connection<small id="netHint">Low delay</small></span>
+          <div class="seg" id="netSeg"><span class="knob"></span><button data-net="low">Low delay</button><button data-net="stable">Stable</button></div>
+        </div>
         <div class="row"><span class="rl">Lower volume on tone<small>When the mixer sends line-up tone</small></span>
           <label class="switch"><input type="checkbox" id="duckSw" aria-label="Lower volume on tone"><span></span></label></div>
       </div>
@@ -403,21 +424,35 @@ button{border:0;background:none;padding:0;cursor:pointer}
         <div class="row"><span>Bitrate</span><span class="v" id="stRate">–</span></div>
         <div class="row"><span>Format</span><span class="v" id="stFmt">–</span></div>
         <div class="row"><span>Route</span><span class="v" id="stRoute">–</span></div>
-        <div class="row"><span>Relay backup</span><span class="v ell" id="stRelay">Checking…</span></div>
       </div>
 
       <div id="senderInfo" style="display:contents" hidden>
         <button class="sect disclose" id="sxToggle" aria-expanded="false" aria-controls="sxGroup">
           Sender settings<svg viewBox="0 0 9 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5 7.5 8l-6 6.5"/></svg>
         </button>
-        <div class="group" id="sxGroup" hidden>
-          <div class="row"><span>Source</span><span class="v ell" id="sxSrc">–</span></div>
-          <div class="row"><span>Quality</span><span class="v" id="sxMode">–</span></div>
-          <div class="row"><span>Channels</span><span class="v" id="sxRoute">–</span></div>
-          <div class="row"><span>Gain</span><span class="v" id="sxGain">–</span></div>
-          <div class="row"><span>Tone auto-gain</span><span class="v" id="sxAuto">–</span></div>
-          <div class="row"><span>Relay backup</span><span class="v ell" id="sxRelay">–</span></div>
-          <div class="row"><span>App version</span><span class="v" id="sxVer">–</span></div>
+        <div id="sxGroup" style="display:contents" hidden>
+          <div class="group" id="sxLocked">
+            <div class="row pwrow"><input id="pwIn" class="pwin" placeholder="Password, e.g. toy-car" autocapitalize="none" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-label="Sender password">
+              <button class="linkbtn sm" id="pwGo">Unlock</button></div>
+          </div>
+          <div class="group" id="sxCtl" hidden>
+            <div class="row"><span>Source</span><span class="selwrap"><select id="cxSrc"></select></span></div>
+            <div class="row"><span>Quality</span>
+              <div class="seg" id="cxMode"><span class="knob"></span><button data-mode="voice">Voice</button><button data-mode="studio">Studio</button></div></div>
+            <div class="row"><span>Channels</span><span class="selwrap"><select id="cxRoute">
+              <option value="auto">Auto</option><option value="stereo">Stereo</option><option value="sum">Mono (L+R)</option>
+              <option value="left">Left only</option><option value="right">Right only</option></select></span></div>
+            <div class="row"><span>Gain</span><span class="v" id="cxGainV">–</span></div>
+            <div class="row slider-row"><input type="range" id="cxGain" min="-40" max="12" step="0.5" value="0" aria-label="Sender gain"></div>
+            <div class="row"><span>Tone auto-gain</span><label class="switch"><input type="checkbox" id="cxAuto" aria-label="Tone auto-gain"><span></span></label></div>
+            <div class="row"><span>Tone reads</span><span class="selwrap"><select id="cxRef">
+              <option value="-20">−20 dBFS</option><option value="-18">−18 dBFS</option>
+              <option value="-14">−14 dBFS</option><option value="-12">−12 dBFS</option></select></span></div>
+            <div class="row"><span>Relay backup</span><span class="v ell" id="sxRelay">–</span></div>
+            <div class="row"><span>App version</span><span class="v" id="sxVer">–</span></div>
+            <div class="row"><button class="lockbtn" id="cxLock">Lock</button></div>
+          </div>
+          <p class="note" id="sxNote">Enter the password shown on the sending phone to see and change its settings.</p>
         </div>
       </div>
       </div>
@@ -431,7 +466,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
 <script>window.Peer || document.write('<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"><\/script>')</script>
 <script>
 /* ============ Config ============ */
-const VERSION = '0.2.0-beta';                     // shown on the home screen — go to 1.0.0 when ready
+const VERSION = '0.4.0-beta';                     // shown on the home screen — go to 1.0.0 when ready
 const PREFIX = 'asahina-intercom-';            // namespace for room ids on the PeerJS server
 const ICE = [
   { urls: 'stun:stun.l.google.com:19302' },
@@ -544,7 +579,18 @@ document.addEventListener('visibilitychange', () => {
 });
 
 /* Opus: allow stereo + high bitrate + FEC on both ends */
-function munge(sdp){
+function munge(sdp, red = false){
+  return preferRed(opusFmtp(sdp), red);
+}
+// Stable mode: put RED (each packet also carries the previous one) first, so a lost packet costs nothing.
+function preferRed(sdp, red){
+  if (!red) return sdp;
+  const m = sdp.match(/a=rtpmap:(\d+) red\/48000\/2/i);
+  if (!m) return sdp;                                // browser doesn't support RED → plain Opus
+  return sdp.replace(/^(m=audio \S+ \S+)((?: \d+)+)/m, (_, head, pts) =>
+    head + ' ' + [m[1], ...pts.trim().split(' ').filter(x => x !== m[1])].join(' '));
+}
+function opusFmtp(sdp){
   const m = sdp.match(/a=rtpmap:(\d+) opus\/48000\/2/i);
   if (!m) return sdp;
   const pt = m[1], want = { minptime:'10', useinbandfec:'1', stereo:'1', 'sprop-stereo':'1', maxaveragebitrate:'510000' };
@@ -700,14 +746,14 @@ const S = { active:false, peer:null, stream:null, code:null, mode: store.get('ic
             routeSel: store.get('ic-route') || 'auto', autoRoute: 'stereo',
             gainDb: Number.isFinite(parseFloat(store.get('ic-gain'))) ? parseFloat(store.get('ic-gain')) : 0 };
 
-async function getStream(mode, deviceId){
+async function getStream(mode, deviceId, strict = false){
   const a = { echoCancellation:false, noiseSuppression:false, autoGainControl:false,
               channelCount:{ ideal: MODES[mode].channels }, sampleRate:{ ideal:48000 }, latency:{ ideal:0 } };
   if (deviceId) a.deviceId = { exact: deviceId };
   let s;
   try { s = await navigator.mediaDevices.getUserMedia({ audio:a, video:false }); }
   catch (e) {
-    if (deviceId && (e.name === 'OverconstrainedError' || e.name === 'NotFoundError')) { delete a.deviceId; s = await navigator.mediaDevices.getUserMedia({ audio:a }); }
+    if (!strict && deviceId && (e.name === 'OverconstrainedError' || e.name === 'NotFoundError')) { delete a.deviceId; s = await navigator.mediaDevices.getUserMedia({ audio:a }); }
     else throw e;
   }
   // Web Audio chain: input → channel routing (L/R matrix) → gain → always-2-channel stream.
@@ -783,19 +829,69 @@ const dbToGain = db => db <= -79.9 ? 0 : Math.pow(10, db / 20);
 const gainText = db => db <= -79.9 ? '−∞ dB' : (Math.abs(db) < 0.05 ? '0.0' : (db < 0 ? '−' : '+') + Math.abs(db).toFixed(1)) + ' dB';
 /* ---- Share the sender's settings with listeners ---- */
 const ROUTE_NAMES = { auto:'Auto', stereo:'Stereo', sum:'Mono (L+R)', left:'Left only', right:'Right only' };
-function hostState(){
-  return { type:'mode', mode:S.mode, channels:chans(), ver:VERSION, relay: relayText(),
-           src: $('inputSel').selectedOptions[0]?.textContent || 'Default',
-           route:S.routeSel, eff:effRoute(), gain:S.gainDb,
-           auto: typeof Tone !== 'undefined' ? Tone.on : true,
-           toneRef: typeof TONE_TARGET !== 'undefined' ? TONE_TARGET : -20,
-           tone: typeof Tone !== 'undefined' && !!Tone.present, toneHz: typeof Tone !== 'undefined' ? Tone.presentHz || 0 : 0 };
+/* ---- Remote control: easy password (e.g. toy-car) unlocks settings on the Listen page ---- */
+const WORDS = ('ant ape arm art axe bag bat bay bed bee box bud bug bun bus cab cap car cat cod cow cub cup dam den dog dot ear egg elf elk elm emu fan fig fin fir fox fog gem gum hat hay hen hog hut ice ink jam jar jet jug key kid kit lab lap leg lid lip log map mat mix mop mud mug net nut oak oar ore owl pad pan paw pea pen pie pig pin pod pot pug ram rat ray rib rod rug rye sap saw sea sky sun tab tag tan tap tea tin toe toy tub van vet wax web wig wok yak yam zip zoo').split(' ');
+const normPw = v => String(v || '').toLowerCase().trim().replace(/[\s_.]+/g, '-').replace(/-+/g, '-');
+function newPw(){
+  const pick = () => WORDS[crypto.getRandomValues(new Uint32Array(1))[0] % WORDS.length];
+  let a = pick(), b = pick(); while (b === a) b = pick();
+  return a + '-' + b;
 }
-function sendState(conn){ try { conn.open && conn.send(hostState()) } catch {} }
+S.ctlOn = store.get('ic-ctl') !== '0';
+S.pw = store.get('ic-pw') || newPw(); store.set('ic-pw', S.pw);
+S.authFails = [];
+function paintCtl(){
+  $('ctlSw').checked = S.ctlOn;
+  $('pwOut').textContent = S.pw;
+  $('pwRow').style.opacity = S.ctlOn ? 1 : .4;
+  const n = [...S.listeners.values()].filter(e => e.authed).length;
+  $('ctlState').textContent = !S.ctlOn ? 'Off' : n ? `${n} ${n === 1 ? 'person has' : 'people have'} control` : 'Listeners with the password can change settings';
+  $('ctlState').classList.toggle('on', S.ctlOn && n > 0);
+}
+function revokeAll(reason){
+  S.listeners.forEach(e => { if (e.authed) { e.authed = false; try { e.conn.send({ type:'auth', ok:false, reason }) } catch {} } });
+  broadcastState(); paintCtl();
+}
+function handleAuth(entry, pw){
+  const now = Date.now();
+  S.authFails = S.authFails.filter(t => now - t < 60000);
+  const reply = (ok, reason = '') => { try { entry.conn.send({ type:'auth', ok, reason }) } catch {} };
+  if (!S.ctlOn) return reply(false, 'off');
+  if (S.authFails.length >= 8) return reply(false, 'locked');          // brute-force guard
+  if (normPw(pw) === S.pw) { entry.authed = true; reply(true); sendState(entry.conn, entry); paintCtl(); }
+  else { S.authFails.push(now); reply(false, 'wrong'); }
+}
+async function applyCtl(key, v){
+  if (key === 'mode' && MODES[v]) await setMode(v);
+  else if (key === 'route' && (v === 'auto' || ROUTES[v])) { S.routeSel = v; store.set('ic-route', v); $('routeSel').value = v; routeChanged(); }
+  else if (key === 'gain' && Number.isFinite(Number(v))) setGain(Number(v));
+  else if (key === 'auto') setAutoTone(!!v);
+  else if (key === 'toneRef' && [-20, -18, -14, -12].includes(Number(v))) setToneRef(Number(v));
+  else if (key === 'src' && [...$('inputSel').options].some(o => o.value === v)) {
+    $('inputSel').value = v; S.deviceId = v; store.set('ic-device', v);
+    try { await swapStream(await getStream(S.mode, v)); } catch (err) { setPill($('sendPill'), micError(err), 'err'); }
+  }
+  broadcastState();
+}
+$('ctlSw').addEventListener('change', e => { S.ctlOn = e.target.checked; store.set('ic-ctl', S.ctlOn ? '1' : '0'); if (!S.ctlOn) revokeAll('off'); else broadcastState(); paintCtl(); });
+$('pwNew').addEventListener('click', () => { S.pw = newPw(); store.set('ic-pw', S.pw); revokeAll('changed'); paintCtl(); });
+
+function hostState(full){
+  const st = { type:'mode', mode:S.mode, channels:chans(), ver:VERSION, issue: S.issue || '', ctl: !!S.ctlOn,
+               tone: typeof Tone !== 'undefined' && !!Tone.present, toneHz: typeof Tone !== 'undefined' ? Tone.presentHz || 0 : 0 };
+  if (full) Object.assign(st, {                    // settings only go to listeners who unlocked with the password
+    full: true, relay: relayText(),
+    src: $('inputSel').value, devices: [...$('inputSel').options].map(o => ({ id:o.value, label:o.textContent })),
+    route:S.routeSel, eff:effRoute(), gain:S.gainDb,
+    auto: typeof Tone !== 'undefined' ? Tone.on : true,
+    toneRef: typeof TONE_TARGET !== 'undefined' ? TONE_TARGET : -20 });
+  return st;
+}
+function sendState(conn, entry){ try { conn.open && conn.send(hostState(!!entry?.authed && S.ctlOn)) } catch {} }
 let stateT = 0;
 function broadcastState(){           // throttled so fader drags don't flood the data channel
   if (stateT) return;
-  stateT = setTimeout(() => { stateT = 0; S.listeners.forEach(e => sendState(e.conn)); }, 150);
+  stateT = setTimeout(() => { stateT = 0; S.listeners.forEach(e => sendState(e.conn, e)); }, 150);
 }
 
 function setGain(db){
@@ -887,7 +983,34 @@ async function startSend(){
   S.code = store.get('ic-code') || String(1000 + Math.floor(Math.random() * 9000));
   S.idRetries = 0;
   clearInterval(RM.timer); RM.timer = setInterval(routeTick, 250);
+  store.set('ic-sending', '1');
+  clearInterval(S.watch); S.watch = setInterval(senderWatchdog, 1000);
   openHostPeer();
+}
+
+/* ---- Sender watchdog: keep the feed alive without anyone touching the phone ----
+   Input unplugged/ended → keep retrying the same device. Audio engine paused by iOS → resume it. */
+function senderIssue(){
+  const raw = S.stream?._raw?.getAudioTracks()[0];
+  if (!raw || raw.readyState === 'ended') return 'Input lost — check the mixer cable';
+  if (ctx && ctx.state !== 'running') return 'Audio paused by the phone — resuming…';
+  return '';
+}
+async function senderWatchdog(){
+  if (!S.active || !S.stream) return;
+  const issue = senderIssue();
+  if (issue !== (S.issue || '')) { S.issue = issue; paintSendStatus(); broadcastState(); }
+  if (!issue || S.recovering) return;
+  S.recovering = true;
+  try {
+    if (ctx && ctx.state !== 'running') await ctx.resume().catch(() => {});
+    const raw = S.stream?._raw?.getAudioTracks()[0];
+    if (!raw || raw.readyState === 'ended') {
+      const ns = await getStream(S.mode, S.deviceId || deviceOf(S.stream), true);
+      if (S.active) await swapStream(ns); else stopStream(ns);
+    }
+  } catch {}
+  finally { setTimeout(() => S.recovering = false, 1500); }
 }
 
 function renderCode(code){
@@ -900,12 +1023,13 @@ async function openHostPeer(){
   renderCode(S.code);
   const peer = new Peer(PREFIX + S.code, { config: cfg, debug: 0 });
   S.peer = peer;
-  peer.on('open', () => { store.set('ic-code', S.code); S.idRetries = 0; paintSendStatus(); });
+  peer.on('open', () => { store.set('ic-code', S.code); S.idRetries = 0; S.sigTry = 0; paintSendStatus(); });
   peer.on('connection', onListener);
   peer.on('disconnected', () => {
     if (S.peer !== peer || peer.destroyed) return;
     setPill($('sendPill'), 'Reconnecting…', 'wait');
-    setTimeout(() => { if (S.peer === peer && !peer.destroyed) peer.reconnect(); }, 1500);
+    S.sigTry = Math.min((S.sigTry || 0) + 1, 4);
+    setTimeout(() => { if (S.peer === peer && !peer.destroyed && peer.disconnected) peer.reconnect(); }, [400, 1000, 2000, 4000][S.sigTry - 1]);
   });
   peer.on('error', e => {
     if (S.peer !== peer) return;
@@ -924,6 +1048,7 @@ async function openHostPeer(){
 
 function paintSendStatus(){
   if (!S.peer?.open && !S.listeners.size) return;
+  if (S.issue) { setPill($('sendPill'), S.issue, 'err'); return; }
   const live = [...S.listeners.values()].filter(x => x.live).length;
   if (live) setPill($('sendPill'), live === 1 ? '1 listener' : `${live} listeners`, 'live');
   else if (S.listeners.size) setPill($('sendPill'), 'Connecting listener…', 'wait');
@@ -931,26 +1056,34 @@ function paintSendStatus(){
 }
 
 function onListener(conn){
+  let entry = null;
   conn.on('open', () => {
     if (!S.stream) return conn.close();
-    const entry = { conn, call:null, live:false };
+    const prev = S.listeners.get(conn.peer);          // same phone reconnecting after a network change
+    entry = { conn, call:null, live:false, stable: !!conn.metadata?.stable };
     S.listeners.set(conn.peer, entry);
-    startCall(entry);
-    sendState(conn);
-    paintSendStatus();
+    startCall(entry, prev ? () => setTimeout(() => closeEntry(prev), 1500) : null);
+    sendState(conn, entry);
+    paintSendStatus(); paintCtl();
   });
   conn.on('data', d => {
-    // Listener saw its delay balloon: replace the media call to start with an empty buffer.
-    const e = S.listeners.get(conn.peer);
-    if (d?.type === 'resync' && e && S.stream) { const old = e.call; startCall(e, () => setTimeout(() => { try { old?.close() } catch {} }, 4000)); }
+    if (!entry || S.listeners.get(conn.peer) !== entry || !S.stream) return;
+    const freshCall = () => { const old = entry.call; startCall(entry, () => setTimeout(() => { try { old?.close() } catch {} }, 4000)); };
+    // Listener saw its delay balloon → new call starts with an empty buffer.
+    if (d?.type === 'resync') freshCall();
+    // Listener switched Low delay ↔ Stable → new call with/without redundant packets.
+    if (d?.type === 'prefs') { entry.stable = !!d.stable; freshCall(); }
+    if (d?.type === 'auth') handleAuth(entry, d.pw);
+    if (d?.type === 'ctl' && entry.authed && S.ctlOn) applyCtl(d.key, d.value);
   });
-  conn.on('close', () => dropListener(conn.peer));
-  conn.on('error', () => dropListener(conn.peer));
+  const gone = () => entry && dropListener(entry);
+  conn.on('close', gone);
+  conn.on('error', gone);
 }
 
 function startCall(entry, onUp){
   const id = entry.conn.peer;
-  const call = S.peer.call(id, S.stream, { sdpTransform: munge });
+  const call = S.peer.call(id, S.stream, { sdpTransform: sdp => munge(sdp, entry.stable) });
   entry.call = call;
   const pc = call.peerConnection;
   if (!pc) return;
@@ -958,30 +1091,31 @@ function startCall(entry, onUp){
   const onState = () => {
     if (entry.call !== call) return;                   // an older call being replaced
     const st = pc.connectionState || pc.iceConnectionState;
-    if (st === 'connected' || st === 'completed') { clearTimeout(dropTimer); entry.live = true; applyBitrate(pc); if (onUp) { const f = onUp; onUp = null; f(); } }
-    else if (st === 'disconnected') { entry.live = false; dropTimer = setTimeout(() => entry.call === call && dropListener(id), 8000); }
-    else if (st === 'failed' || st === 'closed') dropListener(id);
+    if (st === 'connected' || st === 'completed') { clearTimeout(dropTimer); entry.live = true; applyBitrate(pc, 0, entry.stable); if (onUp) { const f = onUp; onUp = null; f(); } }
+    else if (st === 'disconnected') { entry.live = false; clearTimeout(dropTimer); dropTimer = setTimeout(() => entry.call === call && dropListener(entry), 15000); }
+    else if (st === 'failed' || st === 'closed') { entry.live = false; }   // listener will reconnect; its data link decides when it's gone
     paintSendStatus();
   };
   pc.addEventListener('connectionstatechange', onState);
   pc.addEventListener('iceconnectionstatechange', onState);
 }
 
-function dropListener(id){
-  const e = S.listeners.get(id); if (!e) return;
-  S.listeners.delete(id);
-  try { e.call.close() } catch {} try { e.conn.close() } catch {}
-  paintSendStatus();
+function closeEntry(e){ try { e.call?.close() } catch {} try { e.conn.close() } catch {} }
+function dropListener(entry){
+  if (S.listeners.get(entry.conn.peer) === entry) S.listeners.delete(entry.conn.peer);
+  closeEntry(entry);
+  paintSendStatus(); paintCtl();
 }
 
-function applyBitrate(pc, tries = 0){
+function applyBitrate(pc, tries = 0, stable = false){
   // Retry until the browser accepts the cap (it can reject it while the connection is still settling).
   let pending = false;
   pc.getSenders().forEach(s => {
     if (s.track?.kind !== 'audio') return;
     const p = s.getParameters();
     if (!p.encodings || !p.encodings.length) { pending = true; return; }
-    const want = MODES[S.mode].bitrate;
+    // Stable (RED) re-sends recent packets inside each packet; this cap gives ~64 kbps-quality voice at ~150 kbps on the wire.
+    const want = stable ? (S.mode === 'studio' ? 192000 : 96000) : MODES[S.mode].bitrate;
     if (p.encodings[0].maxBitrate === want) return;
     p.encodings[0].maxBitrate = want;
     p.encodings[0].priority = 'high';
@@ -989,7 +1123,7 @@ function applyBitrate(pc, tries = 0){
     pending = true;
     s.setParameters(p).catch(() => {});
   });
-  if (pending && tries < 10 && pc.connectionState !== 'closed') setTimeout(() => applyBitrate(pc, tries + 1), 500);
+  if (pending && tries < 10 && pc.connectionState !== 'closed') setTimeout(() => applyBitrate(pc, tries + 1, stable), 500);
 }
 
 async function swapStream(ns){
@@ -997,7 +1131,7 @@ async function swapStream(ns){
   for (const e of S.listeners.values()){
     const pc = e.call.peerConnection; if (!pc) continue;
     for (const s of pc.getSenders()) if (s.track?.kind === 'audio') await s.replaceTrack(nt).catch(()=>{});
-    applyBitrate(pc);
+    applyBitrate(pc, 0, e.stable);
   }
   const old = S.stream; S.stream = ns;
   stopStream(old);
@@ -1136,23 +1270,27 @@ function paintToneState(){
   el.textContent = !Tone.on ? 'Off' : Tone.state === 'locked' ? 'Tone locked' : 'Listening for tone';
   el.classList.toggle('on', Tone.on && Tone.state === 'locked');
 }
-$('toneSw').addEventListener('change', e => {
-  Tone.on = e.target.checked; store.set('ic-autotone', Tone.on ? '1' : '0');
-  if (Tone.on) { Tone.state = 'listening'; Tone.hist = [[],[]]; }
+function setAutoTone(on){
+  Tone.on = on; store.set('ic-autotone', on ? '1' : '0');
+  if (on) { Tone.state = 'listening'; Tone.hist = [[],[]]; }
   paintToneState(); broadcastState();
-});
-$('toneRef').addEventListener('change', e => {
-  const prev = TONE_TARGET; TONE_TARGET = Number(e.target.value); store.set('ic-toneref', String(TONE_TARGET));
+}
+function setToneRef(v){
+  const prev = TONE_TARGET; TONE_TARGET = v; store.set('ic-toneref', String(v));
   setGain(S.gainDb + (TONE_TARGET - prev));     // keep an already-calibrated level in step
   paintToneRef(); broadcastState();
-});
+}
+$('toneSw').addEventListener('change', e => setAutoTone(e.target.checked));
+$('toneRef').addEventListener('change', e => setToneRef(Number(e.target.value)));
 paintToneRef();
 $('toneUndo').addEventListener('click', () => { setGain(Tone.prevGain); $('toneBanner').hidden = true; });
 paintToneState();
+paintCtl();
 
 function stopSend(){
-  S.active = false;
-  S.listeners.forEach((_, id) => dropListener(id));
+  S.active = false; S.issue = '';
+  clearInterval(S.watch); store.set('ic-sending', '0');
+  [...S.listeners.values()].forEach(dropListener);
   try { S.peer?.destroy() } catch {} S.peer = null;
   stopStream(S.stream); S.stream = null;
   stopMeter('sendMeter'); detachTone(); clearInterval(RM.timer); RM.timer = null; releaseAwake(); show('home');
@@ -1165,7 +1303,7 @@ $('inputSel').addEventListener('change', async e => {
   S.deviceId = e.target.value; store.set('ic-device', S.deviceId);
   try { await swapStream(await getStream(S.mode, S.deviceId)); } catch (err) { setPill($('sendPill'), micError(err), 'err'); }
 });
-navigator.mediaDevices?.addEventListener?.('devicechange', () => { if (S.active && S.stream) fillInputs(); });
+navigator.mediaDevices?.addEventListener?.('devicechange', () => { if (S.active && S.stream) { fillInputs(); S.recovering = false; senderWatchdog(); } });
 $('shareBtn').addEventListener('click', async () => {
   if (!S.code) return;
   const url = location.origin + location.pathname + '?code=' + S.code;
@@ -1261,6 +1399,9 @@ function teardownListener(){
   stopMeter('listenMeter');
 }
 
+/* ---- Listener connection ----
+   Fast repair: when the network changes (Wi-Fi ↔ cellular, tower handoff) we keep the same
+   pairing-server session and just open a fresh link to the sender (~1 s), instead of starting over. */
 async function connectListener(){
   teardownListener();
   const gen = L.gen;
@@ -1269,30 +1410,27 @@ async function connectListener(){
   if (!ok()) return;
   const peer = new Peer({ config: cfg, debug: 0 });
   L.peer = peer;
-  peer.on('open', () => {
-    if (!ok()) return;
-    const conn = peer.connect(PREFIX + L.code, { reliable: true });
-    L.conn = conn;
-    conn.on('data', d => ok() && onHostData(d));
-    conn.on('close', () => ok() && lost());
-    conn.on('error', () => ok() && lost());
+  peer.on('open', () => { if (ok()) openLink(); });
+  peer.on('disconnected', () => {                      // lost the pairing server — get it back for repairs
+    if (!ok() || peer.destroyed) return;
+    setTimeout(() => { if (ok() && !peer.destroyed && peer.disconnected) peer.reconnect(); }, 400);
   });
   peer.on('call', call => {
     if (!ok()) return;
     const old = L.call;
     L.call = call;
     const cur = () => ok() && L.call === call;
-    call.answer(undefined, { sdpTransform: munge });
+    call.answer(undefined, { sdpTransform: sdp => munge(sdp, L.stable) });
     call.on('stream', s => { if (cur()) onRemoteStream(s, call, old); else try { old?.close() } catch {} });
-    call.on('close', () => cur() && lost());
+    call.on('close', () => cur() && repair('call closed'));
     const pc = call.peerConnection;
     if (pc) {
       let t;
       pc.addEventListener('iceconnectionstatechange', () => {
         if (!cur()) return;
         const st = pc.iceConnectionState;
-        if (st === 'failed') lost();
-        else if (st === 'disconnected') { setLive('Reconnecting…', false); t = setTimeout(() => cur() && pc.iceConnectionState !== 'connected' && pc.iceConnectionState !== 'completed' && lost(), 5000); }
+        if (st === 'failed') repair('ice failed');
+        else if (st === 'disconnected') { clearTimeout(t); t = setTimeout(() => cur() && !/connected|completed/.test(pc.iceConnectionState) && repair('ice stalled'), 1500); }
         else if (st === 'connected' || st === 'completed') { clearTimeout(t); setLive('Live', true); }
       });
     }
@@ -1304,12 +1442,60 @@ async function connectListener(){
       $('joinErr').textContent = `No one is sending on ${L.code}.`;
       return;
     }
-    if (e.type === 'peer-unavailable') { setLive('Waiting for sender…', false); scheduleRetry(3000); return; }
+    if (e.type === 'peer-unavailable') {                // sender is reconnecting / restarting — keep trying
+      setLive('Waiting for sender…', false);
+      if (L.everLive && !$('lnotice').dataset.tag) notice('Sender offline — waiting for it to come back', 'warn');
+      L.repairing = false; setTimeout(() => ok() && repair('sender away'), 2000);
+      return;
+    }
+    if (['network','server-error','socket-error','socket-closed','disconnected'].includes(e.type)) return;  // handled by 'disconnected'
     lost();
   });
-  // Safety net: if nothing connects in 20s, try again.
+  // Safety net: if nothing connects in 20s, start over.
   setTimeout(() => { if (ok() && !L.call) lost(); }, 20000);
 }
+
+function openLink(){
+  const peer = L.peer, gen = L.gen;
+  const conn = peer.connect(PREFIX + L.code, { reliable: true, metadata: { stable: L.stable } });
+  const mine = () => gen === L.gen && L.active && L.conn === conn;
+  const old = L.conn;
+  L.conn = conn;
+  conn.on('open', () => {
+    if (!mine()) return;
+    try { old?.close() } catch {}
+    const pw = store.get('ic-pw-' + L.code);         // unlocked before → unlock again after reconnects
+    if (pw) { L.pendingPw = pw; try { conn.send({ type:'auth', pw }) } catch {} }
+  });
+  conn.on('data', d => mine() && onHostData(d));
+  conn.on('close', () => mine() && repair('link closed'));
+  conn.on('error', () => mine() && repair('link error'));
+}
+
+function repair(why){
+  if (!L.active || L.retry) return;
+  if (L.repairing) return;
+  L.repairing = true;
+  const gen = L.gen, t0 = performance.now();
+  if (L.everLive) { setLive('Reconnecting…', false); L.dropped = true; if (!$('lnotice').dataset.tag || $('lnotice').dataset.tag === 'tone') notice('Signal dropped — reconnecting', 'warn'); }
+  const peer = L.peer;
+  const go = () => { if (gen === L.gen && L.active) openLink(); };
+  if (!peer || peer.destroyed) { L.repairing = false; return lost(); }
+  if (peer.disconnected) { try { peer.reconnect(); } catch {} peer.once('open', go); }
+  else go();
+  // Not back within 8 s → full restart (new pairing session).
+  setTimeout(() => {
+    if (gen !== L.gen || !L.active) return;
+    if (L.repairing && performance.now() - t0 >= 7900) { L.repairing = false; lost(); }
+  }, 8000);
+}
+// Phone switched networks → check the link right away instead of waiting for it to time out.
+const netPoke = () => { if (L.active && L.everLive) setTimeout(() => {
+  const pc = L.call?.peerConnection;
+  if (!pc || !/connected|completed/.test(pc.iceConnectionState)) repair('network change');
+}, 1200); };
+window.addEventListener('online', netPoke);
+navigator.connection?.addEventListener?.('change', netPoke);
 
 let noticeT = 0;
 function notice(text, kind = 'info', ms = 0, tag = ''){
@@ -1363,42 +1549,124 @@ function scheduleRetry(ms){
 
 function setSenderOpen(open){
   $('sxGroup').hidden = !open;
+  if (open && !L.authed) setTimeout(() => $('pwIn').focus(), 50);
   $('sxToggle').setAttribute('aria-expanded', String(open));
   store.set('ic-sxopen', open ? '1' : '0');
 }
 $('sxToggle').addEventListener('click', () => setSenderOpen($('sxGroup').hidden));
 setSenderOpen(store.get('ic-sxopen') === '1');      // collapsed unless opened before
 
+function paintFmt(){
+  $('netHint').textContent = L.stable ? 'Fewer dropouts · for driving' : 'Lowest delay';
+  $('stFmt').textContent = `${MODES[L.mode].label} · ${L.channels > 1 ? 'Stereo' : 'Mono'}${L.stable ? ' · Stable' : ''}`;
+}
+function setStable(on){
+  L.stable = on; store.set('ic-stable', on ? '1' : '0');
+  paintSeg(on ? 'stable' : 'low', $('netSeg'), 'net');
+  paintFmt(); tuneReceiver();
+  if (L.conn?.open) {                                   // ask for a new call with/without redundancy (crossfaded)
+    L.resyncing = true; L.lastResync = performance.now();
+    try { L.conn.send({ type:'prefs', stable: on }); } catch {}
+    notice(on ? 'Switching to Stable…' : 'Switching to Low delay…', 'info', 3000);
+  }
+}
+/* ---- Remote control (listener side) ---- */
+L.authed = false;
+function paintLock(msg){
+  $('sxLocked').hidden = L.authed; $('sxCtl').hidden = !L.authed;
+  $('sxNote').textContent = msg || (L.authed ? 'Changes apply to the sending phone right away.'
+    : L.ctlAvail === false ? 'Remote control is off on the sending phone.'
+    : 'Enter the password shown on the sending phone to see and change its settings.');
+  $('sxNote').classList.toggle('warn', !!msg);
+}
+function unlock(){
+  const pw = normPw($('pwIn').value);
+  if (!pw || !L.conn?.open) return;
+  L.pendingPw = pw;
+  try { L.conn.send({ type:'auth', pw }) } catch {}
+  $('pwGo').textContent = 'Checking…';
+}
+function onAuth(d){
+  $('pwGo').textContent = 'Unlock';
+  if (d.ok) {
+    L.authed = true; store.set('ic-pw-' + L.code, L.pendingPw || '');
+    $('pwIn').value = ''; $('pwIn').blur(); paintLock();
+    requestAnimationFrame(() => paintSeg(L.cx?.mode || 'voice', $('cxMode'), 'mode'));
+    return;
+  }
+  const had = L.authed; L.authed = false;
+  if (d.reason === 'changed' || d.reason === 'wrong') store.set('ic-pw-' + L.code, '');
+  paintLock({ wrong: 'Wrong password — check the sending phone.', locked: 'Too many tries. Wait a minute and try again.',
+              off: 'Remote control is off on the sending phone.',
+              changed: 'The password was changed on the sending phone.' }[d.reason] || (had ? 'Locked.' : ''));
+}
+let gainTouch = 0;
+function paintCtlUI(d){
+  L.cx = d;
+  const src = $('cxSrc');
+  if (document.activeElement !== src) {
+    src.innerHTML = (d.devices || []).map(o => `<option value="${String(o.id).replace(/"/g, '&quot;')}">${String(o.label).replace(/</g, '&lt;')}</option>`).join('') || '<option>Default</option>';
+    src.value = d.src;
+  }
+  paintSeg(d.mode, $('cxMode'), 'mode');
+  if (document.activeElement !== $('cxRoute')) $('cxRoute').value = d.route || 'auto';
+  if (Date.now() - gainTouch > 800) $('cxGain').value = Math.max(-40, d.gain ?? 0);
+  $('cxGainV').textContent = gainText(d.gain ?? 0);
+  $('cxAuto').checked = !!d.auto;
+  if (document.activeElement !== $('cxRef')) $('cxRef').value = String(d.toneRef ?? -20);
+  $('sxRelay').textContent = d.relay || '–';
+  $('sxRelay').classList.toggle('warn', /^Off/.test(d.relay || ''));
+  $('sxVer').textContent = d.ver;
+  $('sxVer').classList.toggle('warn', d.ver !== VERSION);
+}
+const ctl = (key, value) => { if (L.authed && L.conn?.open) try { L.conn.send({ type:'ctl', key, value }) } catch {} };
+let gainSendT = 0;
+$('cxGain').addEventListener('input', e => {
+  gainTouch = Date.now();
+  $('cxGainV').textContent = gainText(Number(e.target.value));
+  if (!gainSendT) gainSendT = setTimeout(() => { gainSendT = 0; ctl('gain', Number($('cxGain').value)); }, 80);
+});
+$('cxGainV').addEventListener('click', () => { gainTouch = Date.now(); $('cxGain').value = 0; ctl('gain', 0); });
+$('cxSrc').addEventListener('change', e => ctl('src', e.target.value));
+$('cxRoute').addEventListener('change', e => ctl('route', e.target.value));
+$('cxRef').addEventListener('change', e => ctl('toneRef', Number(e.target.value)));
+$('cxAuto').addEventListener('change', e => ctl('auto', e.target.checked));
+$('cxMode').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { paintSeg(b.dataset.mode, $('cxMode'), 'mode'); ctl('mode', b.dataset.mode); } });
+$('pwGo').addEventListener('click', unlock);
+$('pwIn').addEventListener('keydown', e => { if (e.key === 'Enter') unlock(); });
+$('cxLock').addEventListener('click', () => { L.authed = false; store.set('ic-pw-' + L.code, ''); paintLock(); });
+
 const EFF_NAMES = { stereo:'Stereo', sum:'Mono (L+R)', left:'Left to both', right:'Right to both' };
 function onHostData(d){
+  if (d?.type === 'auth') return onAuth(d);
   if (d?.type !== 'mode') return;
   const mode = MODES[d.mode] ? d.mode : 'voice', channels = d.channels || MODES[mode].channels;
   const changed = mode !== L.mode || channels !== L.channels;
   L.mode = mode; L.channels = channels;
-  $('stFmt').textContent = `${MODES[L.mode].label} · ${L.channels > 1 ? 'Stereo' : 'Mono'}`;
+  paintFmt();
   if (changed) {
     tuneReceiver();
     if (audioEl.srcObject && L.call) startMeter('listenMeter', 'listenDb', audioEl.srcObject, L.channels, lvl => $('orbWrap').style.setProperty('--lvl', lvl.toFixed(3)));
   }
   if ('tone' in d) setToneOn(!!d.tone, d.toneHz);
-  if (d.ver) {                                    // older senders don't share settings
-    $('senderInfo').hidden = false;
-    $('sxSrc').textContent = d.src || '–';
-    $('sxMode').textContent = `${MODES[mode].label} · ${Math.round(MODES[mode].bitrate / 1000)} kbps`;
-    const r = d.route || 'auto', eff = EFF_NAMES[d.eff] || '';
-    $('sxRoute').textContent = r === 'auto' ? `Auto${eff ? ' · ' + eff : ''}` : (ROUTE_NAMES[r] || r);
-    $('sxGain').textContent = gainText(d.gain ?? 0);
-    $('sxAuto').textContent = d.auto ? `On · −${-(d.toneRef ?? -20)} dBFS` : 'Off';
-    $('sxVer').textContent = d.ver;
-    $('sxRelay').textContent = d.relay || '–';
-    $('sxRelay').classList.toggle('warn', /^Off/.test(d.relay || ''));
-    $('sxVer').classList.toggle('warn', d.ver !== VERSION);
+  if ('issue' in d && d.issue !== (L.issue || '')) {
+    L.issue = d.issue;
+    if (d.issue) notice(`Sender: ${d.issue.replace(/ — .*/, '')}`, 'warn', 0, 'issue');
+    else if ($('lnotice').dataset.tag === 'issue') { hideNotice(); notice('Sender back to normal', 'ok', 3000); }
   }
+  if (d.ver) {
+    const first = $('senderInfo').hidden, availChanged = L.ctlAvail !== !!d.ctl;
+    $('senderInfo').hidden = false;
+    L.ctlAvail = !!d.ctl;
+    if (!d.full && L.authed && !d.ctl) { L.authed = false; paintLock('Remote control was turned off on the sending phone.'); }
+    else if (!L.authed && (first || availChanged)) paintLock();
+  }
+  if (d.full && L.authed) paintCtlUI(d);
 }
 
 function tuneReceiver(){
   const pc = L.call?.peerConnection; if (!pc) return;
-  const ms = MODES[L.mode].jitterMs;
+  const ms = L.stable ? STABLE.jitterMs : MODES[L.mode].jitterMs;
   pc.getReceivers().forEach(r => {
     try {
       if ('jitterBufferTarget' in r) r.jitterBufferTarget = ms;
@@ -1472,6 +1740,7 @@ function setBoost(db){
 $('boostSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setBoost(Number(b.dataset.boost)); });
 
 function onRemoteStream(stream, call, old){
+  L.repairing = false;
   const isResync = !!(old && LB.cur && L.resyncing);
   L.resyncing = false;
   L.everLive = true;
@@ -1481,7 +1750,7 @@ function onRemoteStream(stream, call, old){
     else if (L.dropped) notice('Reconnected', 'ok', 3000);
     L.dropped = false;
   });
-  requestAnimationFrame(() => paintSeg(LB.db, $('boostSeg'), 'boost'));
+  requestAnimationFrame(() => { paintSeg(LB.db, $('boostSeg'), 'boost'); paintSeg(L.stable ? 'stable' : 'low', $('netSeg'), 'net'); });
   audioEl.play().then(() => $('tapAudio').hidden = true).catch(() => $('tapAudio').hidden = false);
   setLive('Live', true);
   tuneReceiver();
@@ -1491,6 +1760,8 @@ function onRemoteStream(stream, call, old){
 }
 
 const DELAY = { target: 300, resyncAbove: 500, holdMs: 6000, cooldownMs: 60000 };
+const STABLE = { jitterMs: 250, target: 500, resyncAbove: 900 };   // bigger buffer for driving
+L.stable = store.get('ic-stable') === '1';
 L.autoResync = store.get('ic-autoresync') !== '0';
 async function pollStats(){
   const pc = L.call?.peerConnection; if (!pc) return;
@@ -1522,14 +1793,14 @@ async function pollStats(){
   const est = rtt * 500 + jbMs + 30;                 // one-way network + jitter buffer + codec/output
   const el = $('stDelay');
   el.textContent = `≈ ${Math.round(est)} ms`;
-  el.classList.toggle('warn', est > DELAY.target);
+  el.classList.toggle('warn', est > (L.stable ? STABLE.target : DELAY.target));
 
   // Buffer ballooned but the network is fine again → ask for a fresh call to drop the backlog.
   const now = performance.now();
   // Only when it's stuck high: network calm, and the buffer isn't already shrinking on its own.
   L.jbHist = (L.jbHist || []).concat(jbMs).slice(-4);
   const shrinking = L.jbHist.length === 4 && L.jbHist[0] - jbMs > 40;
-  if (jbMs > DELAY.resyncAbove && rtt < 0.25 && !shrinking) { if (!L.highSince) L.highSince = now; }
+  if (jbMs > (L.stable ? STABLE.resyncAbove : DELAY.resyncAbove) && rtt < 0.25 && !shrinking) { if (!L.highSince) L.highSince = now; }
   else L.highSince = 0;
   if (L.autoResync && L.highSince && now - L.highSince > DELAY.holdMs && now - (L.lastResync || 0) > DELAY.cooldownMs) resync();
   if (L.resyncShown && !L.resyncing) { L.resyncShown = false; if (!$('lnotice').hidden) $('lnoticeTxt').textContent = `Resynced · now ≈ ${Math.round(est)} ms`; }
@@ -1546,7 +1817,8 @@ function resync(){
 function leave(){
   L.active = false;
   teardownListener();
-  L.toneOn = false; L.duckSkip = false;
+  L.toneOn = false; L.duckSkip = false; L.issue = ''; L.repairing = false; L.authed = false; L.ctlAvail = undefined;
+  $('senderInfo').hidden = true; paintLock();
   teardownPlayback(); hideNotice(true); L.dropped = false; L.resyncing = false;
   audioEl.pause(); audioEl.srcObject = null; audioEl.muted = false;
   $('tapAudio').hidden = true;
@@ -1558,6 +1830,7 @@ function leave(){
 $('joinBtn').addEventListener('click', join);
 $('autoResync').checked = L.autoResync;
 $('duckSw').checked = L.duckPref;
+$('netSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setStable(b.dataset.net === 'stable'); });
 $('duckSw').addEventListener('change', e => { L.duckPref = e.target.checked; store.set('ic-duck', L.duckPref ? '1' : '0'); L.duckSkip = false; applyDuck(); });
 $('autoResync').addEventListener('change', e => { L.autoResync = e.target.checked; store.set('ic-autoresync', L.autoResync ? '1' : '0'); });
 $('delayRow').addEventListener('click', () => { if (L.everLive && performance.now() - (L.lastResync || 0) > 3000) resync(); });
@@ -1568,6 +1841,12 @@ $('ver').textContent = 'Version ' + VERSION;
 
 /* ============ Navigation ============ */
 $('goSend').addEventListener('click', startSend);
+$('resumeBtn').addEventListener('click', () => { $('resumeBtn').hidden = true; startSend(); });
+// Page reloaded (or crashed) while sending → one tap brings the same room back. Browsers need that tap to start audio.
+if (store.get('ic-sending') === '1' && store.get('ic-code')) {
+  $('resumeBtn').textContent = `Resume sending · room ${store.get('ic-code')}`;
+  $('resumeBtn').hidden = false;
+}
 $('goListen').addEventListener('click', openListen);
 $('stopSend').addEventListener('click', stopSend);
 document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click', () => {
@@ -1575,7 +1854,7 @@ document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click'
   if (L.active) leave();
   show('home');
 }));
-window.addEventListener('resize', () => { if (S.active) paintSeg(S.mode); if (L.active) paintSeg(LB.db, $('boostSeg'), 'boost'); });
+window.addEventListener('resize', () => { if (S.active) paintSeg(S.mode); if (L.active) { paintSeg(LB.db, $('boostSeg'), 'boost'); paintSeg(L.stable ? 'stable' : 'low', $('netSeg'), 'net'); } });
 window.addEventListener('pagehide', () => { try { S.peer?.destroy(); L.peer?.destroy(); } catch {} });
 
 // Shared link: ?code=1234 opens Listen with the code filled in
