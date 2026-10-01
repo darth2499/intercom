@@ -1,0 +1,793 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Intercom">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<title>Intercom</title>
+<style>
+:root{
+  --bg:#f2f2f7; --card:#fff; --label:#000; --label2:rgba(60,60,67,.6); --label3:rgba(60,60,67,.3);
+  --sep:rgba(60,60,67,.18); --fill:rgba(118,118,128,.12); --track:#e5e5ea; --seg-on:#fff;
+  --blue:#007aff; --green:#34c759; --orange:#ff9500; --red:#ff3b30; --yellow:#ffcc00; --indigo:#5856d6;
+  --shadow:0 1px 2px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.05);
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#000; --card:#1c1c1e; --label:#fff; --label2:rgba(235,235,245,.6); --label3:rgba(235,235,245,.3);
+  --sep:rgba(84,84,88,.55); --fill:rgba(118,118,128,.24); --track:#2c2c2e; --seg-on:#636366;
+  --blue:#0a84ff; --green:#30d158; --orange:#ff9f0a; --red:#ff453a; --yellow:#ffd60a; --indigo:#5e5ce6;
+  --shadow:none;
+}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--label);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%}
+button,select,input{font:inherit;color:inherit}
+button{border:0;background:none;padding:0;cursor:pointer}
+[hidden]{display:none!important}
+
+.app{max-width:480px;margin:0 auto;
+  padding:calc(env(safe-area-inset-top) + 8px) 20px calc(env(safe-area-inset-bottom) + 20px)}
+.screen{display:none;flex-direction:column;gap:14px;
+  min-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 28px)}
+.screen.active{display:flex;animation:in .38s cubic-bezier(.2,.8,.2,1)}
+@keyframes in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.spacer{flex:1}
+
+/* Titles */
+.large-title{padding:28px 0 6px}
+.large-title h1{font-size:34px;line-height:41px;font-weight:700;letter-spacing:.01em;margin:0}
+.large-title p{margin:4px 0 0;color:var(--label2);font-size:17px}
+.navbar{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;height:44px;margin:0 -8px}
+.back{display:flex;align-items:center;gap:2px;color:var(--blue);font-size:17px;padding:8px;justify-self:start}
+.back svg{width:12px;height:20px}
+.nav-title{font-size:17px;font-weight:600}
+
+/* Cards */
+.card{background:var(--card);border-radius:20px;padding:18px;box-shadow:var(--shadow)}
+.tile{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:var(--card);
+  border-radius:20px;padding:18px;box-shadow:var(--shadow);transition:transform .15s,opacity .15s}
+.tile:active{transform:scale(.98);opacity:.85}
+.tile .ico{width:48px;height:48px;border-radius:13px;display:grid;place-items:center;color:#fff;flex:none}
+.tile .ico svg{width:26px;height:26px}
+.tile h2{font-size:17px;font-weight:600;margin:0}
+.tile p{font-size:15px;color:var(--label2);margin:2px 0 0}
+.tile .chev{margin-left:auto;color:var(--label3);width:9px;height:16px;flex:none}
+.foot{color:var(--label2);font-size:13px;text-align:center;margin:8px 0 0}
+
+/* Code */
+.eyebrow{font-size:13px;color:var(--label2);text-transform:uppercase;letter-spacing:.04em;margin:0}
+.center{text-align:center}
+.code-card{text-align:center;padding:22px 18px 16px}
+.code{display:flex;justify-content:center;gap:10px;margin:10px 0 14px;
+  font-family:ui-rounded,"SF Pro Rounded",-apple-system,system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.code span{font-size:56px;line-height:64px;font-weight:700;width:48px}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:7px 14px;border-radius:99px;background:var(--fill);
+  font-size:15px;font-weight:500}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--label3);flex:none}
+.pill.live .dot{background:var(--green);box-shadow:0 0 0 0 var(--green);animation:pulse 1.8s infinite}
+.pill.wait .dot{background:var(--orange)}
+.pill.err{color:var(--red)} .pill.err .dot{background:var(--red)}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(52,199,89,.6)}70%{box-shadow:0 0 0 8px rgba(52,199,89,0)}100%{box-shadow:0 0 0 0 rgba(52,199,89,0)}}
+.linkbtn{display:block;margin:12px auto 0;color:var(--blue);font-size:15px;padding:6px}
+
+/* Meter */
+.meter-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
+.meter-head .t{font-size:15px;font-weight:600}
+.db{font-size:13px;color:var(--label2);font-variant-numeric:tabular-nums}
+.meter{display:flex;flex-direction:column;gap:6px}
+.ch{position:relative;height:8px;border-radius:4px;overflow:hidden;
+  background:linear-gradient(90deg,var(--green) 0,var(--green) 70%,var(--yellow) 85%,var(--red) 97%)}
+.ch i{position:absolute;inset:0;background:var(--track);transform-origin:right center;transform:scaleX(1)}
+.meter.mono .ch:nth-child(2){display:none}
+.scale{display:flex;justify-content:space-between;font-size:11px;color:var(--label3);margin-top:6px;font-variant-numeric:tabular-nums}
+
+/* Grouped list */
+.group{background:var(--card);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:50px;padding:0 16px;position:relative;font-size:17px}
+.row+.row::before{content:"";position:absolute;top:0;left:16px;right:0;height:.5px;background:var(--sep)}
+.row .v{color:var(--label2);font-variant-numeric:tabular-nums;text-align:right}
+.selwrap{position:relative;min-width:0;flex:1;display:flex;justify-content:flex-end}
+.selwrap select{appearance:none;-webkit-appearance:none;border:0;background:none;color:var(--label2);
+  font-size:17px;text-align:right;text-align-last:right;padding:12px 18px 12px 0;max-width:100%;text-overflow:ellipsis;outline:none}
+.selwrap::after{content:"";position:absolute;right:2px;top:50%;width:7px;height:7px;border:solid var(--label3);
+  border-width:0 2px 2px 0;transform:translateY(-70%) rotate(45deg);pointer-events:none}
+.note{font-size:13px;color:var(--label2);margin:-6px 16px 0;line-height:18px}
+
+/* Segmented control */
+.seg{display:flex;background:var(--fill);border-radius:9px;padding:2px;position:relative}
+.seg button{position:relative;z-index:1;font-size:13px;font-weight:500;padding:6px 16px;border-radius:7px;min-width:78px;transition:color .2s}
+.seg .knob{position:absolute;top:2px;bottom:2px;left:2px;border-radius:7px;background:var(--seg-on);
+  box-shadow:0 3px 8px rgba(0,0,0,.12),0 3px 1px rgba(0,0,0,.04);transition:transform .28s cubic-bezier(.3,.8,.3,1)}
+.seg button.on{font-weight:600}
+
+/* Buttons */
+.btn{display:flex;align-items:center;justify-content:center;width:100%;height:52px;border-radius:14px;font-size:17px;font-weight:600;transition:opacity .15s,transform .15s}
+.btn:active{transform:scale(.98);opacity:.8}
+.btn.primary{background:var(--blue);color:#fff}
+.btn.primary:disabled{opacity:.35;transform:none}
+.btn.danger{background:rgba(255,59,48,.12);color:var(--red)}
+.btn.tinted{background:rgba(0,122,255,.12);color:var(--blue)}
+
+/* Code entry */
+.entry{position:relative;display:flex;justify-content:center;gap:12px;margin:18px 0 8px}
+.entry .box{width:62px;height:76px;border-radius:14px;background:var(--card);box-shadow:var(--shadow);display:grid;place-items:center;
+  font-family:ui-rounded,"SF Pro Rounded",-apple-system,system-ui,sans-serif;font-size:40px;font-weight:700;
+  border:2px solid transparent;transition:border-color .15s}
+.entry .box.cur{border-color:var(--blue)}
+.entry input{position:absolute;inset:0;opacity:0;width:100%;height:100%;font-size:16px;caret-color:transparent;border:0}
+.err-text{color:var(--red);font-size:15px;text-align:center;min-height:20px;margin:0}
+.hint{color:var(--label2);font-size:15px;text-align:center;margin:18px 0 0}
+
+/* Listening orb */
+.orb-wrap{--lvl:0;position:relative;width:220px;height:220px;margin:20px auto 4px;display:grid;place-items:center}
+.ring{position:absolute;inset:0;border-radius:50%;background:var(--green);
+  opacity:calc(.10 + var(--lvl)*.22);transform:scale(calc(.62 + var(--lvl)*.38));transition:transform 90ms linear,opacity 90ms linear}
+.ring.r2{opacity:calc(.14 + var(--lvl)*.2);transform:scale(calc(.56 + var(--lvl)*.2))}
+.orb{position:relative;width:118px;height:118px;border-radius:50%;display:grid;place-items:center;color:#fff;
+  background:linear-gradient(180deg,#5ee27c,#28b44a);box-shadow:0 12px 32px rgba(52,199,89,.35);transition:background .4s,box-shadow .4s}
+.orb svg{width:52px;height:52px}
+.orb-wrap.wait .ring{background:var(--label3);animation:breathe 2.4s ease-in-out infinite}
+.orb-wrap.wait .orb{background:linear-gradient(180deg,#b8b8bd,#8e8e93);box-shadow:none}
+@keyframes breathe{0%,100%{transform:scale(.6);opacity:.12}50%{transform:scale(.75);opacity:.2}}
+.live-title{font-size:28px;font-weight:700;text-align:center;margin:6px 0 0}
+.live-sub{font-size:15px;color:var(--label2);text-align:center;margin:2px 0 6px}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HOME -->
+  <section class="screen active" id="home">
+    <header class="large-title">
+      <h1>Intercom</h1>
+      <p>Stream your mixer to another phone.</p>
+    </header>
+    <button class="tile" id="goSend">
+      <span class="ico" style="background:var(--blue)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4"/></svg>
+      </span>
+      <span><h2>Send</h2><p>This phone is plugged into the mixer</p></span>
+      <svg class="chev" viewBox="0 0 9 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5 7.5 8l-6 6.5"/></svg>
+    </button>
+    <button class="tile" id="goListen">
+      <span class="ico" style="background:var(--green)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14v-2a9 9 0 0 1 18 0v2"/><path d="M21 15a2 2 0 0 1-2 2h-1v-6h1a2 2 0 0 1 2 2zM3 15a2 2 0 0 0 2 2h1v-6H5a2 2 0 0 0-2 2z"/></svg>
+      </span>
+      <span><h2>Listen</h2><p>Hear the mixer feed from anywhere</p></span>
+      <svg class="chev" viewBox="0 0 9 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5 7.5 8l-6 6.5"/></svg>
+    </button>
+    <div class="spacer"></div>
+    <p class="foot">Audio goes directly between the two phones.</p>
+  </section>
+
+  <!-- SEND -->
+  <section class="screen" id="send">
+    <nav class="navbar">
+      <button class="back" data-back><svg viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2 2 10l8 8"/></svg>Intercom</button>
+      <span class="nav-title">Send</span><span></span>
+    </nav>
+
+    <div class="card code-card">
+      <p class="eyebrow">Room code</p>
+      <div class="code" id="codeOut"><span>–</span><span>–</span><span>–</span><span>–</span></div>
+      <div class="pill" id="sendPill"><span class="dot"></span><span class="txt">Starting…</span></div>
+      <button class="linkbtn" id="shareBtn">Share link</button>
+    </div>
+
+    <div class="card">
+      <div class="meter-head"><span class="t">Input</span><span class="db" id="sendDb">–∞ dB</span></div>
+      <div class="meter" id="sendMeter"><div class="ch"><i></i></div><div class="ch"><i></i></div></div>
+      <div class="scale"><span>-60</span><span>-40</span><span>-20</span><span>-6</span><span>0</span></div>
+    </div>
+
+    <div class="group">
+      <div class="row"><span>Source</span><span class="selwrap"><select id="inputSel"><option>Default</option></select></span></div>
+      <div class="row"><span>Quality</span>
+        <div class="seg" id="qualitySeg"><span class="knob"></span><button data-mode="voice">Voice</button><button data-mode="studio">Studio</button></div>
+      </div>
+    </div>
+    <p class="note" id="modeNote"></p>
+
+    <div class="spacer"></div>
+    <p class="foot" data-awake>Keep this screen on while sending.</p>
+    <button class="btn danger" id="stopSend">Stop</button>
+  </section>
+
+  <!-- LISTEN -->
+  <section class="screen" id="listen">
+    <nav class="navbar">
+      <button class="back" data-back><svg viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2 2 10l8 8"/></svg>Intercom</button>
+      <span class="nav-title">Listen</span><span></span>
+    </nav>
+
+    <div id="joinView" style="display:contents">
+      <p class="hint">Enter the code shown on the sending phone.</p>
+      <div class="entry" id="entry">
+        <div class="box"></div><div class="box"></div><div class="box"></div><div class="box"></div>
+        <input id="codeIn" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" maxlength="4" aria-label="Room code">
+      </div>
+      <p class="err-text" id="joinErr"></p>
+      <div class="spacer"></div>
+      <button class="btn primary" id="joinBtn" disabled>Listen</button>
+    </div>
+
+    <div id="liveView" style="display:contents" hidden>
+      <div class="orb-wrap wait" id="orbWrap">
+        <span class="ring"></span><span class="ring r2"></span>
+        <span class="orb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14v-2a9 9 0 0 1 18 0v2"/><path d="M21 15a2 2 0 0 1-2 2h-1v-6h1a2 2 0 0 1 2 2zM3 15a2 2 0 0 0 2 2h1v-6H5a2 2 0 0 0-2 2z"/></svg></span>
+      </div>
+      <h2 class="live-title" id="liveTitle">Connecting…</h2>
+      <p class="live-sub" id="liveSub">Room ––––</p>
+      <button class="btn tinted" id="tapAudio" hidden>Tap to hear audio</button>
+
+      <div class="card">
+        <div class="meter-head"><span class="t">Level</span><span class="db" id="listenDb">–∞ dB</span></div>
+        <div class="meter" id="listenMeter"><div class="ch"><i></i></div><div class="ch"><i></i></div></div>
+      </div>
+
+      <div class="group">
+        <div class="row"><span>Est. delay</span><span class="v" id="stDelay">–</span></div>
+        <div class="row"><span>Bitrate</span><span class="v" id="stRate">–</span></div>
+        <div class="row"><span>Format</span><span class="v" id="stFmt">–</span></div>
+        <div class="row"><span>Route</span><span class="v" id="stRoute">–</span></div>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn danger" id="leaveBtn">Leave</button>
+    </div>
+  </section>
+</div>
+
+<audio id="remoteAudio" playsinline autoplay></audio>
+
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>window.Peer || document.write('<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"><\/script>')</script>
+<script>
+/* ============ Config ============ */
+const PREFIX = 'asahina-intercom-';            // namespace for room ids on the PeerJS server
+const ICE = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' },
+  { urls: 'stun:stun.cloudflare.com:3478' },
+  // If phones on cellular can't connect, add a TURN relay here, e.g.:
+  // { urls: 'turn:YOUR_HOST:3478', username: 'USER', credential: 'PASS' },
+];
+const MODES = {
+  voice:  { label: 'Voice',  channels: 1, bitrate: 64000,  jitterMs: 0,  hint: 'speech',
+            note: 'Mono, 64 kbps. Lowest delay — best for cues and talent monitoring.' },
+  studio: { label: 'Studio', channels: 2, bitrate: 256000, jitterMs: 60, hint: 'music',
+            note: 'Stereo, 256 kbps. Full-quality mix with a little more delay.' },
+};
+
+/* ============ Helpers ============ */
+const $ = id => document.getElementById(id);
+const store = {
+  get(k){ try { return localStorage.getItem(k) } catch { return null } },
+  set(k,v){ try { localStorage.setItem(k,v) } catch {} },
+};
+let ctx;
+function ensureCtx(){
+  if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+  if (ctx.state !== 'running') ctx.resume().catch(()=>{});
+  return ctx;
+}
+function show(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === id));
+  window.scrollTo(0,0);
+}
+function setPill(el, text, kind){
+  el.className = 'pill' + (kind ? ' ' + kind : '');
+  el.querySelector('.txt').textContent = text;
+}
+/* Keep the screen on: Wake Lock API, plus a tiny silent looping video as a fallback
+   (older iOS and Home Screen web apps ignore Wake Lock, but won't sleep during video playback). */
+let wake = null;
+const keepVid = Object.assign(document.createElement('video'), {
+  src: document.createElement('video').canPlayType('video/mp4; codecs="avc1.42E01E"')
+    ? 'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAMrbW9vdgAAAGxtdmhkAAAAAAAAAAAAAAAAAAAD6AAAB9AAAQAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAlV0cmFrAAAAXHRraGQAAAADAAAAAAAAAAAAAAABAAAAAAAAB9AAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAABAAAAAQAAAAAAAkZWR0cwAAABxlbHN0AAAAAAAAAAEAAAfQAAAAAAABAAAAAAHNbWRpYQAAACBtZGhkAAAAAAAAAAAAAAAAAABAAAAAgABVxAAAAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABeG1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAThzdGJsAAAAuHN0c2QAAAAAAAAAAQAAAKhhdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAABAAEABIAAAASAAAAAAAAAABFUxhdmM2MC4zMS4xMDIgbGlieDI2NAAAAAAAAAAAAAAAGP//AAAALmF2Y0MBQsAK/+EAFmdCwArZHsBEAAADAAQAAAMACDxImSABAAVoy4PLIAAAABBwYXNwAAAAAQAAAAEAAAAUYnRydAAAAAAAAApAAAAKQAAAABhzdHRzAAAAAAAAAAEAAAACAABAAAAAABRzdHNzAAAAAAAAAAEAAAABAAAAHHN0c2MAAAAAAAAAAQAAAAEAAAACAAAAAQAAABxzdHN6AAAAAAAAAAAAAAACAAAChgAAAAoAAAAUc3RjbwAAAAAAAAABAAADWwAAAGJ1ZHRhAAAAWm1ldGEAAAAAAAAAIWhkbHIAAAAAAAAAAG1kaXJhcHBsAAAAAAAAAAAAAAAALWlsc3QAAAAlqXRvbwAAAB1kYXRhAAAAAQAAAABMYXZmNjAuMTYuMTAwAAAACGZyZWUAAAKYbWRhdAAAAnAGBf//bNxF6b3m2Ui3lizYINkj7u94MjY0IC0gY29yZSAxNjQgcjMxMDggMzFlMTlmOSAtIEguMjY0L01QRUctNCBBVkMgY29kZWMgLSBDb3B5bGVmdCAyMDAzLTIwMjMgLSBodHRwOi8vd3d3LnZpZGVvbGFuLm9yZy94MjY0Lmh0bWwgLSBvcHRpb25zOiBjYWJhYz0wIHJlZj0zIGRlYmxvY2s9MTowOjAgYW5hbHlzZT0weDE6MHgxMTEgbWU9aGV4IHN1Ym1lPTcgcHN5PTEgcHN5X3JkPTEuMDA6MC4wMCBtaXhlZF9yZWY9MSBtZV9yYW5nZT0xNiBjaHJvbWFfbWU9MSB0cmVsbGlzPTEgOHg4ZGN0PTAgY3FtPTAgZGVhZHpvbmU9MjEsMTEgZmFzdF9wc2tpcD0xIGNocm9tYV9xcF9vZmZzZXQ9LTIgdGhyZWFkcz0xIGxvb2thaGVhZF90aHJlYWRzPTEgc2xpY2VkX3RocmVhZHM9MCBucj0wIGRlY2ltYXRlPTEgaW50ZXJsYWNlZD0wIGJsdXJheV9jb21wYXQ9MCBjb25zdHJhaW5lZF9pbnRyYT0wIGJmcmFtZXM9MCB3ZWlnaHRwPTAga2V5aW50PTI1MCBrZXlpbnRfbWluPTEgc2NlbmVjdXQ9NDAgaW50cmFfcmVmcmVzaD0wIHJjX2xvb2thaGVhZD00MCByYz1jcmYgbWJ0cmVlPTEgY3JmPTIzLjAgcWNvbXA9MC42MCBxcG1pbj0wIHFwbWF4PTY5IHFwc3RlcD00IGlwX3JhdGlvPTEuNDAgYXE9MToxLjAwAIAAAAAOZYiEBb///w9FAAFPf4AAAAAGQZo4CvqA'
+    : 'data:video/webm;base64,GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQJChYECGFOAZwEAAAAAAAH9EU2bdLpNu4tTq4QVSalmU6yBoU27i1OrhBZUrmtTrIHYTbuMU6uEElTDZ1OsggEeTbuMU6uEHFO7a1OsggHn7AEAAAAAAABZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVSalmsirXsYMPQkBNgI1MYXZmNjAuMTYuMTAwV0GNTGF2ZjYwLjE2LjEwMESJiECfQAAAAAAAFlSua8GuAQAAAAAAADjXgQFzxYiV2azjM9DR0JyBACK1nIN1bmSIgQCGhVZfVlA4g4EBI+ODhDuaygDgibCBELqBEJqBAhJUw2f8c3OgY8CAZ8iaRaOHRU5DT0RFUkSHjUxhdmY2MC4xNi4xMDBzc9ZjwItjxYiV2azjM9DR0GfIoUWjh0VOQ09ERVJEh5RMYXZjNjAuMzEuMTAyIGxpYnZweGfIoUWjiERVUkFUSU9ORIeTMDA6MDA6MDIuMDAwMDAwMDAwAB9DtnXD54EAo6OBAACAEAIAnQEqEAAQAABHCIWFiJmEiAICAAwNYAD+/6tQgKOZgQPoALEBAAEQEAAYADA/9AwAAAD+/6tQgBxTu2uRu4+zgQC3iveBAfGCAZ/wgQM=',
+  muted: true, loop: true, playsInline: true,
+});
+keepVid.setAttribute('playsinline', ''); keepVid.setAttribute('muted', '');
+keepVid.style.cssText = 'position:fixed;width:1px;height:1px;opacity:0.01;pointer-events:none;left:0;top:0';
+keepVid.addEventListener('timeupdate', () => { if (keepVid.currentTime > 0.5) keepVid.currentTime = Math.random() * 0.4; });
+document.body.appendChild(keepVid);
+function paintAwake(on){ document.querySelectorAll('[data-awake]').forEach(el => el.textContent = on ? 'Screen will stay on while sending.' : 'Keep this screen on while sending.'); }
+async function keepAwake(){
+  let ok = false;
+  try { wake = await navigator.wakeLock?.request('screen'); ok = !!wake; } catch {}
+  try { await keepVid.play(); ok = true; } catch {}
+  paintAwake(ok);
+}
+function releaseAwake(){ try { wake?.release() } catch {} wake = null; keepVid.pause(); paintAwake(false); }
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && (S.active || L.active)) { keepAwake(); ensureCtx(); }
+});
+
+/* Opus: allow stereo + high bitrate + FEC on both ends */
+function munge(sdp){
+  const m = sdp.match(/a=rtpmap:(\d+) opus\/48000\/2/i);
+  if (!m) return sdp;
+  const pt = m[1], want = { minptime:'10', useinbandfec:'1', stereo:'1', 'sprop-stereo':'1', maxaveragebitrate:'510000' };
+  const re = new RegExp('a=fmtp:' + pt + ' ([^\\r\\n]*)');
+  if (re.test(sdp)) {
+    return sdp.replace(re, (_, p) => {
+      const o = {};
+      p.split(';').map(s => s.trim()).filter(Boolean).forEach(kv => { const [k, v=''] = kv.split('='); o[k] = v; });
+      Object.assign(o, want);
+      return 'a=fmtp:' + pt + ' ' + Object.entries(o).map(([k,v]) => k + '=' + v).join(';');
+    });
+  }
+  return sdp.replace(m[0], m[0] + '\r\na=fmtp:' + pt + ' ' + Object.entries(want).map(([k,v]) => k + '=' + v).join(';'));
+}
+
+/* ============ Level meter ============ */
+const meters = {};
+function startMeter(elId, dbId, stream, channels, onLevel){
+  stopMeter(elId);
+  const el = $(elId), dbEl = $(dbId);
+  el.classList.toggle('mono', channels < 2);
+  let src;
+  try { src = ensureCtx().createMediaStreamSource(stream) } catch { return; }
+  const split = ctx.createChannelSplitter(2);
+  src.connect(split);
+  const n = channels < 2 ? 1 : 2;
+  const an = [];
+  const sink = ctx.createGain(); sink.gain.value = 0; sink.connect(ctx.destination);
+  for (let i = 0; i < n; i++){ const a = ctx.createAnalyser(); a.fftSize = 1024; split.connect(a, i); a.connect(sink); an.push(a); }
+  const buf = new Float32Array(1024), lv = [0,0], covers = el.querySelectorAll('.ch i');
+  let hold = -100, holdAt = 0, frame = 0;
+  const m = { src, split, sink, raf: 0 };
+  const tick = () => {
+    let peakDb = -100, top = 0;
+    an.forEach((a, i) => {
+      a.getFloatTimeDomainData(buf);
+      let p = 0; for (let k = 0; k < buf.length; k++){ const v = buf[k] < 0 ? -buf[k] : buf[k]; if (v > p) p = v; }
+      const db = p > 0 ? 20 * Math.log10(p) : -100;
+      if (db > peakDb) peakDb = db;
+      const t = Math.min(1, Math.max(0, (db + 60) / 60));
+      lv[i] = t > lv[i] ? t : lv[i] * 0.9 + t * 0.1;
+      covers[i].style.transform = `scaleX(${1 - lv[i]})`;
+      if (lv[i] > top) top = lv[i];
+    });
+    const now = performance.now();
+    if (peakDb >= hold || now - holdAt > 1200){ hold = peakDb; holdAt = now; }
+    if (++frame % 6 === 0) dbEl.textContent = hold <= -60 ? '–∞ dB' : `${Math.round(hold)} dB`;
+    onLevel && onLevel(top);
+    m.raf = requestAnimationFrame(tick);
+  };
+  m.raf = requestAnimationFrame(tick);
+  meters[elId] = m;
+}
+function stopMeter(elId){
+  const m = meters[elId]; if (!m) return;
+  cancelAnimationFrame(m.raf);
+  try { m.src.disconnect(); m.split.disconnect(); m.sink.disconnect(); } catch {}
+  $(elId).querySelectorAll('.ch i').forEach(c => c.style.transform = 'scaleX(1)');
+  delete meters[elId];
+}
+
+/* ============ Segmented control ============ */
+function paintSeg(mode){
+  const seg = $('qualitySeg'), btns = [...seg.querySelectorAll('button')], knob = seg.querySelector('.knob');
+  const i = btns.findIndex(b => b.dataset.mode === mode);
+  btns.forEach((b, j) => b.classList.toggle('on', j === i));
+  knob.style.width = btns[i].offsetWidth + 'px';
+  knob.style.transform = `translateX(${btns[i].offsetLeft - 2}px)`;
+}
+
+/* ============ SEND (mixer phone) ============ */
+const S = { active:false, peer:null, stream:null, code:null, mode: store.get('ic-mode') || 'voice',
+            deviceId: store.get('ic-device') || '', listeners: new Map(), idRetries: 0 };
+
+async function getStream(mode, deviceId){
+  const a = { echoCancellation:false, noiseSuppression:false, autoGainControl:false,
+              channelCount:{ ideal: MODES[mode].channels }, sampleRate:{ ideal:48000 }, latency:{ ideal:0 } };
+  if (deviceId) a.deviceId = { exact: deviceId };
+  let s;
+  try { s = await navigator.mediaDevices.getUserMedia({ audio:a, video:false }); }
+  catch (e) {
+    if (deviceId && (e.name === 'OverconstrainedError' || e.name === 'NotFoundError')) { delete a.deviceId; s = await navigator.mediaDevices.getUserMedia({ audio:a }); }
+    else throw e;
+  }
+  let t = s.getAudioTracks()[0];
+  // Voice mode: fold a stereo source down to true mono so it encodes as mono.
+  if (MODES[mode].channels === 1 && (t.getSettings().channelCount || 1) > 1) {
+    const c = ensureCtx(), src = c.createMediaStreamSource(s);
+    const dst = c.createMediaStreamDestination();
+    dst.channelCount = 1; dst.channelCountMode = 'explicit'; dst.channelInterpretation = 'speakers';
+    src.connect(dst);
+    const mono = dst.stream;
+    mono._raw = s;                                  // keep the device stream so we can stop it later
+    mono._chans = 1;
+    s = mono; t = mono.getAudioTracks()[0];
+  }
+  try { t.contentHint = MODES[mode].hint } catch {}
+  return s;
+}
+const stopStream = s => { s?.getTracks().forEach(t => t.stop()); s?._raw?.getTracks().forEach(t => t.stop()); };
+const chans = () => S.stream?._chans || S.stream?.getAudioTracks()[0]?.getSettings().channelCount || MODES[S.mode].channels;
+const deviceOf = s => (s?._raw || s)?.getAudioTracks()[0]?.getSettings().deviceId;
+
+function paintModeNote(){
+  let n = MODES[S.mode].note;
+  if (S.mode === 'studio' && S.stream && chans() < 2) n += ' This source only gives the browser mono.';
+  $('modeNote').textContent = n;
+}
+
+async function fillInputs(){
+  const sel = $('inputSel');
+  const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'audioinput');
+  const cur = deviceOf(S.stream) || S.deviceId;
+  sel.innerHTML = '';
+  devs.forEach((d, i) => {
+    const o = document.createElement('option');
+    o.value = d.deviceId; o.textContent = d.label || `Input ${i + 1}`;
+    if (d.deviceId === cur) o.selected = true;
+    sel.appendChild(o);
+  });
+  if (!devs.length) sel.innerHTML = '<option>Default</option>';
+}
+
+function micError(e){
+  if (e.name === 'NotAllowedError') return 'Microphone access denied';
+  if (e.name === 'NotFoundError') return 'No audio input found';
+  if (!window.isSecureContext) return 'Open this page over https';
+  return 'Couldn’t open audio input';
+}
+
+async function startSend(){
+  show('send'); paintSeg(S.mode); paintModeNote();
+  setPill($('sendPill'), 'Starting…');
+  S.active = true; ensureCtx(); keepAwake();
+  try { S.stream = await getStream(S.mode, S.deviceId); }
+  catch (e) { setPill($('sendPill'), micError(e), 'err'); return; }
+  if (!S.active) { stopStream(S.stream); S.stream = null; return; }
+  paintModeNote(); fillInputs();
+  startMeter('sendMeter', 'sendDb', S.stream, chans());
+  S.code = store.get('ic-code') || String(1000 + Math.floor(Math.random() * 9000));
+  S.idRetries = 0;
+  openHostPeer();
+}
+
+function renderCode(code){
+  $('codeOut').innerHTML = (code || '––––').split('').map(c => `<span>${c}</span>`).join('');
+}
+
+function openHostPeer(){
+  renderCode(S.code);
+  const peer = new Peer(PREFIX + S.code, { config:{ iceServers: ICE }, debug: 0 });
+  S.peer = peer;
+  peer.on('open', () => { store.set('ic-code', S.code); S.idRetries = 0; paintSendStatus(); });
+  peer.on('connection', onListener);
+  peer.on('disconnected', () => {
+    if (S.peer !== peer || peer.destroyed) return;
+    setPill($('sendPill'), 'Reconnecting…', 'wait');
+    setTimeout(() => { if (S.peer === peer && !peer.destroyed) peer.reconnect(); }, 1500);
+  });
+  peer.on('error', e => {
+    if (S.peer !== peer) return;
+    if (e.type === 'unavailable-id') {
+      // Old session may still be holding this code for a few seconds — retry, then pick a new one.
+      peer.destroy();
+      if (++S.idRetries > 4) { S.code = String(1000 + Math.floor(Math.random() * 9000)); S.idRetries = 0; }
+      setPill($('sendPill'), 'Claiming code…', 'wait');
+      setTimeout(() => S.active && openHostPeer(), 1500);
+    } else if (['network','server-error','socket-error','socket-closed'].includes(e.type)) {
+      setPill($('sendPill'), 'Can’t reach pairing server', 'err');
+      setTimeout(() => { if (S.peer === peer && !peer.destroyed) peer.reconnect(); }, 3000);
+    }
+  });
+}
+
+function paintSendStatus(){
+  if (!S.peer?.open && !S.listeners.size) return;
+  const live = [...S.listeners.values()].filter(x => x.live).length;
+  if (live) setPill($('sendPill'), live === 1 ? '1 listener' : `${live} listeners`, 'live');
+  else if (S.listeners.size) setPill($('sendPill'), 'Connecting listener…', 'wait');
+  else setPill($('sendPill'), 'Waiting for listener', 'wait');
+}
+
+function onListener(conn){
+  conn.on('open', () => {
+    if (!S.stream) return conn.close();
+    const call = S.peer.call(conn.peer, S.stream, { sdpTransform: munge });
+    const entry = { conn, call, live:false };
+    S.listeners.set(conn.peer, entry);
+    conn.send({ type:'mode', mode:S.mode, channels:chans() });
+    const pc = call.peerConnection;
+    if (pc) {
+      let dropTimer;
+      const onState = () => {
+        const st = pc.connectionState || pc.iceConnectionState;
+        if (st === 'connected' || st === 'completed') { clearTimeout(dropTimer); entry.live = true; applyBitrate(pc); }
+        else if (st === 'disconnected') { entry.live = false; dropTimer = setTimeout(() => dropListener(conn.peer), 8000); }
+        else if (st === 'failed' || st === 'closed') dropListener(conn.peer);
+        paintSendStatus();
+      };
+      pc.addEventListener('connectionstatechange', onState);
+      pc.addEventListener('iceconnectionstatechange', onState);
+    }
+    paintSendStatus();
+  });
+  conn.on('close', () => dropListener(conn.peer));
+  conn.on('error', () => dropListener(conn.peer));
+}
+
+function dropListener(id){
+  const e = S.listeners.get(id); if (!e) return;
+  S.listeners.delete(id);
+  try { e.call.close() } catch {} try { e.conn.close() } catch {}
+  paintSendStatus();
+}
+
+function applyBitrate(pc){
+  pc.getSenders().forEach(s => {
+    if (s.track?.kind !== 'audio') return;
+    const p = s.getParameters();
+    if (!p.encodings || !p.encodings.length) return;
+    p.encodings[0].maxBitrate = MODES[S.mode].bitrate;
+    p.encodings[0].priority = 'high';
+    p.encodings[0].networkPriority = 'high';
+    s.setParameters(p).catch(()=>{});
+  });
+}
+
+async function swapStream(ns){
+  const nt = ns.getAudioTracks()[0];
+  for (const e of S.listeners.values()){
+    const pc = e.call.peerConnection; if (!pc) continue;
+    for (const s of pc.getSenders()) if (s.track?.kind === 'audio') await s.replaceTrack(nt).catch(()=>{});
+    applyBitrate(pc);
+  }
+  const old = S.stream; S.stream = ns;
+  stopStream(old);
+  startMeter('sendMeter', 'sendDb', S.stream, chans());
+  S.listeners.forEach(e => { try { e.conn.send({ type:'mode', mode:S.mode, channels:chans() }) } catch {} });
+  paintModeNote();
+}
+
+async function setMode(mode){
+  if (mode === S.mode) return;
+  S.mode = mode; store.set('ic-mode', mode); paintSeg(mode); paintModeNote();
+  if (!S.stream) return;
+  try { await swapStream(await getStream(mode, S.deviceId)); } catch (e) { setPill($('sendPill'), micError(e), 'err'); }
+}
+
+function stopSend(){
+  S.active = false;
+  S.listeners.forEach((_, id) => dropListener(id));
+  try { S.peer?.destroy() } catch {} S.peer = null;
+  stopStream(S.stream); S.stream = null;
+  stopMeter('sendMeter'); releaseAwake(); show('home');
+}
+
+$('qualitySeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setMode(b.dataset.mode); });
+$('inputSel').addEventListener('change', async e => {
+  S.deviceId = e.target.value; store.set('ic-device', S.deviceId);
+  try { await swapStream(await getStream(S.mode, S.deviceId)); } catch (err) { setPill($('sendPill'), micError(err), 'err'); }
+});
+navigator.mediaDevices?.addEventListener?.('devicechange', () => { if (S.active && S.stream) fillInputs(); });
+$('shareBtn').addEventListener('click', async () => {
+  if (!S.code) return;
+  const url = location.origin + location.pathname + '?code=' + S.code;
+  try { if (navigator.share) { await navigator.share({ title:'Intercom', text:`Listen in — room ${S.code}`, url }); return; } } catch { return; }
+  try { await navigator.clipboard.writeText(url); $('shareBtn').textContent = 'Link copied'; setTimeout(() => $('shareBtn').textContent = 'Share link', 1600); } catch {}
+});
+
+/* ============ LISTEN (remote phone) ============ */
+const L = { active:false, gen:0, peer:null, conn:null, call:null, code:'', everLive:false, retry:null,
+            mode:'voice', channels:1, stats:null, prev:null };
+const audioEl = $('remoteAudio');
+
+function paintEntry(){
+  const v = $('codeIn').value;
+  [...$('entry').querySelectorAll('.box')].forEach((b, i) => {
+    b.textContent = v[i] || '';
+    b.classList.toggle('cur', document.activeElement === $('codeIn') && i === Math.min(v.length, 3));
+  });
+  $('joinBtn').disabled = v.length !== 4;
+}
+$('codeIn').addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, '').slice(0,4); $('joinErr').textContent = ''; paintEntry(); });
+$('codeIn').addEventListener('focus', paintEntry);
+$('codeIn').addEventListener('blur', paintEntry);
+$('codeIn').addEventListener('keydown', e => { if (e.key === 'Enter' && !$('joinBtn').disabled) join(); });
+
+function openListen(){
+  show('listen');
+  $('joinView').hidden = false; $('liveView').hidden = true;
+  if (!$('codeIn').value) $('codeIn').value = store.get('ic-last') || '';
+  paintEntry();
+  setTimeout(() => $('codeIn').focus(), 350);
+}
+
+function join(){
+  const code = $('codeIn').value;
+  if (code.length !== 4) return;
+  $('codeIn').blur();
+  store.set('ic-last', code);
+  ensureCtx();
+  // Unlock playback inside this tap so iOS lets the stream play later.
+  try { audioEl.srcObject = ctx.createMediaStreamDestination().stream; audioEl.play().catch(()=>{}); } catch {}
+  Object.assign(L, { active:true, code, everLive:false });
+  $('joinView').hidden = true; $('liveView').hidden = false;
+  $('liveSub').textContent = 'Room ' + code;
+  ['stDelay','stRate','stFmt','stRoute'].forEach(id => $(id).textContent = '–');
+  setLive('Connecting…', false);
+  keepAwake();
+  connectListener();
+}
+
+function setLive(title, live){
+  $('liveTitle').textContent = title;
+  $('orbWrap').classList.toggle('wait', !live);
+  if (!live) $('orbWrap').style.setProperty('--lvl', 0);
+}
+
+function teardownListener(){
+  L.gen++;
+  clearTimeout(L.retry); L.retry = null;
+  clearInterval(L.stats); L.stats = null; L.prev = null;
+  try { L.call?.close() } catch {} try { L.conn?.close() } catch {} try { L.peer?.destroy() } catch {}
+  L.call = L.conn = L.peer = null;
+  stopMeter('listenMeter');
+}
+
+function connectListener(){
+  teardownListener();
+  const gen = L.gen;
+  const ok = () => gen === L.gen && L.active;
+  const peer = new Peer({ config:{ iceServers: ICE }, debug: 0 });
+  L.peer = peer;
+  peer.on('open', () => {
+    if (!ok()) return;
+    const conn = peer.connect(PREFIX + L.code, { reliable: true });
+    L.conn = conn;
+    conn.on('data', d => ok() && onHostData(d));
+    conn.on('close', () => ok() && lost());
+    conn.on('error', () => ok() && lost());
+  });
+  peer.on('call', call => {
+    if (!ok()) return;
+    try { L.call?.close() } catch {}
+    L.call = call;
+    call.answer(undefined, { sdpTransform: munge });
+    call.on('stream', s => ok() && onRemoteStream(s));
+    call.on('close', () => ok() && lost());
+    const pc = call.peerConnection;
+    if (pc) {
+      let t;
+      pc.addEventListener('iceconnectionstatechange', () => {
+        if (!ok()) return;
+        const st = pc.iceConnectionState;
+        if (st === 'failed') lost();
+        else if (st === 'disconnected') { setLive('Reconnecting…', false); t = setTimeout(() => ok() && pc.iceConnectionState !== 'connected' && pc.iceConnectionState !== 'completed' && lost(), 5000); }
+        else if (st === 'connected' || st === 'completed') { clearTimeout(t); setLive('Live', true); }
+      });
+    }
+  });
+  peer.on('error', e => {
+    if (!ok()) return;
+    if (e.type === 'peer-unavailable' && !L.everLive) {
+      leave();
+      $('joinErr').textContent = `No one is sending on ${L.code}.`;
+      return;
+    }
+    if (e.type === 'peer-unavailable') { setLive('Waiting for sender…', false); scheduleRetry(3000); return; }
+    lost();
+  });
+  // Safety net: if nothing connects in 20s, try again.
+  setTimeout(() => { if (ok() && !L.call) lost(); }, 20000);
+}
+
+function lost(){
+  if (!L.active || L.retry) return;
+  setLive(L.everLive ? 'Reconnecting…' : 'Connecting…', false);
+  scheduleRetry(2000);
+}
+function scheduleRetry(ms){
+  if (L.retry) return;
+  L.retry = setTimeout(() => { L.retry = null; if (L.active) connectListener(); }, ms);
+}
+
+function onHostData(d){
+  if (d?.type !== 'mode') return;
+  L.mode = MODES[d.mode] ? d.mode : 'voice';
+  L.channels = d.channels || MODES[L.mode].channels;
+  $('stFmt').textContent = `${MODES[L.mode].label} · ${L.channels > 1 ? 'Stereo' : 'Mono'}`;
+  tuneReceiver();
+  if (audioEl.srcObject && L.call) startMeter('listenMeter', 'listenDb', audioEl.srcObject, L.channels, lvl => $('orbWrap').style.setProperty('--lvl', lvl.toFixed(3)));
+}
+
+function tuneReceiver(){
+  const pc = L.call?.peerConnection; if (!pc) return;
+  const ms = MODES[L.mode].jitterMs;
+  pc.getReceivers().forEach(r => {
+    try {
+      if ('jitterBufferTarget' in r) r.jitterBufferTarget = ms;
+      else if ('playoutDelayHint' in r) r.playoutDelayHint = ms / 1000;
+    } catch {}
+  });
+}
+
+function onRemoteStream(stream){
+  L.everLive = true;
+  audioEl.srcObject = stream;
+  audioEl.muted = false;
+  audioEl.play().then(() => $('tapAudio').hidden = true).catch(() => $('tapAudio').hidden = false);
+  setLive('Live', true);
+  tuneReceiver();
+  startMeter('listenMeter', 'listenDb', stream, L.channels, lvl => $('orbWrap').style.setProperty('--lvl', lvl.toFixed(3)));
+  clearInterval(L.stats);
+  L.stats = setInterval(pollStats, 1000);
+}
+
+async function pollStats(){
+  const pc = L.call?.peerConnection; if (!pc) return;
+  let r; try { r = await pc.getStats() } catch { return; }
+  let rtt, bytes, ts, jb, pair;
+  r.forEach(s => {
+    if (s.type === 'transport' && s.selectedCandidatePairId) pair = r.get(s.selectedCandidatePairId);
+    if (s.type === 'inbound-rtp' && s.kind === 'audio') {
+      bytes = s.bytesReceived; ts = s.timestamp;
+      if (s.jitterBufferEmittedCount) jb = s.jitterBufferDelay / s.jitterBufferEmittedCount;
+    }
+  });
+  if (!pair) r.forEach(s => { if (s.type === 'candidate-pair' && s.state === 'succeeded' && (s.nominated || s.selected)) pair = s; });
+  if (pair) {
+    rtt = pair.currentRoundTripTime;
+    const lc = r.get(pair.localCandidateId), rc = r.get(pair.remoteCandidateId);
+    const relayed = lc?.candidateType === 'relay' || rc?.candidateType === 'relay';
+    const local = lc?.candidateType === 'host' && rc?.candidateType === 'host';
+    $('stRoute').textContent = relayed ? 'Relayed' : local ? 'Direct · Local network' : 'Direct';
+  }
+  if (rtt != null) {
+    const est = rtt * 500 + (jb || 0) * 1000 + 25;   // one-way network + jitter buffer + codec/device
+    $('stDelay').textContent = `≈ ${Math.round(est)} ms`;
+  }
+  if (bytes != null && L.prev) {
+    const kbps = (bytes - L.prev.bytes) * 8 / (ts - L.prev.ts);
+    if (kbps >= 0) $('stRate').textContent = `${Math.round(kbps)} kbps`;
+  }
+  if (bytes != null) L.prev = { bytes, ts };
+}
+
+function leave(){
+  L.active = false;
+  teardownListener();
+  audioEl.pause(); audioEl.srcObject = null;
+  $('tapAudio').hidden = true;
+  releaseAwake();
+  $('joinView').hidden = false; $('liveView').hidden = true;
+  paintEntry();
+}
+
+$('joinBtn').addEventListener('click', join);
+$('leaveBtn').addEventListener('click', leave);
+$('tapAudio').addEventListener('click', () => { ensureCtx(); audioEl.play().then(() => $('tapAudio').hidden = true).catch(()=>{}); });
+
+/* ============ Navigation ============ */
+$('goSend').addEventListener('click', startSend);
+$('goListen').addEventListener('click', openListen);
+$('stopSend').addEventListener('click', stopSend);
+document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click', () => {
+  if (S.active) stopSend();
+  if (L.active) leave();
+  show('home');
+}));
+window.addEventListener('resize', () => S.active && paintSeg(S.mode));
+window.addEventListener('pagehide', () => { try { S.peer?.destroy(); L.peer?.destroy(); } catch {} });
+
+// Shared link: ?code=1234 opens Listen with the code filled in
+const qp = new URLSearchParams(location.search).get('code');
+if (qp && /^\d{4}$/.test(qp)) { $('codeIn').value = qp; openListen(); }
+if (!window.Peer) setTimeout(() => { if (!window.Peer) alert('Couldn’t load the connection library. Check your internet connection and reload.'); }, 3000);
+</script>
+</body>
+</html>
