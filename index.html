@@ -121,6 +121,8 @@ button{border:0;background:none;padding:0;cursor:pointer}
 .switch span::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;
   box-shadow:0 3px 8px rgba(0,0,0,.15),0 3px 1px rgba(0,0,0,.06);transition:transform .25s cubic-bezier(.3,.8,.3,1)}
 .switch input:checked+span{background:var(--green)}
+.switch.mute input:checked+span{background:var(--red)}
+#muteRow.on .rl, #muteRow.on small{color:var(--red)}
 .switch input:checked+span::after{transform:translateX(20px)}
 @media (prefers-color-scheme: dark){.switch span{background:rgba(120,120,128,.36)}}
 .pw{display:flex;align-items:center;gap:14px}
@@ -194,6 +196,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
   margin:-2px 0 4px;animation:in .3s ease;background:rgba(0,122,255,.12);color:var(--blue)}
 .notice .ndot{width:7px;height:7px;border-radius:50%;background:currentColor}
 .notice.warn{background:rgba(255,149,0,.15);color:var(--orange)}
+.notice.err{background:rgba(255,59,48,.13);color:var(--red)}
 .notice.ok{background:rgba(52,199,89,.14);color:var(--green)}
 .live-sub.warn{color:var(--orange)}
 .live-sub{font-size:15px;color:var(--label2);text-align:center;margin:2px 0 6px}
@@ -330,6 +333,8 @@ button{border:0;background:none;padding:0;cursor:pointer}
       <div class="row"><span>Quality</span>
         <div class="seg" id="qualitySeg"><span class="knob"></span><button data-mode="voice">Voice</button><button data-mode="studio">Studio</button></div>
       </div>
+      <div class="row" id="muteRow"><span class="rl">Mute<small id="muteHint">Listeners hear the mixer</small></span>
+        <label class="switch mute"><input type="checkbox" id="muteSw" aria-label="Mute"><span></span></label></div>
     </div>
     <p class="note" id="modeNote"></p>
 
@@ -460,6 +465,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
               <option value="left">Left only</option><option value="right">Right only</option></select></span></div>
             <div class="row"><span>Gain</span><span class="v" id="cxGainV">–</span></div>
             <div class="row slider-row"><input type="range" id="cxGain" min="-40" max="12" step="0.5" value="0" aria-label="Sender gain"></div>
+            <div class="row"><span>Mute sender</span><label class="switch mute"><input type="checkbox" id="cxMute" aria-label="Mute sender"><span></span></label></div>
             <div class="row"><span>Tone auto-gain</span><label class="switch"><input type="checkbox" id="cxAuto" aria-label="Tone auto-gain"><span></span></label></div>
             <div class="row"><span>Tone reads</span><span class="selwrap"><select id="cxRef">
               <option value="-20">−20 dBFS</option><option value="-18">−18 dBFS</option>
@@ -502,7 +508,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
               sender watchdog re-acquires a lost input, listener auto-resyncs a bloated buffer. */
 
 /* ============ Config ============ */
-const VERSION = '0.5.0-beta';                     // shown on the home screen — go to 1.0.0 when ready
+const VERSION = '0.6.0-beta';                     // shown on the home screen — go to 1.0.0 when ready
 const PREFIX = 'asahina-intercom-';            // namespace for room ids on the PeerJS server
 const ICE = [
   { urls: 'stun:stun.l.google.com:19302' },
@@ -786,6 +792,7 @@ function paintSeg(mode, seg = $('qualitySeg'), key = 'mode'){
 const S = { active:false, peer:null, stream:null, code:null, mode: store.get('ic-mode') || 'voice',
             deviceId: store.get('ic-device') || '', listeners: new Map(), idRetries: 0,
             routeSel: store.get('ic-route') || 'auto', autoRoute: 'stereo',
+            muted: store.get('ic-mute') === '1',   // remembered, so a reload never un-mutes by surprise
             gainDb: Number.isFinite(parseFloat(store.get('ic-gain'))) ? parseFloat(store.get('ic-gain')) : 0 };
 
 async function getStream(mode, deviceId, strict = false){
@@ -813,10 +820,11 @@ async function getStream(mode, deviceId, strict = false){
   const gain = c.createGain(); gain.gain.value = dbToGain(S.gainDb);
   const tap = c.createGain(); tap.channelCount = 2; tap.channelCountMode = 'explicit'; tap.channelInterpretation = 'speakers';
   const dst = c.createMediaStreamDestination(); dst.channelCount = 2; dst.channelCountMode = 'explicit'; dst.channelInterpretation = 'speakers';
-  merger.connect(gain); gain.connect(tap); tap.connect(dst);
+  const mute = c.createGain(); mute.gain.value = S.muted ? 0 : 1;   // after the meter, so you still see input while muted
+  merger.connect(gain); gain.connect(tap); tap.connect(mute); mute.connect(dst);
   const pre = c.createGain(); merger.connect(pre);   // pre-gain copy for tone detection
   const out = dst.stream;
-  Object.assign(out, { _raw:s, _src:src, _gain:gain, _tap:tap, _pre:pre, _mx:mx, _lvl:lvl, _sink:sink });
+  Object.assign(out, { _raw:s, _src:src, _gain:gain, _tap:tap, _mute:mute, _pre:pre, _mx:mx, _lvl:lvl, _sink:sink });
   try { out.getAudioTracks()[0].contentHint = MODES[mode].hint } catch {}
   applyRoute(out, mode);
   return out;
@@ -906,6 +914,7 @@ async function applyCtl(key, v){
   else if (key === 'route' && (v === 'auto' || ROUTES[v])) { S.routeSel = v; store.set('ic-route', v); $('routeSel').value = v; routeChanged(); }
   else if (key === 'gain' && Number.isFinite(Number(v))) setGain(Number(v));
   else if (key === 'auto') setAutoTone(!!v);
+  else if (key === 'mute') setMute(!!v);
   else if (key === 'toneRef' && [-20, -18, -14, -12].includes(Number(v))) setToneRef(Number(v));
   else if (key === 'src' && [...$('inputSel').options].some(o => o.value === v)) {
     $('inputSel').value = v; S.deviceId = v; store.set('ic-device', v);
@@ -917,7 +926,7 @@ $('ctlSw').addEventListener('change', e => { S.ctlOn = e.target.checked; store.s
 $('pwNew').addEventListener('click', () => { S.pw = newPw(); store.set('ic-pw', S.pw); revokeAll('changed'); paintCtl(); });
 
 function hostState(full){
-  const st = { type:'mode', mode:S.mode, channels:chans(), ver:VERSION, issue: S.issue || '', ctl: !!S.ctlOn,
+  const st = { type:'mode', mode:S.mode, channels:chans(), ver:VERSION, issue: S.issue || '', ctl: !!S.ctlOn, muted: !!S.muted,
                tone: typeof Tone !== 'undefined' && !!Tone.present, toneHz: typeof Tone !== 'undefined' ? Tone.presentHz || 0 : 0 };
   if (full) Object.assign(st, {                    // settings only go to listeners who unlocked with the password
     full: true, relay: relayText(),
@@ -933,6 +942,20 @@ function broadcastState(){           // throttled so fader drags don't flood the
   if (stateT) return;
   stateT = setTimeout(() => { stateT = 0; S.listeners.forEach(e => sendState(e.conn, e)); }, 150);
 }
+
+function setMute(on){
+  S.muted = !!on; store.set('ic-mute', S.muted ? '1' : '0');
+  const m = S.stream?._mute;
+  if (m) m.gain.setTargetAtTime(S.muted ? 0 : 1, m.context.currentTime, 0.015);
+  paintMute(); paintSendStatus(); broadcastState();
+}
+function paintMute(){
+  $('muteSw').checked = S.muted;
+  $('muteRow').classList.toggle('on', S.muted);
+  $('muteHint').textContent = S.muted ? 'Muted — listeners hear silence' : 'Listeners hear the mixer';
+}
+$('muteSw').addEventListener('change', e => setMute(e.target.checked));
+paintMute();
 
 function setGain(db){
   S.gainDb = Math.max(-80, Math.min(12, db));
@@ -1104,7 +1127,8 @@ function paintSendStatus(){
   if (!S.peer || (S.peer.disconnected && !S.listeners.size)) return;
   if (S.issue) { setPill($('sendPill'), S.issue, 'err'); return; }
   const live = [...S.listeners.values()].filter(x => x.live).length;
-  if (live) setPill($('sendPill'), live === 1 ? '1 listener' : `${live} listeners`, 'live');
+  if (S.muted) setPill($('sendPill'), live ? `Muted · ${live} ${live === 1 ? 'listener' : 'listeners'}` : 'Muted', 'err');
+  else if (live) setPill($('sendPill'), live === 1 ? '1 listener' : `${live} listeners`, 'live');
   else if (S.listeners.size) setPill($('sendPill'), 'Connecting listener…', 'wait');
   else setPill($('sendPill'), 'Waiting for listener', 'wait');
 }
@@ -1421,7 +1445,8 @@ $('newCode').addEventListener('click', () => {
 $('shareBtn').addEventListener('click', async () => {
   if (!S.code) return;
   const url = location.origin + location.pathname + '?code=' + S.code;
-  try { if (navigator.share) { await navigator.share({ title:'Intercom', text:`Listen in — room ${S.code}`, url }); return; } } catch { return; }
+  // URL only: with text + url, iOS "Copy" copies just the text. The room code is in the link anyway.
+  try { if (navigator.share) { await navigator.share({ title:`Intercom · room ${S.code}`, url }); return; } } catch { return; }
   try { await navigator.clipboard.writeText(url); $('shareBtn').textContent = 'Link copied'; setTimeout(() => $('shareBtn').textContent = 'Share link', 1600); } catch {}
 });
 
@@ -1499,6 +1524,7 @@ function join(){
 }
 
 function setLive(title, live){
+  if (title === 'Live' && L.senderMuted) { title = 'Muted'; live = false; }
   $('liveTitle').textContent = title;
   $('orbWrap').classList.toggle('wait', !live);
   if (!live) $('orbWrap').style.setProperty('--lvl', 0);
@@ -1622,6 +1648,7 @@ let noticeT = 0;
 function notice(text, kind = 'info', ms = 0, tag = ''){
   const n = $('lnotice');
   if (!n.hidden && n.dataset.tag === 'issue' && tag !== 'issue' && L.issue) return;   // a sender problem stays on screen
+  if (!n.hidden && n.dataset.tag === 'muted' && L.senderMuted && !['issue', 'muted'].includes(tag) && ms) return;   // so does mute
   clearTimeout(noticeT);
   n.className = 'notice ' + kind; n.dataset.tag = tag; $('lnoticeTxt').textContent = text; n.hidden = false;
   n.style.cursor = tag === 'tone' ? 'pointer' : '';
@@ -1629,7 +1656,9 @@ function notice(text, kind = 'info', ms = 0, tag = ''){
 }
 function hideNotice(force){
   clearTimeout(noticeT); $('lnotice').hidden = true; $('lnotice').dataset.tag = '';
-  if (!force && L.toneOn) paintToneNotice();      // tone still on → bring its notice back
+  if (force) return;
+  if (L.senderMuted) notice('Sender muted', 'err', 0, 'muted');   // still muted → bring its notice back
+  else if (L.toneOn) paintToneNotice();          // tone still on → bring its notice back
 }
 
 /* ---- Tone on the line → lower the listener's volume ---- */
@@ -1736,6 +1765,7 @@ function paintCtlUI(d){
   if (Date.now() - gainTouch > 800) $('cxGain').value = Math.max(-40, d.gain ?? 0);
   $('cxGainV').textContent = gainText(d.gain ?? 0);
   $('cxAuto').checked = !!d.auto;
+  $('cxMute').checked = !!d.muted;
   if (document.activeElement !== $('cxRef')) $('cxRef').value = String(d.toneRef ?? -20);
   $('sxRelay').textContent = d.relay || '–';
   $('sxRelay').classList.toggle('warn', /^Off/.test(d.relay || ''));
@@ -1754,6 +1784,7 @@ $('cxSrc').addEventListener('change', e => ctl('src', e.target.value));
 $('cxRoute').addEventListener('change', e => ctl('route', e.target.value));
 $('cxRef').addEventListener('change', e => ctl('toneRef', Number(e.target.value)));
 $('cxAuto').addEventListener('change', e => ctl('auto', e.target.checked));
+$('cxMute').addEventListener('change', e => ctl('mute', e.target.checked));
 $('cxMode').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { paintSeg(b.dataset.mode, $('cxMode'), 'mode'); ctl('mode', b.dataset.mode); } });
 $('pwGo').addEventListener('click', unlock);
 $('pwIn').addEventListener('keydown', e => { if (e.key === 'Enter') unlock(); });
@@ -1769,6 +1800,12 @@ function onHostData(d){
   if (changed) {
     tuneReceiver();
     if (audioEl.srcObject && L.call) startMeter('listenMeter', 'listenDb', audioEl.srcObject, L.channels, lvl => $('orbWrap').style.setProperty('--lvl', lvl.toFixed(3)));
+  }
+  if ('muted' in d && !!d.muted !== !!L.senderMuted) {
+    L.senderMuted = !!d.muted;
+    if (L.senderMuted) notice('Sender muted', 'err', 0, 'muted');
+    else if ($('lnotice').dataset.tag === 'muted') { hideNotice(true); notice('Sender unmuted', 'ok', 2500); }
+    if (L.everLive && !L.repairing) setLive(L.senderMuted ? 'Muted' : 'Live', !L.senderMuted);
   }
   if ('tone' in d) setToneOn(!!d.tone, d.toneHz);
   if ('issue' in d && d.issue !== (L.issue || '')) {
@@ -1941,7 +1978,7 @@ function resync(){
 function leave(){
   L.active = false;
   teardownListener();
-  L.toneOn = false; L.duckSkip = false; L.issue = ''; L.repairing = false; L.authed = false; L.ctlAvail = undefined;
+  L.toneOn = false; L.duckSkip = false; L.issue = ''; L.senderMuted = false; L.repairing = false; L.authed = false; L.ctlAvail = undefined;
   $('senderInfo').hidden = true; paintLock();
   teardownPlayback(); hideNotice(true); L.dropped = false; L.resyncing = false;
   audioEl.pause(); audioEl.srcObject = null; audioEl.muted = false;
