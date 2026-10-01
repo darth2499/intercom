@@ -192,8 +192,12 @@ button{border:0;background:none;padding:0;cursor:pointer}
 .orb-wrap.wait .orb{background:linear-gradient(180deg,#b8b8bd,#8e8e93);box-shadow:none}
 @keyframes breathe{0%,100%{transform:scale(.6);opacity:.12}50%{transform:scale(.75);opacity:.2}}
 .live-title{font-size:28px;font-weight:700;text-align:center;margin:6px 0 0}
-.notice{align-self:center;display:inline-flex;align-items:center;gap:8px;padding:7px 14px;border-radius:99px;font-size:14px;font-weight:500;
-  margin:-2px 0 4px;animation:in .3s ease;background:rgba(0,122,255,.12);color:var(--blue)}
+.notice-wrap{display:grid;grid-template-rows:0fr;opacity:0;margin-top:-14px;   /* collapsed: cancels the column gap */
+  transition:grid-template-rows .34s cubic-bezier(.3,.7,.2,1),margin-top .34s cubic-bezier(.3,.7,.2,1),opacity .22s ease}
+.notice-wrap.show{grid-template-rows:1fr;opacity:1;margin-top:0}
+.notice-in{min-height:0;overflow:hidden;display:flex;justify-content:center}
+.notice{display:inline-flex;align-items:center;gap:8px;padding:7px 14px;border-radius:99px;font-size:14px;font-weight:500;
+  margin:0 0 2px;background:rgba(0,122,255,.12);color:var(--blue);transition:background .25s,color .25s}
 .notice .ndot{width:7px;height:7px;border-radius:50%;background:currentColor}
 .notice.warn{background:rgba(255,149,0,.15);color:var(--orange)}
 .notice.err{background:rgba(255,59,48,.13);color:var(--red)}
@@ -415,7 +419,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
       </div>
       <h2 class="live-title" id="liveTitle">Connecting…</h2>
       <p class="live-sub" id="liveSub">Room ––––</p>
-      <div class="notice" id="lnotice" hidden><span class="ndot"></span><span id="lnoticeTxt"></span></div>
+      <div class="notice-wrap" id="lnoticeWrap"><div class="notice-in"><div class="notice" id="lnotice"><span class="ndot"></span><span id="lnoticeTxt"></span></div></div></div>
       <button class="btn tinted" id="tapAudio" hidden>Tap to hear audio</button>
 
       <div class="card">
@@ -508,7 +512,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
               sender watchdog re-acquires a lost input, listener auto-resyncs a bloated buffer. */
 
 /* ============ Config ============ */
-const VERSION = '0.6.0-beta';                     // shown on the home screen — go to 1.0.0 when ready
+const VERSION = '0.6.1-beta';                     // shown on the home screen — go to 1.0.0 when ready
 const PREFIX = 'asahina-intercom-';            // namespace for room ids on the PeerJS server
 const ICE = [
   { urls: 'stun:stun.l.google.com:19302' },
@@ -1072,8 +1076,23 @@ function senderIssue(){
   if (ctx && ctx.state !== 'running') return 'Audio paused by the phone — resuming…';
   return '';
 }
+// Listeners send receiver reports about every second; silence for ~2.5 s means our network changed
+// (or theirs did). Re-open the pairing socket and call them again instead of waiting for ICE (5–10 s).
+async function linkCheck(){
+  const now = performance.now();
+  for (const e of S.listeners.values()) {
+    const pc = e.call?.peerConnection;
+    if (!e.live || !pc) continue;
+    let rx = null;
+    try { (await pc.getStats()).forEach(r => { if (r.type === 'transport') rx = r.bytesReceived; }); } catch { continue; }
+    if (rx == null) continue;
+    if (!e.rx || e.rx.pc !== pc || rx !== e.rx.v) { e.rx = { pc, v: rx, at: now }; continue; }
+    if (now - e.rx.at > 2500) { e.rx.at = now + 4000; e.live = false; paintSendStatus(); refreshHostSignal(); setTimeout(recallStale, 600); }
+  }
+}
 async function senderWatchdog(){
   if (!S.active || !S.stream) return;
+  linkCheck();
   const issue = senderIssue();
   if (issue !== (S.issue || '')) { S.issue = issue; paintSendStatus(); broadcastState(); }
   if (!issue || S.recovering) return;
@@ -1534,6 +1553,7 @@ function teardownListener(){
   L.gen++;
   clearTimeout(L.retry); L.retry = null;
   clearInterval(L.stats); L.stats = null; L.prev = null;
+  clearInterval(L.stallT); L.stallT = null; L.stall = null;
   try { L.call?.close() } catch {} try { L.conn?.close() } catch {} try { L.peer?.destroy() } catch {}
   L.call = L.conn = L.peer = null;
   stopMeter('listenMeter');
@@ -1585,7 +1605,7 @@ async function connectListener(){
     if (e.type === 'peer-unavailable') {                // sender is reconnecting / restarting — keep trying
       setLive('Waiting for sender…', false);
       if (L.everLive && !$('lnotice').dataset.tag) notice('Sender offline — waiting for it to come back', 'warn');
-      L.repairing = false; setTimeout(() => ok() && repair('sender away'), 3000);
+      L.repairing = false; setTimeout(() => ok() && repair('sender away'), 1500);
       return;
     }
     if (['network','server-error','socket-error','socket-closed','disconnected'].includes(e.type)) return;  // handled by 'disconnected'
@@ -1629,10 +1649,10 @@ function repair(why){
   let tries = 0;
   const attempt = () => {
     if (gen !== L.gen || !L.active || !L.repairing) return;      // stream came back → done
-    if (++tries > 7) { L.repairing = false; return lost(); }    // ~15 s → full restart
+    if (++tries > 12) { L.repairing = false; return lost(); }   // ~18 s → full restart
     if (tries === 1 || !L.conn?.open || tries % 3 === 0) openLink();   // fresh link (the sender may have missed the last one)
-    if (tries === 4) refreshSignal(peer);
-    setTimeout(attempt, 2000);
+    if (tries === 5 || tries === 9) refreshSignal(peer);
+    setTimeout(attempt, 1500);
   };
   setTimeout(attempt, 300);
 }
@@ -1645,17 +1665,19 @@ window.addEventListener('online', netPoke);
 navigator.connection?.addEventListener?.('change', netPoke);
 
 let noticeT = 0;
+const noticeOn = () => $('lnoticeWrap').classList.contains('show');
 function notice(text, kind = 'info', ms = 0, tag = ''){
-  const n = $('lnotice');
-  if (!n.hidden && n.dataset.tag === 'issue' && tag !== 'issue' && L.issue) return;   // a sender problem stays on screen
-  if (!n.hidden && n.dataset.tag === 'muted' && L.senderMuted && !['issue', 'muted'].includes(tag) && ms) return;   // so does mute
+  const n = $('lnotice'), on = noticeOn();
+  if (on && n.dataset.tag === 'issue' && tag !== 'issue' && L.issue) return;   // a sender problem stays on screen
+  if (on && n.dataset.tag === 'muted' && L.senderMuted && !['issue', 'muted'].includes(tag) && ms) return;   // so does mute
   clearTimeout(noticeT);
-  n.className = 'notice ' + kind; n.dataset.tag = tag; $('lnoticeTxt').textContent = text; n.hidden = false;
+  n.className = 'notice ' + kind; n.dataset.tag = tag; $('lnoticeTxt').textContent = text;
+  $('lnoticeWrap').classList.add('show');
   n.style.cursor = tag === 'tone' ? 'pointer' : '';
   if (ms) noticeT = setTimeout(hideNotice, ms);
 }
 function hideNotice(force){
-  clearTimeout(noticeT); $('lnotice').hidden = true; $('lnotice').dataset.tag = '';
+  clearTimeout(noticeT); $('lnoticeWrap').classList.remove('show'); $('lnotice').dataset.tag = '';
   if (force) return;
   if (L.senderMuted) notice('Sender muted', 'err', 0, 'muted');   // still muted → bring its notice back
   else if (L.toneOn) paintToneNotice();          // tone still on → bring its notice back
@@ -1672,7 +1694,7 @@ function applyDuck(){
 function paintToneNotice(){
   const n = $('lnotice');
   if (!L.toneOn) { if (n.dataset.tag === 'tone') hideNotice(true); return; }
-  if (!n.hidden && n.dataset.tag !== 'tone' && n.dataset.tag !== '') return;   // let a resync/drop notice finish
+  if (noticeOn() && n.dataset.tag !== 'tone' && n.dataset.tag !== '') return;   // let a resync/drop notice finish
   const hz = L.toneHz ? ` (${fmtHz(L.toneHz)})` : '';
   notice(duckActive() ? `Tone on line${hz} · volume lowered — tap to hear`
                       : `Tone on line${hz}${L.duckPref ? ' · full volume — tap to lower' : ''}`, 'warn', 0, 'tone');
@@ -1918,6 +1940,21 @@ function onRemoteStream(stream, call, old){
   startMeter('listenMeter', 'listenDb', stream, L.channels, lvl => $('orbWrap').style.setProperty('--lvl', lvl.toFixed(3)));
   clearInterval(L.stats);
   L.stats = setInterval(pollStats, 1000);
+  clearInterval(L.stallT); L.stall = null;
+  L.stallT = setInterval(stallCheck, 400);
+}
+
+// The sender always sends packets (even muted — silence still flows), so ~1.2 s with none means the
+// link is dead. ICE alone takes 5–10 s to notice on phones.
+async function stallCheck(){
+  const pc = L.call?.peerConnection;
+  if (!pc || !L.everLive || L.repairing || L.retry || L.issue) return;
+  let pk = null;
+  try { (await pc.getStats()).forEach(r => { if (r.type === 'inbound-rtp' && r.kind === 'audio') pk = r.packetsReceived; }); } catch { return; }
+  if (pk == null || pc !== L.call?.peerConnection) return;
+  const now = performance.now();
+  if (!L.stall || L.stall.pc !== pc || pk !== L.stall.pk) { L.stall = { pc, pk, at: now }; return; }
+  if (now - L.stall.at > 1200) { L.stall.at = now + 4000; repair('no packets'); }
 }
 
 const DELAY = { target: 300, resyncAbove: 500, holdMs: 6000, cooldownMs: 60000 };
@@ -1964,7 +2001,7 @@ async function pollStats(){
   if (jbMs > (L.stable ? STABLE.resyncAbove : DELAY.resyncAbove) && rtt < 0.25 && !shrinking) { if (!L.highSince) L.highSince = now; }
   else L.highSince = 0;
   if (L.autoResync && L.highSince && now - L.highSince > DELAY.holdMs && now - (L.lastResync || 0) > DELAY.cooldownMs) resync();
-  if (L.resyncShown && !L.resyncing) { L.resyncShown = false; if (!$('lnotice').hidden && $('lnotice').dataset.tag === 'resync') $('lnoticeTxt').textContent = `Resynced · now ≈ ${Math.round(est)} ms`; }
+  if (L.resyncShown && !L.resyncing) { L.resyncShown = false; if (noticeOn() && $('lnotice').dataset.tag === 'resync') $('lnoticeTxt').textContent = `Resynced · now ≈ ${Math.round(est)} ms`; }
 }
 function resync(){
   if (!L.conn?.open) return;
