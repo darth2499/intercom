@@ -78,6 +78,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
 .pill.err{color:var(--red)} .pill.err .dot{background:var(--red)}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(52,199,89,.6)}70%{box-shadow:0 0 0 8px rgba(52,199,89,0)}100%{box-shadow:0 0 0 0 rgba(52,199,89,0)}}
 .linkbtn{display:block;margin:12px auto 0;color:var(--blue);font-size:15px;padding:6px}
+.code-actions{display:flex;justify-content:center;gap:22px;margin-top:12px}
 
 /* Meter + fader (mixer strip) */
 .meter-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
@@ -194,6 +195,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
 .notice .ndot{width:7px;height:7px;border-radius:50%;background:currentColor}
 .notice.warn{background:rgba(255,149,0,.15);color:var(--orange)}
 .notice.ok{background:rgba(52,199,89,.14);color:var(--green)}
+.live-sub.warn{color:var(--orange)}
 .live-sub{font-size:15px;color:var(--label2);text-align:center;margin:2px 0 6px}
 
 /* Columns: invisible on phones (normal single column), side-by-side on desktop */
@@ -259,6 +261,20 @@ button{border:0;background:none;padding:0;cursor:pointer}
   #joinView .entry .box{width:76px;height:92px;font-size:48px}
   #joinView .entry{gap:16px}
 }
+
+/* Lock screen (bag drop) */
+.lock{position:fixed;inset:0;z-index:50;background:#000;color:#fff;display:grid;place-items:center;touch-action:none;user-select:none;-webkit-user-select:none}
+.lock-inner{width:min(320px,80vw);text-align:center}
+.lock-room{font-size:17px;color:rgba(255,255,255,.55);margin:0}
+.lock-room b{font-family:ui-rounded,"SF Pro Rounded",-apple-system,system-ui,sans-serif;font-size:44px;color:#fff;letter-spacing:.06em;display:block;margin-top:4px}
+.lock-status{font-size:15px;margin:14px 0 18px;color:#30d158}
+.lock-status.warn{color:#ff9f0a} .lock-status.err{color:#ff453a}
+.lock-bar{height:6px;border-radius:3px;background:#1c1c1e;overflow:hidden;margin-bottom:44px}
+.lock-bar i{display:block;height:100%;width:0;background:#30d158;transition:width .12s linear}
+.lock-hold{position:relative;width:100%;height:56px;border-radius:28px;background:#1c1c1e;color:rgba(255,255,255,.7);font-size:16px;overflow:hidden}
+.lock-hold span{position:relative;z-index:1}
+.lock-hold i{position:absolute;left:0;top:0;bottom:0;width:0;background:rgba(10,132,255,.45)}
+.lock-hold.holding i{width:100%;transition:width 1.2s linear}
 </style>
 </head>
 <body>
@@ -303,7 +319,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
       <p class="eyebrow">Room code</p>
       <div class="code" id="codeOut"><span>–</span><span>–</span><span>–</span><span>–</span></div>
       <div class="pill" id="sendPill"><span class="dot"></span><span class="txt">Starting…</span></div>
-      <button class="linkbtn" id="shareBtn">Share link</button>
+      <div class="code-actions"><button class="linkbtn sm" id="shareBtn">Share link</button><button class="linkbtn sm" id="newCode">New code</button><button class="linkbtn sm" id="lockBtn">Lock screen</button></div>
     </div>
 
     <div class="group">
@@ -460,13 +476,33 @@ button{border:0;background:none;padding:0;cursor:pointer}
   </section>
 </div>
 
+<div class="lock" id="lockScreen" hidden>
+  <div class="lock-inner">
+    <p class="lock-room">Room <b id="lockCode">––––</b></p>
+    <p class="lock-status" id="lockStatus">Sending</p>
+    <div class="lock-bar"><i id="lockLevel"></i></div>
+    <button class="lock-hold" id="lockHold"><span>Hold to unlock</span><i></i></button>
+  </div>
+</div>
+
 <audio id="remoteAudio" playsinline autoplay></audio>
 
-<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<!-- Connection library: local copy first (upload peerjs.min.js next to this file), then CDNs. -->
+<script src="peerjs.min.js"></script>
+<script>window.Peer || document.write('<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"><\/script>')</script>
 <script>window.Peer || document.write('<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"><\/script>')</script>
 <script>
+/* Intercom — one phone sends its mixer feed, other phones listen.
+   ─ Pairing: PeerJS public server introduces the phones (room id = PREFIX + 4-digit code).
+   ─ Audio:   WebRTC, phone-to-phone (or via the Cloudflare TURN relay when direct fails).
+   ─ Sender:  mic → Web Audio (routing, gain, tone detect) → one stream → a call per listener,
+              plus a data link per listener for state, remote control and resync requests.
+   ─ Listener: data link + call; plays through Web Audio (crossfade, boost, limiter, tone duck).
+   ─ Reliability: both sides refresh the pairing socket and re-link on stalls (network switches),
+              sender watchdog re-acquires a lost input, listener auto-resyncs a bloated buffer. */
+
 /* ============ Config ============ */
-const VERSION = '0.4.0-beta';                     // shown on the home screen — go to 1.0.0 when ready
+const VERSION = '0.5.0-beta';                     // shown on the home screen — go to 1.0.0 when ready
 const PREFIX = 'asahina-intercom-';            // namespace for room ids on the PeerJS server
 const ICE = [
   { urls: 'stun:stun.l.google.com:19302' },
@@ -499,6 +535,7 @@ async function getRelay(){
   }
   paintRelay();
 }
+getRelay();                                          // warm up at load; connecting won't wait on it
 async function iceConfig(){
   await getRelay();
   return { iceServers: ICE.concat(Relay.servers || []), iceTransportPolicy: FORCE_RELAY && Relay.servers ? 'relay' : 'all' };
@@ -515,7 +552,6 @@ const relayText = () => Relay.status === 'ready' ? (FORCE_RELAY ? 'Ready · forc
 function paintRelay(){
   const t = relayText();
   if ($('relayNote')) { $('relayNote').textContent = `Relay backup: ${t}`; $('relayNote').classList.toggle('warn', Relay.status === 'off'); }
-  if ($('stRelay')) { $('stRelay').textContent = t; $('stRelay').classList.toggle('warn', Relay.status === 'off'); }
   if (typeof S !== 'undefined' && S.active) broadcastState();
 }
 const MODES = {
@@ -569,7 +605,13 @@ document.body.appendChild(keepVid);
 function paintAwake(on){ document.querySelectorAll('[data-awake]').forEach(el => el.textContent = on ? 'Screen will stay on while sending.' : 'Keep this screen on while sending.'); }
 async function keepAwake(){
   let ok = false;
-  try { wake = await navigator.wakeLock?.request('screen'); ok = !!wake; } catch {}
+  try {
+    if (!wake || wake.released) {
+      wake = await navigator.wakeLock?.request('screen');
+      wake?.addEventListener?.('release', () => setTimeout(() => { if ((S.active || L.active) && document.visibilityState === 'visible') keepAwake(); }, 1000));
+    }
+    ok = !!wake;
+  } catch {}
   try { await keepVid.play(); ok = true; } catch {}
   paintAwake(ok);
 }
@@ -630,6 +672,7 @@ function rr(g, x, y, w, h, r){ g.beginPath(); g.roundRect ? g.roundRect(x, y, w,
 const meters = {};
 function startMeter(elId, dbId, input, channels, onLevel){
   stopMeter(elId);
+  if (elId === 'sendMeter' && !$('lockScreen').hidden) return;   // locked: meter paused
   const cv = $(elId), dbEl = $(dbId), vertical = cv.classList.contains('vmeter');
   const c = ensureCtx(), own = !(input instanceof AudioNode);
   let src; try { src = own ? c.createMediaStreamSource(input) : input; } catch { return; }
@@ -712,8 +755,7 @@ function startMeter(elId, dbId, input, channels, onLevel){
       const h = Math.max(...st.hold.slice(0, n)), clipped = st.clip.slice(0, n).some(Boolean);
       dbEl.textContent = dbEl.id === 'sendDb' ? fmtDb(h) : fmtDb(h) + ' dB';
       dbEl.classList.toggle('hot', h > -0.1);
-      if (elId === 'sendMeter') $('clipNote').textContent = clipped ? 'Clipping — lower the gain' : '';
-      if (elId === 'sendMeter') $('clipNote').classList.toggle('hot', clipped);
+      if (elId === 'sendMeter') paintClipNote(clipped);
     }
     onLevel && onLevel(dbPos(top));
     m.raf = requestAnimationFrame(tick);
@@ -827,8 +869,6 @@ const FADER = [[-80,0],[-40,.15],[-20,.35],[-10,.55],[0,.75],[6,.875],[12,1]];
 const faderPos = db => pw(db, FADER, 0, 1), faderDb = p => pw(p, FADER, 1, 0);
 const dbToGain = db => db <= -79.9 ? 0 : Math.pow(10, db / 20);
 const gainText = db => db <= -79.9 ? '−∞ dB' : (Math.abs(db) < 0.05 ? '0.0' : (db < 0 ? '−' : '+') + Math.abs(db).toFixed(1)) + ' dB';
-/* ---- Share the sender's settings with listeners ---- */
-const ROUTE_NAMES = { auto:'Auto', stereo:'Stereo', sum:'Mono (L+R)', left:'Left only', right:'Right only' };
 /* ---- Remote control: easy password (e.g. toy-car) unlocks settings on the Listen page ---- */
 const WORDS = ('ant ape arm art axe bag bat bay bed bee box bud bug bun bus cab cap car cat cod cow cub cup dam den dog dot ear egg elf elk elm emu fan fig fin fir fox fog gem gum hat hay hen hog hut ice ink jam jar jet jug key kid kit lab lap leg lid lip log map mat mix mop mud mug net nut oak oar ore owl pad pan paw pea pen pie pig pin pod pot pug ram rat ray rib rod rug rye sap saw sea sky sun tab tag tan tap tea tin toe toy tub van vet wax web wig wok yak yam zip zoo').split(' ');
 const normPw = v => String(v || '').toLowerCase().trim().replace(/[\s_.]+/g, '-').replace(/-+/g, '-');
@@ -869,7 +909,7 @@ async function applyCtl(key, v){
   else if (key === 'toneRef' && [-20, -18, -14, -12].includes(Number(v))) setToneRef(Number(v));
   else if (key === 'src' && [...$('inputSel').options].some(o => o.value === v)) {
     $('inputSel').value = v; S.deviceId = v; store.set('ic-device', v);
-    try { await swapStream(await getStream(S.mode, v)); } catch (err) { setPill($('sendPill'), micError(err), 'err'); }
+    try { await swapStream(await getStream(S.mode, v)); checkSource(); } catch (err) { setPill($('sendPill'), micError(err), 'err'); }
   }
   broadcastState();
 }
@@ -964,6 +1004,18 @@ async function fillInputs(){
   broadcastState();
 }
 
+// The saved input (your mixer) wasn't available, so the browser picked another one — say so loudly.
+function checkSource(){
+  const using = deviceOf(S.stream);
+  S.srcWarn = S.deviceId && using && using !== S.deviceId ? 'Saved input not found — check Source' : '';
+  if (!S.srcWarn) S.deviceId = using || S.deviceId;
+  paintClipNote();
+}
+function paintClipNote(clipped = false){
+  const n = $('clipNote');
+  n.textContent = clipped ? 'Clipping — lower the gain' : S.srcWarn || '';
+  n.classList.toggle('hot', clipped || !!S.srcWarn);
+}
 function micError(e){
   if (e.name === 'NotAllowedError') return 'Microphone access denied';
   if (e.name === 'NotFoundError') return 'No audio input found';
@@ -972,13 +1024,14 @@ function micError(e){
 }
 
 async function startSend(){
+  if (S.active) return show('send');
   show('send'); paintSeg(S.mode); paintModeNote();
   setPill($('sendPill'), 'Starting…');
   S.active = true; ensureCtx(); keepAwake();
   try { S.stream = await getStream(S.mode, S.deviceId); }
   catch (e) { setPill($('sendPill'), micError(e), 'err'); return; }
   if (!S.active) { stopStream(S.stream); S.stream = null; return; }
-  paintModeNote(); fillInputs();
+  paintModeNote(); fillInputs(); checkSource();
   startMeter('sendMeter', 'sendDb', S.stream._tap, chans()); attachTone(S.stream._pre, chans());
   S.code = store.get('ic-code') || String(1000 + Math.floor(Math.random() * 9000));
   S.idRetries = 0;
@@ -1007,7 +1060,7 @@ async function senderWatchdog(){
     const raw = S.stream?._raw?.getAudioTracks()[0];
     if (!raw || raw.readyState === 'ended') {
       const ns = await getStream(S.mode, S.deviceId || deviceOf(S.stream), true);
-      if (S.active) await swapStream(ns); else stopStream(ns);
+      if (S.active) { await swapStream(ns); checkSource(); } else stopStream(ns);
     }
   } catch {}
   finally { setTimeout(() => S.recovering = false, 1500); }
@@ -1035,10 +1088,11 @@ async function openHostPeer(){
     if (S.peer !== peer) return;
     if (e.type === 'unavailable-id') {
       // Old session may still be holding this code for a few seconds — retry, then pick a new one.
+      // Keep the same code so listeners find us again; the pairing server frees it within about a minute.
       peer.destroy();
-      if (++S.idRetries > 4) { S.code = String(1000 + Math.floor(Math.random() * 9000)); S.idRetries = 0; }
-      setPill($('sendPill'), 'Claiming code…', 'wait');
-      setTimeout(() => S.active && openHostPeer(), 1500);
+      S.idRetries++;
+      setPill($('sendPill'), S.idRetries > 3 ? 'Room code still in use — retrying…' : 'Claiming room code…', 'wait');
+      setTimeout(() => S.active && S.peer === peer && openHostPeer(), Math.min(1500 * S.idRetries, 5000));
     } else if (['network','server-error','socket-error','socket-closed'].includes(e.type)) {
       setPill($('sendPill'), 'Can’t reach pairing server', 'err');
       setTimeout(() => { if (S.peer === peer && !peer.destroyed) peer.reconnect(); }, 3000);
@@ -1047,7 +1101,7 @@ async function openHostPeer(){
 }
 
 function paintSendStatus(){
-  if (!S.peer?.open && !S.listeners.size) return;
+  if (!S.peer || (S.peer.disconnected && !S.listeners.size)) return;
   if (S.issue) { setPill($('sendPill'), S.issue, 'err'); return; }
   const live = [...S.listeners.values()].filter(x => x.live).length;
   if (live) setPill($('sendPill'), live === 1 ? '1 listener' : `${live} listeners`, 'live');
@@ -1087,18 +1141,41 @@ function startCall(entry, onUp){
   entry.call = call;
   const pc = call.peerConnection;
   if (!pc) return;
-  let dropTimer;
+  let dropTimer = setTimeout(() => entry.call === call && !entry.live && dropListener(entry), 25000);
   const onState = () => {
     if (entry.call !== call) return;                   // an older call being replaced
     const st = pc.connectionState || pc.iceConnectionState;
     if (st === 'connected' || st === 'completed') { clearTimeout(dropTimer); entry.live = true; applyBitrate(pc, 0, entry.stable); if (onUp) { const f = onUp; onUp = null; f(); } }
-    else if (st === 'disconnected') { entry.live = false; clearTimeout(dropTimer); dropTimer = setTimeout(() => entry.call === call && dropListener(entry), 15000); }
-    else if (st === 'failed' || st === 'closed') { entry.live = false; }   // listener will reconnect; its data link decides when it's gone
+    else if (st === 'disconnected') { entry.live = false; refreshHostSignal(); clearTimeout(dropTimer); dropTimer = setTimeout(() => entry.call === call && dropListener(entry), 20000); }
+    else if (st === 'failed' || st === 'closed') { entry.live = false; if (st === 'failed') refreshHostSignal(); }   // listener will reconnect; its data link decides when it's gone
     paintSendStatus();
   };
   pc.addEventListener('connectionstatechange', onState);
   pc.addEventListener('iceconnectionstatechange', onState);
 }
+
+// Sender's network changed (a listener link stalled, or the OS said so): re-open the pairing socket on
+// the new network, then call stalled listeners again — they hear audio without waiting for timeouts.
+let sigRefreshAt = 0;
+function refreshHostSignal(){
+  const p = S.peer;
+  if (!S.active || !p || p.destroyed || Date.now() - sigRefreshAt < 4000) return;
+  sigRefreshAt = Date.now();
+  try { if (!p.disconnected) p.disconnect(); p.reconnect(); } catch {}
+  setTimeout(recallStale, 1500); setTimeout(recallStale, 4500);
+  setTimeout(paintSendStatus, 1600);
+}
+function recallStale(){
+  if (!S.active || !S.stream) return;
+  S.listeners.forEach(e => {
+    if (e.live) return;
+    const old = e.call;
+    startCall(e, () => setTimeout(() => { try { old?.close() } catch {} }, 1500));
+  });
+}
+const hostNetPoke = () => { if (S.active) setTimeout(refreshHostSignal, 800); };
+window.addEventListener('online', hostNetPoke);
+navigator.connection?.addEventListener?.('change', hostNetPoke);
 
 function closeEntry(e){ try { e.call?.close() } catch {} try { e.conn.close() } catch {} }
 function dropListener(entry){
@@ -1129,7 +1206,7 @@ function applyBitrate(pc, tries = 0, stable = false){
 async function swapStream(ns){
   const nt = ns.getAudioTracks()[0];
   for (const e of S.listeners.values()){
-    const pc = e.call.peerConnection; if (!pc) continue;
+    const pc = e.call?.peerConnection; if (!pc) continue;
     for (const s of pc.getSenders()) if (s.track?.kind === 'audio') await s.replaceTrack(nt).catch(()=>{});
     applyBitrate(pc, 0, e.stable);
   }
@@ -1287,7 +1364,10 @@ $('toneUndo').addEventListener('click', () => { setGain(Tone.prevGain); $('toneB
 paintToneState();
 paintCtl();
 
+const listenerWord = () => { const n = [...S.listeners.values()].filter(e => e.live).length; return n ? `${n} ${n === 1 ? 'person is' : 'people are'} listening and ` : ''; };
+function confirmStop(msg){ return ![...S.listeners.values()].some(e => e.live) || confirm(msg); }
 function stopSend(){
+  setLock(false);
   S.active = false; S.issue = '';
   clearInterval(S.watch); store.set('ic-sending', '0');
   [...S.listeners.values()].forEach(dropListener);
@@ -1301,9 +1381,43 @@ $('routeSel').addEventListener('change', e => { S.routeSel = e.target.value; sto
 $('qualitySeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setMode(b.dataset.mode); });
 $('inputSel').addEventListener('change', async e => {
   S.deviceId = e.target.value; store.set('ic-device', S.deviceId);
-  try { await swapStream(await getStream(S.mode, S.deviceId)); } catch (err) { setPill($('sendPill'), micError(err), 'err'); }
+  try { await swapStream(await getStream(S.mode, S.deviceId)); checkSource(); } catch (err) { setPill($('sendPill'), micError(err), 'err'); }
 });
 navigator.mediaDevices?.addEventListener?.('devicechange', () => { if (S.active && S.stream) { fillInputs(); S.recovering = false; senderWatchdog(); } });
+/* ---- Lock screen: in a bag, stray touches can't change or stop anything ---- */
+let lockT = 0, lockTick = 0;
+function setLock(on){
+  $('lockScreen').hidden = !on;
+  clearInterval(lockTick);
+  if (on) {
+    $('lockCode').textContent = S.code || '––––';
+    stopMeter('sendMeter');                          // save battery: no 60 fps meter behind a black screen
+    const buf = new Float32Array(1024);
+    lockTick = setInterval(() => {
+      const t = $('sendPill').querySelector('.txt').textContent, cls = $('sendPill').className;
+      $('lockStatus').textContent = t; $('lockStatus').className = 'lock-status' + (/err/.test(cls) ? ' err' : /wait/.test(cls) ? ' warn' : '');
+      const a = S.stream?._lvl?.[0]; if (!a) return;
+      a.getFloatTimeDomainData(buf); let p = 0; for (const v of buf) p = Math.max(p, Math.abs(v));
+      $('lockLevel').style.width = (dbPos(p > 0 ? 20 * Math.log10(p * dbToGain(S.gainDb)) : -100) * 100) + '%';
+    }, 250);
+  } else if (S.stream) startMeter('sendMeter', 'sendDb', S.stream._tap, chans());
+}
+$('lockBtn').addEventListener('click', () => setLock(true));
+(() => {
+  const h = $('lockHold');
+  const start = e => { e.preventDefault(); h.classList.add('holding'); clearTimeout(lockT); lockT = setTimeout(() => { h.classList.remove('holding'); setLock(false); }, 1200); };
+  const cancel = () => { h.classList.remove('holding'); clearTimeout(lockT); };
+  h.addEventListener('pointerdown', start); h.addEventListener('pointerup', cancel); h.addEventListener('pointerleave', cancel); h.addEventListener('pointercancel', cancel);
+  $('lockScreen').addEventListener('contextmenu', e => e.preventDefault());
+})();
+
+$('newCode').addEventListener('click', () => {
+  if (!S.active || !confirmStop(`Switch to a new room code? ${listenerWord()}will need the new code.`)) return;
+  S.code = String(1000 + Math.floor(Math.random() * 9000)); store.set('ic-code', S.code);
+  [...S.listeners.values()].forEach(dropListener);
+  const old = S.peer; S.peer = null; try { old?.destroy() } catch {}
+  S.idRetries = 0; setPill($('sendPill'), 'Starting…'); openHostPeer();
+});
 $('shareBtn').addEventListener('click', async () => {
   if (!S.code) return;
   const url = location.origin + location.pathname + '?code=' + S.code;
@@ -1368,7 +1482,7 @@ function openListen(){
 
 function join(){
   const code = $('codeIn').value;
-  if (code.length !== 4) return;
+  if (code.length !== 4 || L.active) return;
   $('codeIn').blur();
   store.set('ic-last', code);
   try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch {}
@@ -1410,7 +1524,7 @@ async function connectListener(){
   if (!ok()) return;
   const peer = new Peer({ config: cfg, debug: 0 });
   L.peer = peer;
-  peer.on('open', () => { if (ok()) openLink(); });
+  peer.on('open', () => { if (ok() && !L.conn?.open && !L.repairing) openLink(); });
   peer.on('disconnected', () => {                      // lost the pairing server — get it back for repairs
     if (!ok() || peer.destroyed) return;
     setTimeout(() => { if (ok() && !peer.destroyed && peer.disconnected) peer.reconnect(); }, 400);
@@ -1445,7 +1559,7 @@ async function connectListener(){
     if (e.type === 'peer-unavailable') {                // sender is reconnecting / restarting — keep trying
       setLive('Waiting for sender…', false);
       if (L.everLive && !$('lnotice').dataset.tag) notice('Sender offline — waiting for it to come back', 'warn');
-      L.repairing = false; setTimeout(() => ok() && repair('sender away'), 2000);
+      L.repairing = false; setTimeout(() => ok() && repair('sender away'), 3000);
       return;
     }
     if (['network','server-error','socket-error','socket-closed','disconnected'].includes(e.type)) return;  // handled by 'disconnected'
@@ -1460,6 +1574,7 @@ function openLink(){
   const conn = peer.connect(PREFIX + L.code, { reliable: true, metadata: { stable: L.stable } });
   const mine = () => gen === L.gen && L.active && L.conn === conn;
   const old = L.conn;
+  if (old && !old.open) try { old.close() } catch {}           // a link that never opened
   L.conn = conn;
   conn.on('open', () => {
     if (!mine()) return;
@@ -1472,22 +1587,28 @@ function openLink(){
   conn.on('error', () => mine() && repair('link error'));
 }
 
+// Re-open the pairing-server socket. After a Wi-Fi ↔ cellular switch the old socket can look
+// alive for 20–30 s (iOS), silently swallowing messages — so always refresh it when repairing.
+function refreshSignal(peer){
+  if (!peer || peer.destroyed) return;
+  try { if (!peer.disconnected) peer.disconnect(); peer.reconnect(); } catch {}
+}
 function repair(why){
-  if (!L.active || L.retry) return;
-  if (L.repairing) return;
+  if (!L.active || L.retry || L.repairing) return;
   L.repairing = true;
-  const gen = L.gen, t0 = performance.now();
+  const gen = L.gen, peer = L.peer;
   if (L.everLive) { setLive('Reconnecting…', false); L.dropped = true; if (!$('lnotice').dataset.tag || $('lnotice').dataset.tag === 'tone') notice('Signal dropped — reconnecting', 'warn'); }
-  const peer = L.peer;
-  const go = () => { if (gen === L.gen && L.active) openLink(); };
   if (!peer || peer.destroyed) { L.repairing = false; return lost(); }
-  if (peer.disconnected) { try { peer.reconnect(); } catch {} peer.once('open', go); }
-  else go();
-  // Not back within 8 s → full restart (new pairing session).
-  setTimeout(() => {
-    if (gen !== L.gen || !L.active) return;
-    if (L.repairing && performance.now() - t0 >= 7900) { L.repairing = false; lost(); }
-  }, 8000);
+  refreshSignal(peer);
+  let tries = 0;
+  const attempt = () => {
+    if (gen !== L.gen || !L.active || !L.repairing) return;      // stream came back → done
+    if (++tries > 7) { L.repairing = false; return lost(); }    // ~15 s → full restart
+    if (tries === 1 || !L.conn?.open || tries % 3 === 0) openLink();   // fresh link (the sender may have missed the last one)
+    if (tries === 4) refreshSignal(peer);
+    setTimeout(attempt, 2000);
+  };
+  setTimeout(attempt, 300);
 }
 // Phone switched networks → check the link right away instead of waiting for it to time out.
 const netPoke = () => { if (L.active && L.everLive) setTimeout(() => {
@@ -1499,7 +1620,9 @@ navigator.connection?.addEventListener?.('change', netPoke);
 
 let noticeT = 0;
 function notice(text, kind = 'info', ms = 0, tag = ''){
-  const n = $('lnotice'); clearTimeout(noticeT);
+  const n = $('lnotice');
+  if (!n.hidden && n.dataset.tag === 'issue' && tag !== 'issue' && L.issue) return;   // a sender problem stays on screen
+  clearTimeout(noticeT);
   n.className = 'notice ' + kind; n.dataset.tag = tag; $('lnoticeTxt').textContent = text; n.hidden = false;
   n.style.cursor = tag === 'tone' ? 'pointer' : '';
   if (ms) noticeT = setTimeout(hideNotice, ms);
@@ -1636,7 +1759,6 @@ $('pwGo').addEventListener('click', unlock);
 $('pwIn').addEventListener('keydown', e => { if (e.key === 'Enter') unlock(); });
 $('cxLock').addEventListener('click', () => { L.authed = false; store.set('ic-pw-' + L.code, ''); paintLock(); });
 
-const EFF_NAMES = { stereo:'Stereo', sum:'Mono (L+R)', left:'Left to both', right:'Right to both' };
 function onHostData(d){
   if (d?.type === 'auth') return onAuth(d);
   if (d?.type !== 'mode') return;
@@ -1655,6 +1777,8 @@ function onHostData(d){
     else if ($('lnotice').dataset.tag === 'issue') { hideNotice(); notice('Sender back to normal', 'ok', 3000); }
   }
   if (d.ver) {
+    $('liveSub').textContent = d.ver === VERSION ? `Room ${L.code}` : `Room ${L.code} · sender on ${d.ver} — update both phones`;
+    $('liveSub').classList.toggle('warn', d.ver !== VERSION);
     const first = $('senderInfo').hidden, availChanged = L.ctlAvail !== !!d.ctl;
     $('senderInfo').hidden = false;
     L.ctlAvail = !!d.ctl;
@@ -1746,7 +1870,7 @@ function onRemoteStream(stream, call, old){
   L.everLive = true;
   playStream(stream, isResync ? call.peerConnection : null).then(() => {
     setTimeout(() => { try { old?.close() } catch {} }, 300);
-    if (isResync) notice(`Resynced · delay reset`, 'info', 5000), L.resyncShown = true;
+    if (isResync) { notice('Resynced · delay reset', 'info', 5000, 'resync'); L.resyncShown = true; }
     else if (L.dropped) notice('Reconnected', 'ok', 3000);
     L.dropped = false;
   });
@@ -1803,7 +1927,7 @@ async function pollStats(){
   if (jbMs > (L.stable ? STABLE.resyncAbove : DELAY.resyncAbove) && rtt < 0.25 && !shrinking) { if (!L.highSince) L.highSince = now; }
   else L.highSince = 0;
   if (L.autoResync && L.highSince && now - L.highSince > DELAY.holdMs && now - (L.lastResync || 0) > DELAY.cooldownMs) resync();
-  if (L.resyncShown && !L.resyncing) { L.resyncShown = false; if (!$('lnotice').hidden) $('lnoticeTxt').textContent = `Resynced · now ≈ ${Math.round(est)} ms`; }
+  if (L.resyncShown && !L.resyncing) { L.resyncShown = false; if (!$('lnotice').hidden && $('lnotice').dataset.tag === 'resync') $('lnoticeTxt').textContent = `Resynced · now ≈ ${Math.round(est)} ms`; }
 }
 function resync(){
   if (!L.conn?.open) return;
@@ -1848,14 +1972,15 @@ if (store.get('ic-sending') === '1' && store.get('ic-code')) {
   $('resumeBtn').hidden = false;
 }
 $('goListen').addEventListener('click', openListen);
-$('stopSend').addEventListener('click', stopSend);
+$('stopSend').addEventListener('click', () => { if (confirmStop(`Stop sending? ${listenerWord()}will lose audio.`)) stopSend(); });
 document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click', () => {
-  if (S.active) stopSend();
+  if (S.active) { if (!confirmStop(`Stop sending? ${listenerWord()}will lose audio.`)) return; stopSend(); }
   if (L.active) leave();
   show('home');
 }));
 window.addEventListener('resize', () => { if (S.active) paintSeg(S.mode); if (L.active) { paintSeg(LB.db, $('boostSeg'), 'boost'); paintSeg(L.stable ? 'stable' : 'low', $('netSeg'), 'net'); } });
-window.addEventListener('pagehide', () => { try { S.peer?.destroy(); L.peer?.destroy(); } catch {} });
+window.addEventListener('pagehide', e => { if (!e.persisted) try { S.peer?.destroy(); L.peer?.destroy(); } catch {} });
+window.addEventListener('pageshow', e => { if (e.persisted && (S.active || L.active)) location.reload(); });
 
 // Shared link: ?code=1234 opens Listen with the code filled in
 const qp = new URLSearchParams(location.search).get('code');
