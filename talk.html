@@ -196,6 +196,9 @@ b.sm{font-size:15px}
 .mix-row .av{grid-area:av}.mix-row .nm{grid-area:nm;font-size:16px}.mix-row .vv{grid-area:vv;font-size:14px;color:var(--label2);font-variant-numeric:tabular-nums}
 .mix-row .av[style*="--pc"]{background:color-mix(in srgb,var(--pc) 22%,transparent);color:var(--pc)}
 .mix-row input{grid-area:rg;width:100%;accent-color:var(--blue);height:28px}
+.mix-row{grid-template-areas:'av nm vv' 'av rg rg' 'av dg dg'}
+.mx-diag{grid-area:dg;font-size:11px;color:var(--label3);font-variant-numeric:tabular-nums}
+.mx-diag.bad{color:var(--orange)}
 #mixFeed .fd-ctl{padding:16px 18px}
 .tg-row{display:flex;justify-content:center;height:32px}
 .tg-row[hidden]{display:flex;visibility:hidden}   /* its space is always kept, so the talk button never moves */
@@ -585,6 +588,7 @@ function newPeer(id, polite){
   p.audio.setAttribute('playsinline', ''); document.body.appendChild(p.audio);
   pc.ontrack = e => { p.audio.srcObject = e.streams[0] || new MediaStream([e.track]); p.audio.play().catch(() => {}); if (p.gain) { try { p.gainSrc.disconnect(); p.gain.disconnect(); } catch {} p.gain = null; } applyVol(p); if (p.jb) setBuffer(p, p.jb); };
   pc.onconnectionstatechange = () => watchLink(p); pc.oniceconnectionstatechange = () => watchLink(p);
+  pc.onsignalingstatechange = () => { if (pc.signalingState === 'stable') setTimeout(() => checkSend(p), 400); };
   dc.onmessage = e => { p.lastMsg = Date.now(); let m; try { m = JSON.parse(e.data) } catch { return; } if (!m || typeof m !== 'object') return; try { onMsg(p, m); } catch (err) { console.warn('talkback msg', m.t, err); } };
   dc.onopen = () => { send(p, { t: 'hello', id: me.id, sess: me.sess, name: me.name, role: me.role, color: me.color, tcn: Object.fromEntries([...TX.lines.values()].filter(l => l.c != null).map(l => [l.who, l.c])), feed: FEED.mode, feedsub: FL.on, talking, talkTo: talking && TALK.to ? [...TALK.to] : null, peers: memberIds(), psess: memberSess(), room: ROOM.joining ? '' : ROOM.code, rid: ROOM.joining ? '' : ROOM.rid, since: ROOM.since, est: ROOM.est, beacon: !!ROOM.beacon && !ROOM.joining, tx: { on: TX.on, at: TX.at, by: TX.by } }); };
   dc.onclose = () => { if (p.ready && peers.get(p.id) === p) dropPeer(p, 'left'); };
@@ -595,13 +599,25 @@ function newPeer(id, polite){
 function activate(p){
   if (p.ready) return;
   p.ready = true;
-  p.pc.onnegotiationneeded = async () => {
-    try { p.makingOffer = true; const o = await p.pc.createOffer(); await p.pc.setLocalDescription({ type: 'offer', sdp: nack(o.sdp) }); await waitGather(p.pc, 1500); signal(p, { desc: p.pc.localDescription }); }
-    catch {} finally { p.makingOffer = false; }
-  };
+  p.pc.onnegotiationneeded = () => offerNow(p);
   if (mic && !p.pc.getSenders().some(s => s.track)) { const t = outTrack(); p.pc.addTrack(t, new MediaStream([t])); preferRed(p.pc); feedRoute(p); if (talking && TALK.to) routeTalk(); }
 }
 // Ask for lost packets again (NACK)…
+async function offerNow(p, onlyIfStable){
+  if (onlyIfStable && (p.makingOffer || p.pc.signalingState !== 'stable')) return;
+  try { p.makingOffer = true; const o = await p.pc.createOffer(); if (onlyIfStable && p.pc.signalingState !== 'stable') return;
+    await p.pc.setLocalDescription({ type: 'offer', sdp: nack(o.sdp) }); await waitGather(p.pc, 1500); signal(p, { desc: p.pc.localDescription }); }
+  catch {} finally { p.makingOffer = false; }
+}
+// After every negotiation: is our voice actually agreed on this link? When both phones add their mic at the same
+// moment (always the case right after (re)joining), one side's offer is rolled back — and iPhone Safari doesn't
+// always offer it again. Then that phone talks into a link that never carries its voice. Catch it and offer again.
+function checkSend(p){
+  if (!p.ready || p.pc.signalingState === 'closed' || peers.get(p.id) !== p) return;
+  const tr = p.pc.getTransceivers().find(t => t.sender.track?.kind === 'audio' || t.receiver.track?.kind === 'audio');
+  if (!tr || !tr.sender.track || tr.stopped) return;
+  if (!(tr.currentDirection || '').includes('send')) { if (tr.direction !== 'sendrecv' && tr.direction !== 'sendonly') { try { tr.direction = 'sendrecv'; } catch {} } offerNow(p, true); }
+}
 function nack(sdp){
   [...sdp.matchAll(/a=rtpmap:(\d+) (opus|red)\/48000\/2\r?\n/gi)].forEach(m => {
     if (!sdp.includes('a=rtcp-fb:' + m[1] + ' nack\r\n')) sdp = sdp.replace(m[0], m[0] + 'a=rtcp-fb:' + m[1] + ' nack\r\n');
@@ -645,6 +661,7 @@ setInterval(() => peers.forEach(p => p.ready && tuneBuffer(p)), 1000);
 // If a link is up but nothing arrives for ~8 s, the audio part of the link didn't set up (e.g. after an app was
 // force-quit and reopened): ask both sides to set it up again; if that doesn't help, rebuild the link.
 function expectsAudio(p){ return p.helloed && !p.feed && !FEED.mode && !p.privOut && isUp(p) && Date.now() - (p.helloAt || 0) > 6000; }
+setInterval(() => peers.forEach(p => checkSend(p)), 3000);
 setInterval(() => peers.forEach(async p => {
   if (!expectsAudio(p)) { p.rxPk = null; p.mute0 = 0; return; }
   let pk = 0; try { (await p.pc.getStats()).forEach(r => { if (r.type === 'inbound-rtp' && r.kind === 'audio') pk += r.packetsReceived || 0; }); } catch { return; }
@@ -663,6 +680,7 @@ function resync(p){                                        // make sure we send 
     const tr = p.pc.getTransceivers().find(t => t.receiver.track?.kind === 'audio');
     if (tr && tr.sender.track !== want) tr.sender.replaceTrack(want).catch(() => {});
     if (!tr && mic) { const t = outTrack(); p.pc.addTrack(t, new MediaStream([t])); preferRed(p.pc); } }
+  setTimeout(() => checkSend(p), 300);
   try { if (!p.polite) p.pc.restartIce(); } catch {}
 }
 async function onSignal(p, d){
@@ -1641,11 +1659,27 @@ function mixPaint(){
   const k = ppl.map(p => p.id + dn(p) + p.color).join('|');
   if (list._k !== k) {                                    // rebuild only when people change, so a drag isn't interrupted
     list._k = k;
-    list.innerHTML = ppl.map(p => `<div class="mix-row" data-id="${esc(p.id)}"><span class="av"${pcol(p.color) ? ` style="--pc:${pcol(p.color)}"` : ''}>${esc(initials(p.name))}</span><span class="nm">${esc(dn(p))}</span><span class="vv"></span><input type="range" min="0" max="150" step="5" aria-label="Volume for ${esc(dn(p))}"></div>`).join('');
+    list.innerHTML = ppl.map(p => `<div class="mix-row" data-id="${esc(p.id)}"><span class="av"${pcol(p.color) ? ` style="--pc:${pcol(p.color)}"` : ''}>${esc(initials(p.name))}</span><span class="nm">${esc(dn(p))}</span><span class="vv"></span><input type="range" min="0" max="150" step="5" aria-label="Volume for ${esc(dn(p))}"><small class="mx-diag"></small></div>`).join('');
   }
   list.querySelectorAll('.mix-row').forEach(el => { const p = peers.get(el.dataset.id); if (!p) return; const v = Math.round(volOf(p) * 100), rg = el.querySelector('input');
     if (document.activeElement !== rg) rg.value = v; el.querySelector('.vv').textContent = v ? v + '%' : 'Muted'; });
 }
+// Link check (for troubleshooting): audio packets per second each way, shown under each person while Mix is open.
+setInterval(() => {
+  if ($('mixBg').hidden) return;
+  $('mixList').querySelectorAll('.mix-row').forEach(async el => {
+    const p = peers.get(el.dataset.id), d = el.querySelector('.mx-diag'); if (!p || !d) return;
+    let out = 0, inn = 0; try { (await p.pc.getStats()).forEach(r => { if (r.kind !== 'audio') return; if (r.type === 'outbound-rtp') out += r.packetsSent || 0; if (r.type === 'inbound-rtp') inn += r.packetsReceived || 0; }); } catch { return; }
+    const now = performance.now(), dt = p.dg ? (now - p.dg.t) / 1000 : 0;
+    if (dt > 0) {
+      const o = Math.round((out - p.dg.out) / dt), i = Math.round((inn - p.dg.inn) / dt);
+      const tr = p.pc.getTransceivers().find(t => t.sender.track?.kind === 'audio' || t.receiver.track?.kind === 'audio');
+      d.textContent = `sending ${o}/s · receiving ${i}/s · ${tr ? (tr.currentDirection || 'not set up') : 'no audio'} · ${linkState(p)}`;
+      d.classList.toggle('bad', (!!tr?.sender.track && o === 0) || (i === 0 && !p.privOut));
+    }
+    p.dg = { t: now, out, inn };
+  });
+}, 2000);
 $('mixList').addEventListener('input', e => {
   const el = e.target.closest('.mix-row'), p = el && peers.get(el.dataset.id); if (!p) return;
   setVol(p, e.target.value / 100); el.querySelector('.vv').textContent = +e.target.value ? e.target.value + '%' : 'Muted'; paint();
@@ -2012,7 +2046,7 @@ addEventListener('offline', () => { ICE_CFG = TEST_ICE ? ICE_CFG : { iceServers:
    Every tab on this phone/computer shares one identity, so only one may be in the room (like WhatsApp Web).
    A browser lock marks the active tab. "Use here" takes the lock; the old tab hears it right away,
    leaves the room and reloads into the "moved to another tab" screen. */
-const VERSION = '0.11.12-beta';                     // same as the home page (index.html) — bump both together
+const VERSION = '0.11.13-beta';                     // same as the home page (index.html) — bump both together
 const TAB_LOCK = 'ic-talk-active';
 let tabClaim = null;
 function showBusy(moved){
