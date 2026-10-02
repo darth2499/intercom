@@ -602,8 +602,8 @@ function newPeer(id, polite){
               audio: Object.assign(document.createElement('audio'), { autoplay: true }), lostT: 0, born: Date.now() };
   p.audio.setAttribute('playsinline', ''); document.body.appendChild(p.audio);
   pc.ontrack = e => { p.audio.srcObject = e.streams[0] || new MediaStream([e.track]); p.audio.play().catch(() => {}); if (p.gain) { try { p.gainSrc.disconnect(); p.gain.disconnect(); } catch {} p.gain = null; } applyVol(p); if (p.jb) setBuffer(p, p.jb); };
-  pc.onconnectionstatechange = () => watchLink(p);
-  dc.onmessage = e => { let m; try { m = JSON.parse(e.data) } catch { return; } onMsg(p, m); };
+  pc.onconnectionstatechange = () => watchLink(p); pc.oniceconnectionstatechange = () => watchLink(p);
+  dc.onmessage = e => { p.lastMsg = Date.now(); let m; try { m = JSON.parse(e.data) } catch { return; } onMsg(p, m); };
   dc.onopen = () => { send(p, { t: 'hello', id: me.id, sess: me.sess, name: me.name, role: me.role, color: me.color, tcn: Object.fromEntries([...TX.lines.values()].filter(l => l.c != null).map(l => [l.who, l.c])), feed: FEED.mode, feedsub: FL.on, talking, talkTo: talking && TALK.to ? [...TALK.to] : null, peers: memberIds(), psess: memberSess(), room: ROOM.joining ? '' : ROOM.code, rid: ROOM.joining ? '' : ROOM.rid, since: ROOM.since, est: ROOM.est, beacon: !!ROOM.beacon && !ROOM.joining, tx: { on: TX.on, at: TX.at, by: TX.by } }); };
   dc.onclose = () => { if (p.ready && peers.get(p.id) === p) dropPeer(p, 'left'); };
   return p;
@@ -686,13 +686,22 @@ function broadcast(m, except){ peers.forEach(p => { if (p !== except) send(p, m)
 // Local network only, so addresses are known at once — each description goes out complete (no trickle).
 const seen = new Set();
 function signal(p, d){
-  if (isOpen(p) && p.pc.connectionState === 'connected') return send(p, { t: 'sdp', d });
+  if (isOpen(p) && isUp(p)) return send(p, { t: 'sdp', d });
   relay({ t: 'sig', mid: Math.random().toString(36).slice(2), from: me.id, to: p.id, ttl: 5, d });
 }
 function relay(m, except){ seen.add(m.mid); broadcast(m, except); }
-const memberIds = () => [...peers.values()].filter(p => p.helloed && p.pc.connectionState === 'connected').map(p => p.id);
+// Is this link really up? Some browsers (iPhone Safari especially) are slow or wrong about connectionState
+// after an app is force-quit and reopened, so ICE state and "messages are still arriving" count too.
+function linkState(p){
+  const c = p.pc.connectionState, i = p.pc.iceConnectionState;
+  if (c === 'connected' || i === 'connected' || i === 'completed') return 'connected';
+  if ((c === 'new' || c === 'connecting') && p.dc.readyState === 'open' && Date.now() - (p.lastMsg || 0) < 12000) return 'connected';   // state lagging behind a working link
+  return c || 'new';
+}
+const isUp = p => linkState(p) === 'connected';
+const memberIds = () => [...peers.values()].filter(p => p.helloed && isUp(p)).map(p => p.id);
 // Which visit of each phone we're linked to (plus our own), so others can spot a link to a phone that has since come back.
-const memberSess = () => Object.fromEntries([[me.id, me.sess], ...[...peers.values()].filter(p => p.helloed && p.pc.connectionState === 'connected' && p.sess).map(p => [p.id, p.sess])]);
+const memberSess = () => Object.fromEntries([[me.id, me.sess], ...[...peers.values()].filter(p => p.helloed && isUp(p) && p.sess).map(p => [p.id, p.sess])]);
 // Someone we know is linked to a NEWER visit of a phone than the one we're linked to (it quit and came back
 // without saying goodbye): our link is dead even if it still looks fine — drop it so we link to the new one now.
 function dropStale(sess){
@@ -745,7 +754,7 @@ function onHello(p, m){
   if (old && old !== p) {
     // Same phone, new visit (they left and came back): the new link replaces the old one right away.
     // Same visit, second link (we met twice at once): keep the one that's working.
-    if (old.sess === m.sess && old.pc.connectionState === 'connected') { closePeer(p); return; }
+    if (old.sess === m.sess && isUp(old) && old.dc.readyState === 'open') { closePeer(p); return; }
     closePeer(old); p.helloed = old.helloed && old.sess === m.sess;   // a returning phone gets a "joined" note
   }
   if (!old && peers.size >= MAX - 1) { send(p, { t: 'full' }); setTimeout(() => closePeer(p), 300); return; }
@@ -785,19 +794,29 @@ function meet(ids){
 // A short Wi‑Fi blip usually heals by itself. If a link stays down, drop it; as long as anyone else
 // in the room still reaches that phone, the regular room check below builds a fresh link through them.
 function watchLink(p){
-  const st = p.pc.connectionState;
+  const st = linkState(p) === 'connected' ? 'connected' : p.pc.connectionState;
   if (st === 'connected') { clearTimeout(p.lostT); p.lostT = 0; p.wasUp = true; paint(); return; }
   paint();
   if (st === 'failed') return dropPeer(p, 'lost');
-  if (st === 'disconnected' && !p.lostT) p.lostT = setTimeout(() => { if (p.pc.connectionState !== 'connected') dropPeer(p, 'lost'); }, 12000);
+  if (st === 'disconnected' && !p.lostT) p.lostT = setTimeout(() => { if (!isUp(p)) dropPeer(p, 'lost'); }, 12000);
   if (st === 'disconnected' && p.beacon) setTimeout(maybeClaim, 1500 + Math.random() * 1500);   // the code holder went quiet (e.g. reloading): make sure the code isn't lost
   if (st === 'closed') dropPeer(p, 'left');
 }
 // Every few seconds: drop links that never came up, re-share who we can reach, and fill any gaps.
 setInterval(() => {
   peers.forEach(p => { if (!p.wasUp && Date.now() - p.born > 25000) dropPeer(p, 'lost'); });
+  // Everyone sends a room check every 6 s; total silence for 20 s means that phone is gone (force-quit,
+  // out of range) even if the browser still calls the link "connected" — drop it so a fresh link can form.
+  // (A locked phone may go quiet on messages but its link still carries bytes, so only drop when nothing at all arrives.)
+  peers.forEach(async p => {
+    if (!p.helloed || !p.lastMsg || Date.now() - p.lastMsg < 20000) { p.rxB = null; return; }
+    let b = 0; try { (await p.pc.getStats()).forEach(r => { if (r.type === 'transport') b += r.bytesReceived || 0; }); } catch {}
+    const was = p.rxB; p.rxB = b;
+    if (was != null && b <= was && peers.get(p.id) === p) { if (p.beacon) setTimeout(maybeClaim, 500); dropPeer(p, 'lost'); }
+  });
   if (peers.size) announce();
   peers.forEach(p => p.ready && p.peers && meet(p.peers));
+  paint();
 }, 6000);
 /* ---------- Per-person volume (this phone only) ----------
    Saved by name, so it's remembered next time. Phones that allow it change the player's volume;
@@ -827,7 +846,7 @@ const rankOf = role => (ROLES[role] || ROLES.pa).r;
 let prioTop = 0;
 function prioCalc(){
   let top = talking && !FEED.mode ? rankOf(me.role) : 0;
-  peers.forEach(q => { if (!q.feed && q.helloed && q.talking && !q.privOut && q.pc.connectionState === 'connected') top = Math.max(top, rankOf(q.role)); });
+  peers.forEach(q => { if (!q.feed && q.helloed && q.talking && !q.privOut && isUp(q)) top = Math.max(top, rankOf(q.role)); });
   return top;
 }
 const prioOf = p => !p.feed && rankOf(p.role) < prioTop ? dbTo(-15) : 1;
@@ -958,8 +977,7 @@ function hsStart(){
   if (!HS.el) {
     HS.url = HS.url || hsSilence();
     HS.el = Object.assign(document.createElement('audio'), { src: HS.url, loop: true, playsInline: true });
-    HS.el.setAttribute('playsinline', ''); HS.el.addEventListener('pause', () => {     // the browser paused it itself = the headset button (if the action wasn't handed to us)
-      if (!HS.on || !HS.el) return; if (document.visibilityState === 'visible' && mic) hsPress(); setTimeout(() => HS.el?.play().catch(() => {}), 50); });
+    HS.el.setAttribute('playsinline', ''); HS.el.addEventListener('pause', () => { if (HS.on && HS.el) setTimeout(() => HS.el?.play().catch(() => {}), 50); });   // keep it "playing"; never treated as a press
     document.body.appendChild(HS.el);
     const ms = navigator.mediaSession;
     try { ms.metadata = new MediaMetadata({ title: 'Talkback', artist: 'Press to talk', album: 'Intercom' }); } catch {}
@@ -974,8 +992,10 @@ function hsStop(){
   ['play', 'pause', 'stop', 'togglemicrophone'].forEach(a => { try { navigator.mediaSession.setActionHandler(a, null); } catch {} });
 }
 let hsLast = 0;
+let hsVis = 0; document.addEventListener('visibilitychange', () => { hsVis = performance.now(); if (document.hidden && talking && !locked) setTalk(false); });   // screen locked mid-hold: let go
 function hsPress(){
-  const now = performance.now(); if (now - hsLast < 350) return; hsLast = now;   // some headsets send play + pause for one press
+  const now = performance.now(); if (now - hsLast < 350) return; hsLast = now;
+  if (now - hsVis < 1500) return;                      // locking/unlocking the phone can send play/pause by itself — not a press   // some headsets send play + pause for one press
   ensureAudio(); if (FEED.mode || !mic) return;
   if (talking) { locked = false; setTalk(false); chirp(false); } else { locked = true; setTalk(true); chirp(true); }
   HS.el?.play().catch(() => {}); try { navigator.mediaSession.playbackState = 'playing'; } catch {}
@@ -1526,7 +1546,7 @@ function paint(){
   dnCalc();
   const rows = [{ k: 'me', name: myDn() + ' (you)', role: FEED.mode ? '' : ROLES[me.role].t, ini: initials(me.name), talking, st: talking ? (TALK.to ? 'Private' : 'Talking') : '' },
     ...list.map(p => {
-      const st = p.pc.connectionState;
+      const st = linkState(p);
       if (p.feed) return { k: p.id, f: p, role: '', name: dn(p), ini: 'MX', talking: false, st: st !== 'connected' ? 'Reconnecting…' : !FL.on ? 'Off · tap to listen' : p.tone ? 'Tone' : 'Listening', warn: st !== 'connected' };
       const tk = p.talking && st === 'connected';
       return { k: p.id, p, role: ROLES[p.role]?.t || 'PA', name: dn(p), ini: initials(p.name), talking: tk && !p.privOut,
@@ -1840,7 +1860,7 @@ function dropBeacon(){ try { ROOM.beacon?.destroy(); } catch {} ROOM.beacon = nu
 // Hold the code if nobody in the room does.
 function maybeClaim(){
   if (!hasNet() || !ROOM.code || ROOM.beacon || ROOM.claiming || !mic) return;
-  if ([...peers.values()].some(p => p.helloed && p.beacon && p.pc.connectionState === 'connected')) return;
+  if ([...peers.values()].some(p => p.helloed && p.beacon && isUp(p))) return;
   ROOM.claiming = true;
   const code = ROOM.code, pe = new Peer(TALK_PREFIX + code, { config: ICE_CFG, debug: 0 });
   const done = () => { ROOM.claiming = false; clearTimeout(t); };
@@ -1858,7 +1878,7 @@ function maybeClaim(){
     else if (['network', 'server-error', 'socket-error', 'socket-closed'].includes(e.type)) serverSeen(false);
     // Our code is held by someone we're not linked to (our room carrying on without us, or the holder came back
     // and grabbed it first) → join them, so the room doesn't split in two.
-    const holderHere = [...peers.values()].some(p => p.helloed && p.beacon && p.pc.connectionState === 'connected');
+    const holderHere = [...peers.values()].some(p => p.helloed && p.beacon && isUp(p) && Date.now() - (p.lastMsg || 0) < 15000);
     if (e.type === 'unavailable-id' && !holderHere && ROOM.code === code && !ROOM.joining) joinCode(code, { rejoin: true });
   });
   pe.on('close', () => { if (ROOM.beacon === pe) { ROOM.beacon = null; announce(); } });
@@ -1978,7 +1998,7 @@ addEventListener('offline', () => { ICE_CFG = TEST_ICE ? ICE_CFG : { iceServers:
    Every tab on this phone/computer shares one identity, so only one may be in the room (like WhatsApp Web).
    A browser lock marks the active tab. "Use here" takes the lock; the old tab hears it right away,
    leaves the room and reloads into the "moved to another tab" screen. */
-const VERSION = '0.11.7-beta';                     // same as the home page (index.html) — bump both together
+const VERSION = '0.11.8-beta';                     // same as the home page (index.html) — bump both together
 const TAB_LOCK = 'ic-talk-active';
 let tabClaim = null;
 function showBusy(moved){
