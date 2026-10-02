@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -299,6 +299,28 @@ a.tile{text-decoration:none;color:inherit}
 </style>
 </head>
 <body>
+<script>
+/* No zooming: iPhone Safari ignores the "no zoom" settings, so stop the gestures themselves.
+   Pinch → cancelled. A quick second tap → the zoom is cancelled but the tap still counts.
+   Text boxes and sliders are left alone. */
+(() => {
+  const free = el => el && el.closest && el.closest('input, textarea, select, [contenteditable]');
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, e => e.preventDefault(), { passive: false }));
+  document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+  let last = 0;
+  document.addEventListener('touchend', e => {
+    const now = e.timeStamp;
+    if (now - last < 350 && e.changedTouches.length === 1 && !free(e.target)) {
+      e.preventDefault();                                // stops the double-tap zoom…
+      const t = e.target.closest('button, a, label, [role="button"], .member') || e.target;
+      if (!t.closest('#ptt, .fader, .lock')) t.click();  // …but keep the tap (those three use raw touches)
+    }
+    last = now;
+  }, { passive: false });
+  document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
+})();
+</script>
+
 <div class="app">
 
   <!-- HOME -->
@@ -538,7 +560,7 @@ a.tile{text-decoration:none;color:inherit}
               sender watchdog re-acquires a lost input, listener auto-resyncs a bloated buffer. */
 
 /* ============ Config ============ */
-const VERSION = '0.10.2-beta';                     // shown on the home screen — go to 1.0.0 when ready
+const VERSION = '0.10.3-beta';                     // shown on the home screen — go to 1.0.0 when ready
 const PREFIX = 'asahina-intercom-';            // namespace for room ids on the PeerJS server
 const ICE = [
   { urls: 'stun:stun.l.google.com:19302' },
