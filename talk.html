@@ -604,7 +604,7 @@ function newPeer(id, polite){
   pc.ontrack = e => { p.audio.srcObject = e.streams[0] || new MediaStream([e.track]); p.audio.play().catch(() => {}); if (p.gain) { try { p.gainSrc.disconnect(); p.gain.disconnect(); } catch {} p.gain = null; } applyVol(p); if (p.jb) setBuffer(p, p.jb); };
   pc.onconnectionstatechange = () => watchLink(p);
   dc.onmessage = e => { let m; try { m = JSON.parse(e.data) } catch { return; } onMsg(p, m); };
-  dc.onopen = () => { send(p, { t: 'hello', id: me.id, sess: me.sess, name: me.name, role: me.role, color: me.color, tcn: Object.fromEntries([...TX.lines.values()].filter(l => l.c != null).map(l => [l.who, l.c])), feed: FEED.mode, feedsub: FL.on, talking, talkTo: talking && TALK.to ? [...TALK.to] : null, peers: memberIds(), room: ROOM.joining ? '' : ROOM.code, rid: ROOM.joining ? '' : ROOM.rid, since: ROOM.since, est: ROOM.est, beacon: !!ROOM.beacon && !ROOM.joining, tx: { on: TX.on, at: TX.at, by: TX.by } }); };
+  dc.onopen = () => { send(p, { t: 'hello', id: me.id, sess: me.sess, name: me.name, role: me.role, color: me.color, tcn: Object.fromEntries([...TX.lines.values()].filter(l => l.c != null).map(l => [l.who, l.c])), feed: FEED.mode, feedsub: FL.on, talking, talkTo: talking && TALK.to ? [...TALK.to] : null, peers: memberIds(), psess: memberSess(), room: ROOM.joining ? '' : ROOM.code, rid: ROOM.joining ? '' : ROOM.rid, since: ROOM.since, est: ROOM.est, beacon: !!ROOM.beacon && !ROOM.joining, tx: { on: TX.on, at: TX.at, by: TX.by } }); };
   dc.onclose = () => { if (p.ready && peers.get(p.id) === p) dropPeer(p, 'left'); };
   return p;
 }
@@ -691,6 +691,20 @@ function signal(p, d){
 }
 function relay(m, except){ seen.add(m.mid); broadcast(m, except); }
 const memberIds = () => [...peers.values()].filter(p => p.helloed && p.pc.connectionState === 'connected').map(p => p.id);
+// Which visit of each phone we're linked to (plus our own), so others can spot a link to a phone that has since come back.
+const memberSess = () => Object.fromEntries([[me.id, me.sess], ...[...peers.values()].filter(p => p.helloed && p.pc.connectionState === 'connected' && p.sess).map(p => [p.id, p.sess])]);
+// Someone we know is linked to a NEWER visit of a phone than the one we're linked to (it quit and came back
+// without saying goodbye): our link is dead even if it still looks fine — drop it so we link to the new one now.
+function dropStale(sess){
+  if (!sess || typeof sess !== 'object') return;
+  let dropped = false;
+  Object.entries(sess).forEach(([id, ss]) => {
+    const q = peers.get(id);
+    if (id === me.id || !q || !q.helloed || !q.sess || q.sess === ss) return;
+    peers.delete(id); closePeer(q); clearTimeout(q.lostT); dropped = true;
+  });
+  if (dropped) paint();
+}
 
 function onMsg(p, m){
   if (m.t === 'hello') return onHello(p, m);
@@ -709,7 +723,7 @@ function onMsg(p, m){
         if (q) onSignal(q, m.d);
       } else if (--m.ttl > 0) relay(m, p);
       return;
-    case 'peers': p.peers = m.peers || []; p.beacon = !!m.beacon; if (m.room) roomCode(m.room, !!m.est, m.rid);
+    case 'peers': dropStale(m.sess); p.peers = m.peers || []; p.beacon = !!m.beacon; if (m.room) roomCode(m.room, !!m.est, m.rid);
       if (m.rid) { p.rid = m.rid; if (m.since) p.since = +m.since; fillGap(p); } meet(p.peers); return;
     case 'ptt': p.talking = !!m.on; setPriv(p, m.on ? m.to : null); paint(); feedDuck(); prioDuck(); return;
     case 'color': p.color = Number.isInteger(m.c) ? m.c : null; fixColor(); paint(); txPaint(); return;
@@ -743,7 +757,7 @@ function onHello(p, m){
   activate(p); feedRoute(p); applyVol(p);
   if (wasPair) pairDone(p);
   else if (first) { dnCalc(); toast(`${dn(p)} joined`); }
-  p.peers = m.peers || []; p.beacon = !!m.beacon;
+  dropStale(m.psess); p.peers = m.peers || []; p.beacon = !!m.beacon;
   if (m.room) roomCode(m.room, !!m.est, m.rid);
   if (p.via) { ROOM.est = true; saveRoom(); announce(); }   // someone joined with our code: it's this room's code now
   if (m.tx && m.tx.at > TX.at && (!m.rid || m.rid === ROOM.rid)) txSet(m.tx.on, m.tx.by, m.tx.at, false);
@@ -751,7 +765,7 @@ function onHello(p, m){
   announce(); meet(p.peers); paint();
 }
 // Tell everyone who we're linked to; whoever has the lower id starts any missing links.
-function announce(){ broadcast({ t: 'peers', peers: memberIds(), room: ROOM.joining ? '' : ROOM.code, rid: ROOM.joining ? '' : ROOM.rid, since: ROOM.since, est: ROOM.est, beacon: !!ROOM.beacon && !ROOM.joining }); }
+function announce(){ broadcast({ t: 'peers', peers: memberIds(), sess: memberSess(), room: ROOM.joining ? '' : ROOM.code, rid: ROOM.joining ? '' : ROOM.rid, since: ROOM.since, est: ROOM.est, beacon: !!ROOM.beacon && !ROOM.joining }); }
 // Someone in our room (back after a drop, or a phone we just met) gets the lines they missed —
 // but only from the time they first joined this room: newcomers start fresh.
 function fillGap(p){
@@ -1964,7 +1978,7 @@ addEventListener('offline', () => { ICE_CFG = TEST_ICE ? ICE_CFG : { iceServers:
    Every tab on this phone/computer shares one identity, so only one may be in the room (like WhatsApp Web).
    A browser lock marks the active tab. "Use here" takes the lock; the old tab hears it right away,
    leaves the room and reloads into the "moved to another tab" screen. */
-const VERSION = '0.11.5-beta';                     // same as the home page (index.html) — bump both together
+const VERSION = '0.11.7-beta';                     // same as the home page (index.html) — bump both together
 const TAB_LOCK = 'ic-talk-active';
 let tabClaim = null;
 function showBusy(moved){

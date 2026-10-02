@@ -65,6 +65,10 @@ a.tile{text-decoration:none;color:inherit}
 .tile h2{font-size:17px;font-weight:600;margin:0}
 .tile p{font-size:15px;color:var(--label2);margin:2px 0 0}
 .tile .chev{margin-left:auto;color:var(--label3);width:9px;height:16px;flex:none}
+/* Send tile after a reload/crash while sending: the Resume button sits right under it, joined to it */
+.send-stack{display:flex;flex-direction:column}
+.send-stack .resume{border-radius:0 0 20px 20px;margin:0;box-shadow:var(--shadow)}
+.send-stack.resumable .tile{border-bottom-left-radius:0;border-bottom-right-radius:0}
 .foot{color:var(--label2);font-size:13px;text-align:center;margin:8px 0 0}
 .foot.warn{color:var(--orange)}
 .foot.ver{color:var(--label3);font-size:12px;margin:2px 0 0;font-variant-numeric:tabular-nums}
@@ -253,7 +257,9 @@ a.tile{text-decoration:none;color:inherit}
   #home .tile:hover{transform:translateY(-3px)}
   #home .foot{grid-column:1/-1;margin-top:10px}
   #home .install{grid-column:1/-1;max-width:440px;justify-self:center;width:100%}
-  #home .resume{grid-column:1/-1;max-width:440px;justify-self:center}
+  #home .send-stack .tile{flex:1}
+  #home .send-stack.resumable .tile{border-bottom-left-radius:0;border-bottom-right-radius:0;min-height:174px}
+  #home .send-stack .resume{border-radius:0 0 26px 26px;height:56px}
 
   /* Two-column screens */
   .pane{display:flex;flex-direction:column;gap:14px;min-width:0}
@@ -329,6 +335,7 @@ a.tile{text-decoration:none;color:inherit}
       <h1>Intercom</h1>
       <p>Stream your mixer to another phone.</p>
     </header>
+    <div class="send-stack">
     <button class="tile" id="goSend">
       <span class="ico" style="background:var(--blue)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4"/></svg>
@@ -336,6 +343,8 @@ a.tile{text-decoration:none;color:inherit}
       <span><h2>Send</h2><p>This phone is plugged into the mixer</p></span>
       <svg class="chev" viewBox="0 0 9 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5 7.5 8l-6 6.5"/></svg>
     </button>
+    <button class="btn primary resume" id="resumeBtn" hidden>Resume sending</button>
+    </div>
     <button class="tile" id="goListen">
       <span class="ico" style="background:var(--green)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14v-2a9 9 0 0 1 18 0v2"/><path d="M21 15a2 2 0 0 1-2 2h-1v-6h1a2 2 0 0 1 2 2zM3 15a2 2 0 0 0 2 2h1v-6H5a2 2 0 0 0-2 2z"/></svg>
@@ -350,7 +359,6 @@ a.tile{text-decoration:none;color:inherit}
       <span><h2>Talkback</h2><p>Talk with everyone here — no signal needed</p></span>
       <svg class="chev" viewBox="0 0 9 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5 7.5 8l-6 6.5"/></svg>
     </a>
-    <button class="btn primary resume" id="resumeBtn" hidden>Resume sending</button>
     <div class="spacer"></div>
     <p class="foot">Audio goes directly between phones.</p>
     <div class="install" id="installBox" hidden>
@@ -573,7 +581,7 @@ a.tile{text-decoration:none;color:inherit}
               sender watchdog re-acquires a lost input, listener auto-resyncs a bloated buffer. */
 
 /* ============ Config ============ */
-const VERSION = '0.11.5-beta';                     // shown on the home screen — go to 1.0.0 when ready
+const VERSION = '0.11.7-beta';                     // shown on the home screen — go to 1.0.0 when ready
 const PREFIX = 'asahina-intercom-';            // namespace for room ids on the PeerJS server
 const ICE = [
   { urls: 'stun:stun.l.google.com:19302' },
@@ -1777,7 +1785,7 @@ function stopSend(){
   dlStop();
   try { S.peer?.destroy() } catch {} S.peer = null;
   stopStream(S.stream); S.stream = null;
-  stopMeter('sendMeter'); detachTone(); clearInterval(RM.timer); RM.timer = null; releaseAwake(); show('home');
+  stopMeter('sendMeter'); detachTone(); clearInterval(RM.timer); RM.timer = null; releaseAwake(); show('home'); paintResume();
 }
 
 $('routeSel').value = S.routeSel;
@@ -2584,13 +2592,15 @@ if (!standalone && /iP(hone|ad|od)/.test(navigator.userAgent) && /Safari/.test(n
 
 /* ============ Navigation ============ */
 $('goSend').addEventListener('click', () => startSend());
+$('resumeBtn').addEventListener('click', () => startSend());
 $('sbUse').addEventListener('click', () => { sendSteal = true; startSend(); });
-$('resumeBtn').addEventListener('click', () => { $('resumeBtn').hidden = true; startSend(); });
 // Page reloaded (or crashed) while sending → one tap brings the same room back. Browsers need that tap to start audio.
-if (store.get('ic-sending') === '1' && store.get('ic-code')) {
-  $('resumeBtn').textContent = `Resume sending · room ${store.get('ic-code')}`;
-  $('resumeBtn').hidden = false;
+function paintResume(){
+  const on = store.get('ic-sending') === '1' && !!store.get('ic-code') && !S.active;
+  $('resumeBtn').hidden = !on; document.querySelector('.send-stack').classList.toggle('resumable', on);
+  if (on) $('resumeBtn').textContent = `Resume sending · room ${store.get('ic-code')}`;
 }
+paintResume();
 $('goListen').addEventListener('click', openListen);
 $('stopSend').addEventListener('click', () => { if (confirmStop(`Stop sending? ${listenerWord()}will lose audio.`)) stopSend(); });
 document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click', () => {
