@@ -174,6 +174,48 @@ b.sm{font-size:15px}
 .fp-row b{width:84px;white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
 .fp-row select{flex:1;min-width:0;height:36px;border-radius:10px;border:0;background:var(--fill);padding:0 10px;font-size:16px}
 .role-seg{flex:none}
+.dup-note{display:flex;align-items:center;gap:12px;margin:0 0 10px;padding:10px 14px;border-radius:14px;background:color-mix(in srgb,var(--orange) 14%,var(--card));font-size:14px;line-height:1.3}
+.dup-note span{flex:1}
+.navbtns{justify-self:end;display:flex;gap:2px}
+.navbtns .navbtn{justify-self:auto}
+.ghead{display:flex;align-items:center;gap:8px;width:100%;padding:12px 0 4px;font-size:13px;font-weight:600;color:var(--label2);text-transform:uppercase;letter-spacing:.03em;text-align:left;cursor:default}
+.ghead .gc{font-weight:500;color:var(--label3)}
+.ghead.pick{cursor:pointer}
+.ghead.pick::after{content:'Tap to talk to all';margin-left:auto;text-transform:none;letter-spacing:0;font-weight:500;color:var(--blue);font-size:13px}
+.ghead.on{color:var(--blue)}
+.ghead.on::after{content:'✓ Talking to all'}
+.grp:first-child .ghead{padding-top:4px}
+.grp .member{padding:6px 0}
+.grp .ghead{padding:8px 0 2px}
+.grp:first-child .ghead{padding-top:2px}
+.mrow.on+.mrow.on,.mrow.ingrp+.mrow.ingrp{margin-top:2px}
+.mrow.pick .member{cursor:pointer}
+.mrow .ck{width:22px;height:22px;border-radius:11px;box-shadow:inset 0 0 0 1.5px var(--label3);flex:none;display:none}
+.mrow.pick .ck{display:block}
+.mrow.on .ck{background:var(--blue) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 22'%3E%3Cpath d='M6 11.5l3.2 3.2L16 8' fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");box-shadow:none}
+.mrow.ingrp .ck{background:color-mix(in srgb,var(--blue) 35%,transparent);box-shadow:none}
+.mrow.on,.mrow.ingrp{background:color-mix(in srgb,var(--blue) 9%,transparent);margin:0 -12px;padding:0 12px;border-radius:12px;border-bottom-color:transparent}
+.mix-sheet{gap:12px}
+.mix-sheet .tools-head{justify-content:space-between;align-items:center}
+.mix-sheet .tools-head b{font-size:22px}
+.mix-sheet .tools-head button{color:var(--blue);font-size:17px;font-weight:600}
+.mix-note{text-align:left!important}
+.mix-row{display:grid;grid-template-columns:36px 1fr auto;grid-template-areas:'av nm vv' 'av rg rg';column-gap:12px;align-items:center;padding:10px 0;border-bottom:.5px solid var(--sep)}
+.mix-row:last-child{border-bottom:0}
+.mix-row .av{grid-area:av}.mix-row .nm{grid-area:nm;font-size:16px}.mix-row .vv{grid-area:vv;font-size:14px;color:var(--label2);font-variant-numeric:tabular-nums}
+.mix-row .av[style*="--pc"]{background:color-mix(in srgb,var(--pc) 22%,transparent);color:var(--pc)}
+.mix-row input{grid-area:rg;width:100%;accent-color:var(--blue);height:28px}
+#mixFeed .fd-ctl{padding:16px 18px}
+.tg-row{display:flex;justify-content:center;min-height:32px}
+.tg-row::-webkit-scrollbar{display:none}
+.tg{flex:none;height:32px;padding:0 13px;border-radius:16px;background:var(--fill);font-size:14px;font-weight:500;color:var(--label);white-space:nowrap}
+.tg.on{background:var(--blue);color:#fff}
+.ptt.priv.on{background:var(--purple,#AF52DE);box-shadow:0 0 0 calc(10px + var(--lvl,0)*22px) color-mix(in srgb,var(--purple,#AF52DE) 25%,transparent)}
+.tx-line .to{font-size:12px;color:var(--label2);background:var(--fill);border-radius:6px;padding:1px 6px;margin-left:6px;font-weight:600}
+.tx-line.cont{margin-top:-10px;padding-top:4px}
+.tx-line.cont .who,.tx-line.cont .at,.tx-line.cont .to{display:none}
+.tx-line.cont .tx{margin-top:0}
+.app.feedmode #hsPref{display:none!important}
 .role-hint{display:block;margin-top:8px;font-size:13px;color:var(--label2)}
 .nm .role{font-size:13px;color:var(--label2);margin-left:7px;font-weight:400}
 .app.feedmode #roleRow{display:none}
@@ -223,6 +265,12 @@ b.sm{font-size:15px}
   #room.txon:not(.alone) #countLbl{display:none}
   #room.txon:not(.alone) .members{flex-direction:row;overflow-x:auto;gap:2px;padding:10px 8px;scrollbar-width:none}
   #room.txon:not(.alone) .mrow{border:0;flex:none}
+  #room.txon:not(.alone) .grp{display:flex;align-items:stretch;flex:none;gap:2px}
+  #room.txon:not(.alone) .ghead{writing-mode:vertical-rl;transform:rotate(180deg);width:auto;padding:4px 3px;font-size:10px;border-radius:8px;justify-content:center}
+  #room.txon:not(.alone) .ghead::after,#room.txon:not(.alone) .ghead .gc,#room.txon:not(.alone) .mrow .ck{display:none}
+  #room.txon:not(.alone) .ghead.on{background:var(--blue);color:#fff}
+  #room.txon:not(.alone) .mrow.on,#room.txon:not(.alone) .mrow.ingrp{margin:0;padding:0;background:none}
+  #room.txon:not(.alone) .mrow.on .av,#room.txon:not(.alone) .mrow.ingrp .av{box-shadow:0 0 0 2px var(--blue)}
   #room.txon:not(.alone) .mrow:not(.open) .vol{display:none}
   #room.txon:not(.alone) .member{flex-direction:column;gap:4px;padding:2px 6px;width:auto}
   #room.txon:not(.alone) .member .nm{font-size:12px;max-width:66px;text-align:center}
@@ -313,7 +361,7 @@ b.sm{font-size:15px}
 <div class="app">
   <nav class="navbar">
     <a class="back" href="./"><svg viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2 2 10l8 8"/></svg>Intercom</a>
-    <span class="nav-title" id="navTitle"></span><button class="navbtn" id="toolsBtn" hidden>Room</button>
+    <span class="nav-title" id="navTitle"></span><span class="navbtns"><button class="navbtn" id="mixBtn" hidden>Mix</button><button class="navbtn" id="toolsBtn" hidden>Room</button></span>
   </nav>
 
   <!-- START -->
@@ -357,6 +405,7 @@ b.sm{font-size:15px}
     <aside class="side" id="side">
       <div class="mem-block">
         <p class="sect" id="countLbl">In the room</p>
+        <div class="dup-note" id="dupNote" hidden><span id="dupText"></span><button class="pill" id="dupChange">Change</button></div>
         <div class="card members" id="members"></div>
       </div>
       <div class="tools" id="tools">
@@ -381,6 +430,12 @@ b.sm{font-size:15px}
           <label class="sw" aria-label="Mixer phone"><input type="checkbox" autocomplete="off" id="feedMode"><i></i></label>
         </div>
       </div>
+      <div class="card pref" id="hsPref">
+        <div class="tx-head">
+          <span><b>Headset button</b><small>Press your headphones’ play/pause button to turn the mic on and off</small></span>
+          <label class="sw" aria-label="Headset button"><input type="checkbox" id="hsOn" autocomplete="off" checked><i></i></label>
+        </div>
+      </div>
       <div class="card pref" id="isoPref">
         <div class="tx-head">
           <span><b>Voice isolation</b><small id="isoSub">On · removes background noise</small></span>
@@ -397,7 +452,7 @@ b.sm{font-size:15px}
       </div>
     </aside>
     <main class="main">
-    <div id="feedHome" hidden><div class="fd-ctl" id="feedCtl">
+    <div id="feedHome" hidden><div class="fd-ctl card" id="feedCtl">
       <div class="tx-head">
         <span><b class="sm">Listen to the mixer</b><small id="feedFrom"></small></span>
         <label class="sw" aria-label="Listen to the mixer"><input type="checkbox" autocomplete="off" id="feedListen"><i></i></label>
@@ -432,6 +487,7 @@ b.sm{font-size:15px}
       <div class="tx-head fp-auto"><span><b class="sm">Auto gain from tone</b><small id="fpToneSub">Send tone from the mixer to set the level</small></span><label class="sw sm" aria-label="Auto gain from tone"><input type="checkbox" autocomplete="off" id="fpAuto" checked><i></i></label></div>
     </div>
     <div class="ptt-wrap">
+      <div class="tg-row" id="tgRow" hidden><button class="tg" id="tgAll">Talk to everyone</button></div>
       <button class="ptt" id="ptt" aria-label="Push to talk">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4"/></svg>
       </button>
@@ -446,6 +502,14 @@ b.sm{font-size:15px}
 
 <!-- Pairing sheet -->
 <div class="tools-bg" id="toolsBg" hidden></div>
+<div class="sheet-bg" id="mixBg" hidden>
+  <div class="sheet mix-sheet">
+    <div class="tools-head" style="display:flex"><b>Mix</b><button id="mixDone">Done</button></div>
+    <p class="mix-note">Only changes what you hear.</p>
+    <div id="mixFeed"></div>
+    <div class="card" id="mixList"></div>
+  </div>
+</div>
 <div class="sheet-bg" id="sheetBg" hidden>
   <div class="sheet" id="sheet">
     <div class="steps" id="steps"><i></i><i></i></div>
@@ -540,7 +604,7 @@ function newPeer(id, polite){
   pc.ontrack = e => { p.audio.srcObject = e.streams[0] || new MediaStream([e.track]); p.audio.play().catch(() => {}); if (p.gain) { try { p.gainSrc.disconnect(); p.gain.disconnect(); } catch {} p.gain = null; } applyVol(p); if (p.jb) setBuffer(p, p.jb); };
   pc.onconnectionstatechange = () => watchLink(p);
   dc.onmessage = e => { let m; try { m = JSON.parse(e.data) } catch { return; } onMsg(p, m); };
-  dc.onopen = () => { send(p, { t: 'hello', id: me.id, sess: me.sess, name: me.name, role: me.role, color: me.color, tcn: Object.fromEntries([...TX.lines.values()].filter(l => l.c != null).map(l => [l.who, l.c])), feed: FEED.mode, feedsub: FL.on, talking, peers: memberIds(), room: ROOM.joining ? '' : ROOM.code, rid: ROOM.joining ? '' : ROOM.rid, since: ROOM.since, est: ROOM.est, beacon: !!ROOM.beacon && !ROOM.joining, tx: { on: TX.on, at: TX.at, by: TX.by } }); };
+  dc.onopen = () => { send(p, { t: 'hello', id: me.id, sess: me.sess, name: me.name, role: me.role, color: me.color, tcn: Object.fromEntries([...TX.lines.values()].filter(l => l.c != null).map(l => [l.who, l.c])), feed: FEED.mode, feedsub: FL.on, talking, talkTo: talking && TALK.to ? [...TALK.to] : null, peers: memberIds(), room: ROOM.joining ? '' : ROOM.code, rid: ROOM.joining ? '' : ROOM.rid, since: ROOM.since, est: ROOM.est, beacon: !!ROOM.beacon && !ROOM.joining, tx: { on: TX.on, at: TX.at, by: TX.by } }); };
   dc.onclose = () => { if (p.ready && peers.get(p.id) === p) dropPeer(p, 'left'); };
   return p;
 }
@@ -553,7 +617,7 @@ function activate(p){
     try { p.makingOffer = true; const o = await p.pc.createOffer(); await p.pc.setLocalDescription({ type: 'offer', sdp: nack(o.sdp) }); await waitGather(p.pc, 1500); signal(p, { desc: p.pc.localDescription }); }
     catch {} finally { p.makingOffer = false; }
   };
-  if (mic && !p.pc.getSenders().some(s => s.track)) { const t = outTrack(); p.pc.addTrack(t, new MediaStream([t])); preferRed(p.pc); feedRoute(p); }
+  if (mic && !p.pc.getSenders().some(s => s.track)) { const t = outTrack(); p.pc.addTrack(t, new MediaStream([t])); preferRed(p.pc); feedRoute(p); if (talking && TALK.to) routeTalk(); }
 }
 // Ask for lost packets again (NACK)…
 function nack(sdp){
@@ -647,7 +711,7 @@ function onMsg(p, m){
       return;
     case 'peers': p.peers = m.peers || []; p.beacon = !!m.beacon; if (m.room) roomCode(m.room, !!m.est, m.rid);
       if (m.rid) { p.rid = m.rid; if (m.since) p.since = +m.since; fillGap(p); } meet(p.peers); return;
-    case 'ptt': p.talking = !!m.on; paint(); feedDuck(); prioDuck(); return;
+    case 'ptt': p.talking = !!m.on; setPriv(p, m.on ? m.to : null); paint(); feedDuck(); prioDuck(); return;
     case 'color': p.color = Number.isInteger(m.c) ? m.c : null; fixColor(); paint(); txPaint(); return;
     case 'role': p.role = ROLES[m.role] ? m.role : 'pa'; prioDuck(); paint(); return;
     case 'feedsub': p.sub = !!m.on; feedRoute(p); feedPaint(); return;
@@ -672,13 +736,13 @@ function onHello(p, m){
   }
   if (!old && peers.size >= MAX - 1) { send(p, { t: 'full' }); setTimeout(() => closePeer(p), 300); return; }
   const first = !p.helloed; p.helloed = true;
-  p.id = m.id; p.sess = m.sess; p.name = String(m.name || '').slice(0, 20); p.role = ROLES[m.role] ? m.role : 'pa'; p.color = Number.isInteger(m.color) ? m.color : null; p.tcn = m.tcn && typeof m.tcn === 'object' ? m.tcn : {}; p.feed = !!m.feed; p.sub = !!m.feedsub; p.talking = !!m.talking; p.polite = me.id > m.id;
+  p.id = m.id; p.sess = m.sess; p.name = String(m.name || '').slice(0, 20); p.role = ROLES[m.role] ? m.role : 'pa'; p.color = Number.isInteger(m.color) ? m.color : null; p.tcn = m.tcn && typeof m.tcn === 'object' ? m.tcn : {}; p.feed = !!m.feed; p.sub = !!m.feedsub; p.talking = !!m.talking; p.privTo = m.talking && Array.isArray(m.talkTo) ? m.talkTo : null; p.privOut = !!p.privTo && !p.privTo.includes(me.id); p.polite = me.id > m.id;
   peers.set(p.id, p);
   fixColor();
   const wasPair = pair.peer === p;
   activate(p); feedRoute(p); applyVol(p);
   if (wasPair) pairDone(p);
-  else if (first) toast(`${p.name || 'Someone'} joined`);
+  else if (first) { dnCalc(); toast(`${dn(p)} joined`); }
   p.peers = m.peers || []; p.beacon = !!m.beacon;
   if (m.room) roomCode(m.room, !!m.est, m.rid);
   if (p.via) { ROOM.est = true; saveRoom(); announce(); }   // someone joined with our code: it's this room's code now
@@ -693,7 +757,7 @@ function announce(){ broadcast({ t: 'peers', peers: memberIds(), room: ROOM.join
 function fillGap(p){
   if (p.rid !== ROOM.rid || p.filled === ROOM.rid) return;
   p.filled = ROOM.rid;
-  const list = [...TX.lines.values()].filter(l => !l.pending && l.at >= p.since - 1000).map(l => ({ ...l, rid: ROOM.rid }));
+  const list = [...TX.lines.values()].filter(l => !l.pending && l.at >= p.since - 1000 && (!l.to || l.to.includes(p.id))).map(l => ({ ...l, rid: ROOM.rid }));
   for (let i = 0; i < list.length; i += 100) send(p, { t: 'lines', list: list.slice(i, i + 100) });
 }
 function meet(ids){
@@ -712,6 +776,7 @@ function watchLink(p){
   paint();
   if (st === 'failed') return dropPeer(p, 'lost');
   if (st === 'disconnected' && !p.lostT) p.lostT = setTimeout(() => { if (p.pc.connectionState !== 'connected') dropPeer(p, 'lost'); }, 12000);
+  if (st === 'disconnected' && p.beacon) setTimeout(maybeClaim, 1500 + Math.random() * 1500);   // the code holder went quiet (e.g. reloading): make sure the code isn't lost
   if (st === 'closed') dropPeer(p, 'left');
 }
 // Every few seconds: drop links that never came up, re-share who we can reach, and fill any gaps.
@@ -726,7 +791,20 @@ setInterval(() => {
    person's audio goes through a gain stage instead. */
 const VOL = (() => { try { return JSON.parse(store.get('ic-talk-vol') || '{}'); } catch { return {}; } })();
 const canElVol = (() => { try { const a = new Audio(); a.volume = 0.5; return a.volume === 0.5; } catch { return false; } })();
-const volOf = p => { const v = VOL[(p.name || '').toLowerCase()]; return typeof v === 'number' ? v : 1; };
+// Volumes are kept per phone (so two people with the same name don't share one); older saves by name still work.
+const volOf = p => { const v = VOL['#' + p.id] ?? VOL[(p.name || '').toLowerCase()]; return typeof v === 'number' ? v : 1; };
+// Same name twice: whoever was in the room first keeps it, later ones show as "Yuki (2)", "Yuki (3)"…
+// Every phone works this out the same way (by when each person joined the room), so labels match everywhere.
+let DN = new Map();
+function dnCalc(){
+  const all = [{ id: me.id, name: me.name || 'Someone', since: ROOM.since || 0 },
+    ...[...peers.values()].filter(p => p.helloed).map(p => ({ id: p.id, name: p.name || (p.feed ? 'Mixer' : 'Someone'), since: p.since || 0 }))];
+  const by = {}; all.forEach(x => (by[x.name.trim().toLowerCase()] ||= []).push(x));
+  DN = new Map();
+  Object.values(by).forEach(g => { g.sort((a, b) => (a.since - b.since) || (a.id < b.id ? -1 : 1)); g.forEach((x, i) => DN.set(x.id, i ? `${x.name} (${i + 1})` : x.name)); });
+}
+const dn = p => { if (!DN.has(p.id)) dnCalc(); return DN.get(p.id) || p.name || 'Someone'; };
+const myDn = () => { if (!DN.has(me.id)) dnCalc(); return DN.get(me.id) || me.name; };
 // Priority: while someone with a higher role is talking, lower roles are turned down ~15 dB on every phone
 // (Director over everyone, Cam Op over PA). Same role = same priority. Only affects what you hear.
 const ROLES = { dir: { r: 3, t: 'Director' }, cam: { r: 2, t: 'Cam Op' }, pa: { r: 1, t: 'PA' } };
@@ -735,7 +813,7 @@ const rankOf = role => (ROLES[role] || ROLES.pa).r;
 let prioTop = 0;
 function prioCalc(){
   let top = talking && !FEED.mode ? rankOf(me.role) : 0;
-  peers.forEach(q => { if (!q.feed && q.helloed && q.talking && q.pc.connectionState === 'connected') top = Math.max(top, rankOf(q.role)); });
+  peers.forEach(q => { if (!q.feed && q.helloed && q.talking && !q.privOut && q.pc.connectionState === 'connected') top = Math.max(top, rankOf(q.role)); });
   return top;
 }
 const prioOf = p => !p.feed && rankOf(p.role) < prioTop ? dbTo(-15) : 1;
@@ -744,19 +822,23 @@ function prioDuck(){
   prioTop = top; peers.forEach(p => { if (!p.feed) applyVol(p); });
 }
 function setRole(r){
-  if (!ROLES[r]) return; me.role = r; store.set('ic-talk-role', r);
+  if (!ROLES[r]) return; me.role = r; store.set('ic-talk-role', r); tgPrune();
   document.querySelectorAll('[data-role-seg] button').forEach(b => b.classList.toggle('on', b.dataset.v === r));
   if (mic) { broadcast({ t: 'role', role: r }); prioDuck(); paint(); }
 }
 document.querySelectorAll('[data-role-seg] button').forEach(b => b.onclick = () => setRole(b.dataset.v));
 setTimeout(() => setRole(me.role), 0);
+function setPriv(p, to){
+  p.privTo = Array.isArray(to) ? to : null; const out = !!p.privTo && !p.privTo.includes(me.id);
+  if (out !== !!p.privOut) { p.privOut = out; applyVol(p); }
+}
 function setVol(p, v){
   v = Math.max(0, Math.min(1.5, v));
-  const k = (p.name || '').toLowerCase(); if (k) { if (v === 1) delete VOL[k]; else VOL[k] = v; store.set('ic-talk-vol', JSON.stringify(VOL)); }
+  const k = '#' + p.id; delete VOL[(p.name || '').toLowerCase()]; if (v === 1) delete VOL[k]; else VOL[k] = v; store.set('ic-talk-vol', JSON.stringify(VOL));
   applyVol(p);
 }
 function applyVol(p){
-  const v = volOf(p) * prioOf(p), stream = p.audio.srcObject;
+  const v = p.privOut ? 0 : volOf(p) * prioOf(p), stream = p.audio.srcObject;
   if (!stream) return;
   if (FEED.mode) { p.audio.muted = true; return; }      // the mixer phone never plays the room (it could end up on the recording)
   if (p.feed) return feedChain(p);
@@ -775,8 +857,8 @@ function dropPeer(p, why){
   if (peers.get(p.id) !== p) { closePeer(p); return; }
   peers.delete(p.id); closePeer(p);
   if (p.beacon) setTimeout(maybeClaim, 500 + Math.random() * 2000);   // they held the room code — someone take it over
-  if (p.helloed && why === 'lost') toast(`Lost ${p.name || 'someone'}`, 'warn');
-  else if (p.helloed && why === 'left') toast(`${p.name || 'Someone'} left`);
+  if (p.helloed && why === 'lost') toast(`Lost ${dn(p)}`, 'warn');
+  else if (p.helloed && why === 'left') toast(`${dn(p)} left`);
   announce(); paint();
 }
 // Leaving (closing, going back, switching apps away for good): say bye and close the links properly,
@@ -788,14 +870,130 @@ document.querySelector('.back').addEventListener('click', e => {
   e.preventDefault(); broadcast({ t: 'bye' }); setTimeout(() => { leaveAll(); location.href = './'; }, 120);
 });
 
+/* ---------- Private talk ----------
+   Directors and Cam Ops can pick who hears them: roles below theirs and/or single people (Directors: anyone).
+   The pick sticks until changed. Our voice is only SENT to those people (others get no audio at all);
+   as a second guard, phones that aren't included also mute a private talker. */
+const TG = (() => { try { const t = JSON.parse(store.get('ic-talk-tg') || '{}'); return { roles: new Set(t.roles || []), ids: new Set(t.ids || []) }; } catch { return { roles: new Set(), ids: new Set() }; } })();
+const TALK = { to: null, lbl: '', gen: 0 };
+const ROLE_PL = { dir: 'Directors', cam: 'Cam Ops', pa: 'PAs' };
+const canPick = () => !FEED.mode && rankOf(me.role) > 1;
+const pickRoles = () => Object.keys(ROLES).filter(r => rankOf(r) < rankOf(me.role));
+const pickPeople = () => [...peers.values()].filter(p => p.helloed && !p.feed && (me.role === 'dir' || rankOf(p.role) < rankOf(me.role)));
+const tgSave = () => store.set('ic-talk-tg', JSON.stringify({ roles: [...TG.roles], ids: [...TG.ids] }));
+function tgPrune(){                                       // after a role change: keep only what this role may pick
+  const ok = new Set(pickRoles()); [...TG.roles].forEach(r => { if (!ok.has(r)) TG.roles.delete(r); });
+  if (!canPick()) TG.ids.clear(); tgSave();
+}
+const isPrivate = () => canPick() && (TG.roles.size > 0 || TG.ids.size > 0);
+const inTarget = p => TG.roles.has(p.role) || TG.ids.has(p.id);
+function tgLabel(){
+  const names = [...TG.ids].map(id => peers.get(id)).filter(p => p?.helloed && !TG.roles.has(p.role)).map(p => dn(p));
+  return [...[...TG.roles].map(r => ROLE_PL[r]), ...names].join(', ');
+}
+// What each person gets from us right now: our voice, or nothing while we talk privately to others.
+function wantTrack(p){ return talking && TALK.to && !TALK.to.has(p.id) ? null : outTrack(); }
+function routeTalk(){
+  if (FEED.mode) return Promise.resolve();
+  const jobs = [];
+  peers.forEach(p => {
+    if (p.feed || !p.ready) return;
+    const want = wantTrack(p);
+    p.pc.getTransceivers().forEach(t => { if (t.receiver.track?.kind === 'audio' && t.sender.track !== want && (t.sender.track || want)) jobs.push(t.sender.replaceTrack(want).catch(() => {})); });
+  });
+  return Promise.all(jobs);
+}
+function tgPaint(){ $('tgRow').hidden = !isPrivate() || !mic; }
+$('tgAll').onclick = () => { TG.roles.clear(); TG.ids.clear(); tgSave(); paint(); };
+// Tap a group: talk to all of it (its single picks are cleared). Tap a person: toggle them;
+// if their whole group was picked, switch to just them. Tap again to unpick.
+function tgTapGroup(r){
+  if (!pickRoles().includes(r)) return;
+  if (TG.roles.has(r)) TG.roles.delete(r);
+  else { TG.roles.add(r); [...TG.ids].forEach(id => { if (peers.get(id)?.role === r) TG.ids.delete(id); }); }
+  tgSave(); paint();
+}
+function tgTapPerson(id){
+  const p = peers.get(id); if (!p || !pickPeople().includes(p)) return;
+  if (TG.roles.has(p.role)) { TG.roles.delete(p.role); TG.ids.add(id); }
+  else TG.ids.has(id) ? TG.ids.delete(id) : TG.ids.add(id);
+  tgSave(); paint();
+}
+function pttHint(){
+  const priv = isPrivate(), lbl = priv ? tgLabel() : '';
+  const none = priv && ![...peers.values()].some(p => p.helloed && !p.feed && inTarget(p));
+  $('ptt').classList.toggle('priv', talking ? !!TALK.to : priv);
+  $('pttHint').textContent = talking
+    ? (TALK.to ? `Talking to ${TALK.lbl || 'no one'}` : 'Talking…') + (locked ? ' · tap to stop' : '')
+    : priv ? (none ? `No one in ${lbl || 'your pick'} is here` : `Hold to talk to ${lbl}`) : 'Hold to talk · double‑tap to lock';
+}
+
+/* ---------- Headset button ----------
+   AirPods / EarPods / Bluetooth play-pause turns the mic on and off (a press can't be held, so it latches).
+   Browsers only send those buttons to a page that is "playing", so we loop a silent clip and take over
+   the play/pause actions (Media Session). A quiet chirp in your ear confirms on (rising) / off (falling). */
+const HS = { on: store.get('ic-talk-hs') !== '0', el: null, url: '' };
+function hsSilence(){
+  const n = 8000, b = new DataView(new ArrayBuffer(44 + n * 2)), w = (o, t) => [...t].forEach((c, i) => b.setUint8(o + i, c.charCodeAt(0)));
+  w(0, 'RIFF'); b.setUint32(4, 36 + n * 2, true); w(8, 'WAVEfmt '); b.setUint32(16, 16, true); b.setUint16(20, 1, true); b.setUint16(22, 1, true);
+  b.setUint32(24, 8000, true); b.setUint32(28, 16000, true); b.setUint16(32, 2, true); b.setUint16(34, 16, true); w(36, 'data'); b.setUint32(40, n * 2, true);
+  return URL.createObjectURL(new Blob([b], { type: 'audio/wav' }));
+}
+function hsStart(){
+  if (!HS.on || FEED.mode || !mic || !('mediaSession' in navigator)) return;
+  if (!HS.el) {
+    HS.url = HS.url || hsSilence();
+    HS.el = Object.assign(document.createElement('audio'), { src: HS.url, loop: true, playsInline: true });
+    HS.el.setAttribute('playsinline', ''); HS.el.addEventListener('pause', () => {     // the browser paused it itself = the headset button (if the action wasn't handed to us)
+      if (!HS.on || !HS.el) return; if (document.visibilityState === 'visible' && mic) hsPress(); setTimeout(() => HS.el?.play().catch(() => {}), 50); });
+    document.body.appendChild(HS.el);
+    const ms = navigator.mediaSession;
+    try { ms.metadata = new MediaMetadata({ title: 'Talkback', artist: 'Press to talk', album: 'Intercom' }); } catch {}
+    ['play', 'pause', 'stop'].forEach(a => { try { ms.setActionHandler(a, hsPress); } catch {} });
+    try { ms.setActionHandler('togglemicrophone', hsPress); } catch {}
+  }
+  HS.el.play().catch(() => {}); try { navigator.mediaSession.playbackState = 'playing'; } catch {}
+}
+function hsStop(){
+  if (!HS.el) return;
+  try { HS.el.pause(); HS.el.remove(); } catch {} HS.el = null;
+  ['play', 'pause', 'stop', 'togglemicrophone'].forEach(a => { try { navigator.mediaSession.setActionHandler(a, null); } catch {} });
+}
+let hsLast = 0;
+function hsPress(){
+  const now = performance.now(); if (now - hsLast < 350) return; hsLast = now;   // some headsets send play + pause for one press
+  ensureAudio(); if (FEED.mode || !mic) return;
+  if (talking) { locked = false; setTalk(false); chirp(false); } else { locked = true; setTalk(true); chirp(true); }
+  HS.el?.play().catch(() => {}); try { navigator.mediaSession.playbackState = 'playing'; } catch {}
+}
+function chirp(up){
+  if (!ctx) return;
+  const t = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain();
+  o.frequency.setValueAtTime(up ? 660 : 990, t); o.frequency.exponentialRampToValueAtTime(up ? 990 : 660, t + 0.09);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.06, t + 0.01); g.gain.linearRampToValueAtTime(0, t + 0.11);
+  o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t + 0.12);
+}
+$('hsOn').checked = HS.on;
+$('hsOn').onchange = e => { HS.on = e.target.checked; store.set('ic-talk-hs', HS.on ? '1' : '0'); if (HS.on) hsStart(); else hsStop(); };
+addEventListener('keydown', e => { if (e.key === 'MediaPlayPause' && !navigator.mediaSession) { e.preventDefault(); hsPress(); } });
+
 /* ---------- Push to talk (hold) + lock (double-tap) ---------- */
 function setTalk(on){
   if (FEED.mode) return;                                  // the mixer phone only sends the feed
-  if (on && !talking) txClipStart(); else if (!on && talking) txClipEnd();
-  talking = on; if (mic) mic.enabled = on;
-  broadcast({ t: 'ptt', on });
+  if (on && !talking) {
+    TALK.to = isPrivate() ? new Set([...peers.values()].filter(p => p.helloed && !p.feed && inTarget(p)).map(p => p.id)) : null;
+    TALK.lbl = TALK.to ? tgLabel() : '';
+    talking = true; txClipStart();
+    const gen = ++TALK.gen;
+    if (TALK.to) routeTalk().then(() => { if (talking && TALK.gen === gen && mic) mic.enabled = true; });   // cut the others off first
+    else if (mic) mic.enabled = true;
+  } else if (!on && talking) {
+    txClipEnd(); talking = false; if (mic) mic.enabled = false;
+    ++TALK.gen; const was = TALK.to; TALK.to = null; if (was) routeTalk();
+  }
+  broadcast({ t: 'ptt', on, to: on && TALK.to ? [...TALK.to] : null });
   $('ptt').classList.toggle('on', on); $('ptt').classList.toggle('locked', on && locked); feedDuck(); prioDuck();
-  $('pttHint').textContent = on ? (locked ? 'Mic locked on · tap to stop' : 'Talking…') : 'Hold to talk · double‑tap to lock';
+  pttHint();
   paint();
 }
 (() => {
@@ -827,6 +1025,7 @@ function ensureAudio(){
   if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch { return; } }
   if (ctx.state !== 'running') ctx.resume().catch(() => {});
   peers.forEach(p => p.audio.paused && p.audio.srcObject && p.audio.play().catch(() => {}));
+  if (HS.on && mic && (!HS.el || HS.el.paused)) hsStart();
 }
 function startLevel(){
   if (!ctx || !mic) return;
@@ -1043,9 +1242,11 @@ $('fpStart').onclick = () => ensureAudio();
 $('feedMode').onchange = e => {
   const on = e.target.checked;
   if (!confirm(on ? 'Make this the mixer phone? It will send the mixer to the room instead of talking.' : 'Stop sending the mixer and use this phone for talking?')) { e.target.checked = !on; return; }
-  store.set('ic-talk-feed', on ? '1' : '0'); leaveAll(); setTimeout(() => location.reload(), 150);   // rejoins the same room right away
+  store.set('ic-talk-feed', on ? '1' : '0');
+  if (!on && store.get('ic-talk-name-auto') === '1') { try { localStorage.removeItem('ic-talk-name'); localStorage.removeItem('ic-talk-name-auto'); } catch {} }   // never picked a name: ask for one now
+  leaveAll(); setTimeout(() => location.reload(), 150);   // rejoins the same room right away
 };
-$('startFeedBtn').onclick = () => { store.set('ic-talk-feed', '1'); FEED.mode = true; if (!$('nameIn').value.trim()) $('nameIn').value = 'Mixer'; $('startBtn').click(); };
+$('startFeedBtn').onclick = () => { store.set('ic-talk-feed', '1'); FEED.mode = true; const auto = !$('nameIn').value.trim(); if (auto) $('nameIn').value = 'Mixer'; $('startBtn').click(); if (auto) store.set('ic-talk-name-auto', '1'); };
 // --- listeners
 function feedChain(p){
   if (FEED.mode || !p.audio.srcObject || !ctx) return;
@@ -1070,7 +1271,7 @@ function feedLevels(p){
 }
 function feedDuck(){
   if (!ctx) return;
-  const someone = talking || [...peers.values()].some(q => !q.feed && q.helloed && q.talking);
+  const someone = talking || [...peers.values()].some(q => !q.feed && q.helloed && q.talking && !q.privOut);
   peers.forEach(p => { if (p.fc) p.fc.duck.gain.setTargetAtTime(someone ? dbTo(-12) : 1, ctx.currentTime, someone ? 0.03 : 0.25); });
 }
 // Auto level: follow the feed's loudness (~1.5 s) and steer it toward a comfortable −20 dBFS average,
@@ -1145,7 +1346,7 @@ function txTap(src){
     };
   }
 }
-function txClipStart(){ if (TX.on && !TX.limit && TX.node) TX.clip = { at: Date.now(), chunks: [], len: 0 }; }
+function txClipStart(){ if (TX.on && !TX.limit && TX.node) TX.clip = { at: Date.now(), chunks: [], len: 0, to: TALK.to ? [...TALK.to, me.id] : null, lbl: TALK.to ? TALK.lbl : '' }; }
 function txClipEnd(){
   const c = TX.clip; TX.clip = null;
   if (!c || !c.len) return;
@@ -1153,8 +1354,8 @@ function txClipEnd(){
   let pk = 0; for (const a of c.chunks) for (let i = 0; i < a.length; i += 4) { const v = Math.abs(a[i]); if (v > pk) pk = v; }
   if (secs < 0.5 || pk < 0.005) return;                // a tap or silence — don't spend allowance on it
   const id = me.id + '-' + me.sess + '-' + (++TX.n);
-  TX.queue.push({ id, at: c.at, dur: secs, wav: toWav(c.chunks, c.len, ctx.sampleRate) });
-  txAdd({ id, who: me.name, c: me.color, at: c.at, dur: secs, text: '', pending: true }, true); txPaint();
+  TX.queue.push({ id, at: c.at, dur: secs, to: c.to, lbl: c.lbl, wav: toWav(c.chunks, c.len, ctx.sampleRate) });
+  txAdd({ id, who: myDn(), from: me.id, c: me.color, to: c.to, toLbl: c.lbl, at: c.at, dur: secs, text: '', pending: true }, true); txPaint();
   txSend();
 }
 function toWav(chunks, len, rate){                     // 16 kHz mono 16-bit — small and what Whisper wants
@@ -1190,7 +1391,8 @@ async function txSend(){
   TX.queue.shift();
   const l = TX.lines.get(c.id);
   if (res.error || !res.text) { TX.lines.delete(c.id); }  // nothing intelligible (or a failed clip): drop it
-  else { const done = { id: c.id, rid: ROOM.rid, who: me.name, c: me.color, at: c.at, dur: c.dur, text: res.text }; TX.lines.set(c.id, done); broadcast({ t: 'line', l: done }); }
+  else { const done = { id: c.id, rid: ROOM.rid, who: TX.lines.get(c.id)?.who || myDn(), from: me.id, c: me.color, at: c.at, dur: c.dur, text: res.text, ...(c.to ? { to: c.to, toLbl: c.lbl } : {}) }; TX.lines.set(c.id, done);
+    if (c.to) c.to.forEach(id => { const q = peers.get(id); if (q) send(q, { t: 'line', l: done }); }); else broadcast({ t: 'line', l: done }); }
   txSave(); txPaint(); txSend();
 }
 function txAdd(l, quiet){
@@ -1199,7 +1401,7 @@ function txAdd(l, quiet){
   if (!l.pending && l.at < ROOM.since - 1000 && !TX.lines.has(l.id)) return;   // from before we were here (or before we cleared)
   const had = TX.lines.get(l.id);
   if (had && !had.pending && l.pending) return;
-  TX.lines.set(l.id, { id: l.id, who: String(l.who || '').slice(0, 20), c: Number.isInteger(l.c) ? l.c : null, at: +l.at || Date.now(), dur: +l.dur || 0, text: l.text.slice(0, 2000), pending: !!l.pending });
+  TX.lines.set(l.id, { id: l.id, who: String(l.who || '').slice(0, 26), ...(l.from ? { from: String(l.from).slice(0, 16) } : {}), c: Number.isInteger(l.c) ? l.c : null, ...(Array.isArray(l.to) ? { to: l.to.slice(0, 8).map(String), toLbl: String(l.toLbl || '').slice(0, 80) } : {}), at: +l.at || Date.now(), dur: +l.dur || 0, text: l.text.slice(0, 2000), pending: !!l.pending });
   if (!l.pending) txSave();
   if (!quiet) txPaint();
 }
@@ -1209,7 +1411,7 @@ function txSet(on, by, at, share = true){
   $('txOn').checked = on;
   if (!on) { TX.clip = null; }
   else if (talking) txClipStart();
-  if (share) broadcast({ t: 'tx', on, by: me.name, at: TX.at });
+  if (share) broadcast({ t: 'tx', on, by: myDn(), at: TX.at });
   txSave();
   if (!share && TX.by) toast(`${TX.by} turned the transcript ${on ? 'on' : 'off'}`);
   txSub(); txPaint();
@@ -1239,7 +1441,9 @@ function txPaint(){
   box.hidden = !TX.on; $('txActs').hidden = !TX.on || !list.some(l => !l.pending);
   const txv = TX.on && !FEED.mode;                     // the mixer phone keeps its panel; the feed isn't transcribed
   if ($('room').classList.contains('txon') !== txv) { $('room').classList.toggle('txon', txv); paint(); }
-  box.innerHTML = list.length ? list.map(l => `<div class="tx-line${l.pending ? ' pending' : ''}" style="--pc:${colorOfLine(l) || 'var(--fill)'}"><span class="who">${esc(l.who)}</span><span class="at">${fmtClock(l.at)}</span><span class="tx">${l.pending ? (TX.limit ? 'Waiting · daily limit reached' : !navigator.onLine ? 'Waiting for internet' : 'Transcribing…') : esc(l.text)}</span></div>`).join('')
+  // Same person talking again (to the same people) → one block, name shown once until someone else talks.
+  box.innerHTML = list.length ? list.map((l, i) => { const pv = list[i - 1], cont = pv && (pv.from || pv.who) === (l.from || l.who) && pv.who === l.who && (pv.toLbl || '') === (l.toLbl || '');
+    return `<div class="tx-line${l.pending ? ' pending' : ''}${cont ? ' cont' : ''}" style="--pc:${colorOfLine(l) || 'var(--fill)'}"><span class="who">${esc(l.who)}</span><span class="at">${fmtClock(l.at)}</span>${l.to ? `<span class="to">to ${esc(l.toLbl || 'some people')}</span>` : ''}<span class="tx">${l.pending ? (TX.limit ? 'Waiting · daily limit reached' : !navigator.onLine ? 'Waiting for internet' : 'Transcribing…') : esc(l.text)}</span></div>`; }).join('')
     : '<div class="empty">Talk to see the transcript here.</div>';
   if (atEnd) box.scrollTop = box.scrollHeight;
 }
@@ -1249,8 +1453,8 @@ function txExport(kind){
   const t0 = list[0].at, pad = (n, w = 2) => String(n).padStart(w, '0');
   const ts = ms => { ms = Math.max(0, Math.round(ms)); return `${pad(Math.floor(ms / 3600e3))}:${pad(Math.floor(ms / 60e3) % 60)}:${pad(Math.floor(ms / 1e3) % 60)},${pad(ms % 1000, 3)}`; };
   const body = kind === 'srt'
-    ? list.map((l, i) => `${i + 1}\n${ts(l.at - t0)} --> ${ts(l.at - t0 + Math.max(1000, l.dur * 1000))}\n${l.who}: ${l.text}\n`).join('\n')
-    : list.map(l => `[${fmtClock(l.at)}] ${l.who}: ${l.text}`).join('\n') + '\n';
+    ? list.map((l, i) => `${i + 1}\n${ts(l.at - t0)} --> ${ts(l.at - t0 + Math.max(1000, l.dur * 1000))}\n${l.who}${l.to ? ' → ' + (l.toLbl || 'private') : ''}: ${l.text}\n`).join('\n')
+    : list.map(l => `[${fmtClock(l.at)}] ${l.who}${l.to ? ' → ' + (l.toLbl || 'private') : ''}: ${l.text}`).join('\n') + '\n';
   const d = new Date(t0), name = `talkback-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}.${kind}`;
   const file = new File([body], name, { type: 'text/plain' });
   if (navigator.canShare?.({ files: [file] })) { navigator.share({ files: [file] }).catch(() => {}); return; }
@@ -1281,12 +1485,12 @@ function fixColor(){
   const others = [...peers.values()].filter(p => p.helloed && !p.feed && p.color != null);
   const taken = new Set(others.map(p => p.color));
   // colors still on the transcript for people who left (ours and what others told us), so a newcomer doesn't look like them
-  const past = new Set(), here = new Set([me.name, ...others.map(p => p.name)]);
-  [...TX.lines.values()].forEach(l => { if (!here.has(l.who) && l.c != null) past.add(l.c); });
+  const past = new Set(), here = new Set([me.name, ...others.map(p => p.name)]), hereIds = new Set([me.id, ...others.map(p => p.id)]);
+  [...TX.lines.values()].forEach(l => { if ((l.from ? !hereIds.has(l.from) : !here.has(l.who)) && l.c != null) past.add(l.c); });
   others.forEach(p => Object.entries(p.tcn || {}).forEach(([n, c]) => { if (!here.has(n) && Number.isInteger(c)) past.add(c); }));
   const free = i => !taken.has(i) && !past.has(i), anyFree = PALETTE.some((_, i) => free(i));
   const clash = me.color == null || others.some(p => p.color === me.color && p.id < me.id)
-    || (past.has(me.color) && anyFree && !others.some(p => p.color === me.color) && ![...TX.lines.values()].some(l => l.who === me.name));
+    || (past.has(me.color) && anyFree && !others.some(p => p.color === me.color) && ![...TX.lines.values()].some(l => l.from ? l.from === me.id : l.who === me.name));
   if (!clash) return;
   const ok = anyFree ? free : i => !taken.has(i);
   let i = chash(me.name); for (let n = 0; !ok(i) && n < PALETTE.length; n++) i = (i + 1) % PALETTE.length;
@@ -1295,8 +1499,8 @@ function fixColor(){
 }
 const pcol = i => i == null ? '' : PALETTE[i] || '';
 function colorOfLine(l){
-  if (l.who === me.name) return pcol(me.color);
-  const p = [...peers.values()].find(q => q.helloed && !q.feed && q.name === l.who);
+  if (l.from ? l.from === me.id : l.who === me.name) return pcol(me.color);
+  const p = l.from ? peers.get(l.from) : [...peers.values()].find(q => q.helloed && !q.feed && q.name === l.who);
   return p && p.color != null ? pcol(p.color) : pcol(l.c);
 }
 
@@ -1305,46 +1509,80 @@ const initials = n => (n || '?').trim().split(/\s+/).map(w => w[0]).join('').sli
 function paint(){
   prioDuck();
   const list = [...peers.values()].filter(p => p.helloed);
-  const rows = [{ k: 'me', name: me.name + ' (you)', role: FEED.mode ? '' : ROLES[me.role].t, ini: initials(me.name), talking, st: talking ? 'Talking' : '' },
+  dnCalc();
+  const rows = [{ k: 'me', name: myDn() + ' (you)', role: FEED.mode ? '' : ROLES[me.role].t, ini: initials(me.name), talking, st: talking ? (TALK.to ? 'Private' : 'Talking') : '' },
     ...list.map(p => {
       const st = p.pc.connectionState;
-      if (p.feed) return { k: p.id, f: p, role: '', name: p.name || 'Mixer', ini: 'MX', talking: false, st: st !== 'connected' ? 'Reconnecting…' : !FL.on ? 'Mixer · off' : p.tone ? 'Tone' : 'Listening', warn: st !== 'connected' };
-      return { k: p.id, p, role: ROLES[p.role]?.t || 'PA', name: p.name || 'Someone', ini: initials(p.name), talking: p.talking && st === 'connected',
-        st: p.talking && st === 'connected' ? 'Talking' : st === 'connected' ? '' : (st === 'new' || st === 'connecting') && !p.wasUp ? 'Connecting…' : 'Reconnecting…',
+      if (p.feed) return { k: p.id, f: p, role: '', name: dn(p), ini: 'MX', talking: false, st: st !== 'connected' ? 'Reconnecting…' : !FL.on ? 'Off · tap to listen' : p.tone ? 'Tone' : 'Listening', warn: st !== 'connected' };
+      const tk = p.talking && st === 'connected';
+      return { k: p.id, p, role: ROLES[p.role]?.t || 'PA', name: dn(p), ini: initials(p.name), talking: tk && !p.privOut,
+        st: tk ? (p.privOut ? 'Talking privately' : p.privTo ? 'Talking to you' : 'Talking') : st === 'connected' ? '' : (st === 'new' || st === 'connecting') && !p.wasUp ? 'Connecting…' : 'Reconnecting…',
         warn: st !== 'connected' };
     })];
-  // Rows are kept and updated in place (not rebuilt), so an open volume slider isn't interrupted.
-  const box = $('members'), keys = new Set();
-  rows.forEach((r, i) => {
-    keys.add(r.k);
-    let el = box.querySelector(`.mrow[data-k="${r.k}"]`);
-    if (!el) el = makeRow(r);
-    if (box.children[i] !== el) box.insertBefore(el, box.children[i] || null);
-    el.querySelector('.member').classList.toggle('talking', !!r.talking);
-    el.querySelector('.av').textContent = r.ini; const pc = r.f ? '' : pcol(r.k === 'me' ? me.color : r.p?.color); el.querySelector('.av').style.cssText = pc ? `--pc:${pc}` : ''; el.querySelector('.nm').innerHTML = esc(r.name) + (r.role ? `<small class="role">${r.role}</small>` : '');
-    const st = el.querySelector('.st'); st.textContent = r.st; st.classList.toggle('warn', !!r.warn);
-    if (r.p) paintVol(el, r.p);
-    if (r.f) { const host = el.querySelector('.vol > div'); if (!host.contains($('feedCtl')) && !box.querySelector('.mrow.feed .fd-ctl')) host.appendChild($('feedCtl'));
-      const vb = el.querySelector('.vb'), pct = Math.round(FL.vol * 100); vb.textContent = FL.on && pct !== 100 ? (pct ? pct + '%' : 'Muted') : ''; vb.classList.toggle('mute', FL.on && !pct); }
-  });
-  if (!box.querySelector('.mrow.feed .fd-ctl')) $('feedHome').appendChild($('feedCtl'));
-  [...box.children].forEach(el => { if (!keys.has(el.dataset.k)) el.remove(); });
+  // Grouped by role (Directors, Cam Ops, PAs, then the mixer). Tapping picks who you talk to privately.
+  const box = $('members'), picking = canPick(), pr = pickRoles(), pp = new Set(pickPeople().map(p => p.id));
+  const roleOf = r => r.k === 'me' ? me.role : r.p?.role || 'pa';
+  const rowHtml = r => {
+    const pick = picking && r.p && pp.has(r.p.id), on = r.p && TG.ids.has(r.p.id) && !TG.roles.has(r.p.role), ingrp = r.p && TG.roles.has(r.p.role) && pr.includes(r.p.role);
+    const pc = r.f ? '' : pcol(r.k === 'me' ? me.color : r.p?.color), vol = r.p ? Math.round(volOf(r.p) * 100) : r.f && FL.on ? Math.round(FL.vol * 100) : 100;
+    return `<div class="mrow${r.p || r.f ? ' other' : ''}${r.f ? ' feed' : ''}${pick ? ' pick' : ''}${on && pick ? ' on' : ''}${ingrp ? ' ingrp' : ''}" data-k="${esc(r.k)}">`
+      + `<div class="member${r.talking ? ' talking' : ''}"${pick || r.f ? ' role="button" tabindex="0"' : ''}><span class="av"${pc ? ` style="--pc:${pc}"` : ''}>${esc(r.ini)}</span><span class="nm">${esc(r.name)}</span>`
+      + `<span class="vb${!vol ? ' mute' : ''}">${vol === 100 ? '' : vol ? vol + '%' : 'Muted'}</span><span class="st${r.warn ? ' warn' : ''}">${esc(r.st)}</span><span class="ck"></span></div></div>`;
+  };
+  const groups = FEED.mode ? [['all', 'In the room', rows.filter(r => !r.f)]] : Object.keys(ROLES).map(g => [g, ROLE_PL[g], rows.filter(r => !r.f && roleOf(r) === g)]);
+  const mixr = rows.filter(r => r.f);
+  let html = groups.filter(([, , rs]) => rs.length).map(([g, t, rs]) => {
+    const gp = picking && pr.includes(g) && rs.some(r => r.p);
+    return `<div class="grp" data-g="${g}"><div class="ghead${gp ? ' pick' : ''}${gp && TG.roles.has(g) ? ' on' : ''}"${gp ? ' role="button" tabindex="0"' : ''} data-g="${g}">${esc(t)}<span class="gc">${rs.length}</span></div>${rs.map(rowHtml).join('')}</div>`;
+  }).join('');
+  if (mixr.length) html += `<div class="grp" data-g="mix"><div class="ghead">Mixer</div>${mixr.map(rowHtml).join('')}</div>`;
+  if (box._h !== html) { box.innerHTML = html; box._h = html; }
   let empty = box.querySelector('.empty');
   const showEmpty = false;   // (alone: the room code / QR hint says it)
   if (showEmpty && !empty) { empty = Object.assign(document.createElement('div'), { className: 'empty', innerHTML: 'No one else yet. Tap <b>Add person</b> to show your code, or <b>Join a room</b> to scan someone else’s.' }); box.appendChild(empty); }
   if (!showEmpty && empty) empty.remove();
   $('countLbl').textContent = list.length ? `In the room · ${list.length + 1}` : 'In the room';
   $('addBtn').disabled = list.length >= MAX - 1;
-  $('room').classList.toggle('alone', !list.length); $('toolsBtn').hidden = !mic;
-  feedPaint();
+  $('room').classList.toggle('alone', !list.length); $('toolsBtn').hidden = !mic; $('mixBtn').hidden = !mic || FEED.mode || !list.length; if (!$('mixBg').hidden) mixPaint();
+  feedPaint(); tgPaint(); if (!talking) pttHint();
   document.querySelector('.app').classList.toggle('alone-mode', !list.length && !TX.on);   // transcript on: fixed screen so it can fill
   $('aloneHint').hidden = !!list.length || codeWorks();
   $('meName').textContent = me.name;
+  const dupd = myDn() !== me.name && !!mic; $('dupNote').hidden = !dupd;
+  if (dupd) $('dupText').textContent = `Someone here is already ${me.name}, so you're showing as ${myDn()}.`;
   const inRoom = list.length > 0;                      // in a room: tuck "join another code" away
   if (!inRoom) ROOM.moreOpen = false;
   else if (!ROOM.moreOpen && !ROOM.joining && $('rcNote').classList.contains('err')) rcNote('');
   $('rcJoin').hidden = inRoom && !ROOM.moreOpen && !ROOM.joining; $('rcMore').hidden = !inRoom || !$('rcJoin').hidden;
 }
+$('members').addEventListener('click', e => {
+  ensureAudio();
+  const g = e.target.closest('.ghead.pick'); if (g) return tgTapGroup(g.dataset.g);
+  const row = e.target.closest('.mrow'); if (!row) return;
+  if (row.classList.contains('feed')) return openMix();
+  if (row.classList.contains('pick')) tgTapPerson(row.dataset.k);
+});
+// Mix sheet: everyone's volume (only for you) + the mixer feed.
+function openMix(){ ensureAudio(); $('mixBg').hidden = false; $('mixList')._k = ''; mixPaint(); }
+function closeMix(){ $('mixBg').hidden = true; }
+$('mixBtn').onclick = openMix; $('mixDone').onclick = closeMix; $('mixBg').onclick = e => { if (e.target === $('mixBg')) closeMix(); };
+function mixPaint(){
+  const ppl = [...peers.values()].filter(p => p.helloed && !p.feed), feeds = [...peers.values()].some(p => p.helloed && p.feed);
+  if (feeds && !$('mixFeed').contains($('feedCtl'))) $('mixFeed').appendChild($('feedCtl'));
+  if (!feeds && !$('feedHome').contains($('feedCtl'))) $('feedHome').appendChild($('feedCtl'));
+  const list = $('mixList'); list.hidden = !ppl.length;
+  const k = ppl.map(p => p.id + dn(p) + p.color).join('|');
+  if (list._k !== k) {                                    // rebuild only when people change, so a drag isn't interrupted
+    list._k = k;
+    list.innerHTML = ppl.map(p => `<div class="mix-row" data-id="${esc(p.id)}"><span class="av"${pcol(p.color) ? ` style="--pc:${pcol(p.color)}"` : ''}>${esc(initials(p.name))}</span><span class="nm">${esc(dn(p))}</span><span class="vv"></span><input type="range" min="0" max="150" step="5" aria-label="Volume for ${esc(dn(p))}"></div>`).join('');
+  }
+  list.querySelectorAll('.mix-row').forEach(el => { const p = peers.get(el.dataset.id); if (!p) return; const v = Math.round(volOf(p) * 100), rg = el.querySelector('input');
+    if (document.activeElement !== rg) rg.value = v; el.querySelector('.vv').textContent = v ? v + '%' : 'Muted'; });
+}
+$('mixList').addEventListener('input', e => {
+  const el = e.target.closest('.mix-row'), p = el && peers.get(el.dataset.id); if (!p) return;
+  setVol(p, e.target.value / 100); el.querySelector('.vv').textContent = +e.target.value ? e.target.value + '%' : 'Muted'; paint();
+});
 function makeRow(r){
   const el = document.createElement('div');
   el.className = 'mrow' + (r.p || r.f ? ' other' : '') + (r.f ? ' feed' : ''); el.dataset.k = r.k;
@@ -1576,6 +1814,7 @@ function setRoom(code, rid, est){
 // joined ("established") beats a fresh one a phone made for itself; otherwise the lower code (then id).
 function roomCode(code, est, rid){
   if (!/^\d{4}$/.test(code || '') || !rid) return;
+  if (ROOM.joining) return;                              // joining a code: that room is ours as soon as we're in — don't argue with it
   if (rid === ROOM.rid) { if (est && !ROOM.est) { ROOM.est = true; saveRoom(); } return; }
   const mine = [ROOM.est ? 1 : 0, ROOM.code, ROOM.rid], theirs = [est ? 1 : 0, code, rid];
   const keepMine = ROOM.rid && (mine[0] !== theirs[0] ? mine[0] > theirs[0] : (mine[1] + mine[2]) < (theirs[1] + theirs[2]));
@@ -1603,8 +1842,10 @@ function maybeClaim(){
     if (ROOM.beacon !== pe) { done(); try { pe.destroy(); } catch {} }      // code taken (someone else holds it) or no server
     if (e.type === 'unavailable-id') serverSeen(true);
     else if (['network', 'server-error', 'socket-error', 'socket-closed'].includes(e.type)) serverSeen(false);
-    // Alone and our code is held by someone: most likely our own room carrying on without us → rejoin it.
-    if (e.type === 'unavailable-id' && !peers.size && ROOM.code === code && !ROOM.joining) joinCode(code, { rejoin: true });
+    // Our code is held by someone we're not linked to (our room carrying on without us, or the holder came back
+    // and grabbed it first) → join them, so the room doesn't split in two.
+    const holderHere = [...peers.values()].some(p => p.helloed && p.beacon && p.pc.connectionState === 'connected');
+    if (e.type === 'unavailable-id' && !holderHere && ROOM.code === code && !ROOM.joining) joinCode(code, { rejoin: true });
   });
   pe.on('close', () => { if (ROOM.beacon === pe) { ROOM.beacon = null; announce(); } });
 }
@@ -1613,6 +1854,7 @@ function newCode(){ setRoom(String(Math.floor(Math.random() * 10000)).padStart(4
 // "New room code": leave everyone, start a fresh room with an empty transcript (only for this phone).
 function leaveRoom(){
   broadcast({ t: 'bye' });
+  dropBeacon();                                          // let the people staying behind hold the code (and don't pull them after us)
   setTimeout(() => { [...peers.values()].forEach(p => { peers.delete(p.id); closePeer(p); }); paint(); }, 150);
 }
 // Someone typed our code: send them our half of a link over the pairing connection.
@@ -1667,7 +1909,7 @@ async function joinCode(code, opt = {}){
     conn.on('data', async d => {
       if (d?.t === 'full') return end('That room is full (6 people max).', true);
       if (d?.t !== 'offer') return;
-      if (quiet && d.rid && d.rid !== ROOM.rid) { end(); try { conn.close(); } catch {} return newCode(); }   // a different room took our old code
+      if (quiet && d.rid && d.rid !== ROOM.rid) { end(); try { conn.close(); } catch {} return peers.size ? null : newCode(); }   // a different room took our old code
       p = newPeer(null, false); pair.peer = p; pair.mode = 'code';
       pair.onJoined = () => {
         ROOM.moreOpen = false; end(); serverSeen(true);
@@ -1722,7 +1964,7 @@ addEventListener('offline', () => { ICE_CFG = TEST_ICE ? ICE_CFG : { iceServers:
    Every tab on this phone/computer shares one identity, so only one may be in the room (like WhatsApp Web).
    A browser lock marks the active tab. "Use here" takes the lock; the old tab hears it right away,
    leaves the room and reloads into the "moved to another tab" screen. */
-const VERSION = '0.11.1-beta';                     // same as the home page (index.html) — bump both together
+const VERSION = '0.11.5-beta';                     // same as the home page (index.html) — bump both together
 const TAB_LOCK = 'ic-talk-active';
 let tabClaim = null;
 function showBusy(moved){
@@ -1762,7 +2004,7 @@ $('nameIn').value = store.get('ic-talk-name') || '';
 $('startBtn').onclick = () => {
   const name = $('nameIn').value.trim();
   if (!name) { $('nameIn').focus(); $('startErr').hidden = false; $('startErr').textContent = 'Enter your name so others know who’s talking.'; return; }
-  me.name = name.slice(0, 20); store.set('ic-talk-name', me.name);
+  me.name = name.slice(0, 20); store.set('ic-talk-name', me.name); try { localStorage.removeItem('ic-talk-name-auto'); } catch {}
   startTalk();
 };
 // Room tools (code, QR, voice isolation, name): inline when alone / on a laptop, a sheet on a phone in a room.
@@ -1781,10 +2023,11 @@ function closeTools(){
 }
 $('toolsBtn').onclick = openTools; $('toolsDone').onclick = closeTools; $('toolsBg').onclick = closeTools;
 // Change name any time (Room → Change). Everyone in the room sees the new name right away.
+$('dupChange').onclick = () => $('nameBtn').click();
 $('nameBtn').onclick = () => {
   const n = (prompt('Your name', me.name) || '').trim().slice(0, 20);
   if (!n || n === me.name) return;
-  me.name = n; store.set('ic-talk-name', n); $('nameIn').value = n;
+  me.name = n; store.set('ic-talk-name', n); $('nameIn').value = n; try { localStorage.removeItem('ic-talk-name-auto'); } catch {}
   broadcast({ t: 'name', name: n }); paint();
 };
 async function startTalk(){
