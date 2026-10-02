@@ -368,13 +368,13 @@ b.sm{font-size:15px}
       <div class="card pref" id="feedPref">
         <div class="tx-head">
           <span><b>Mixer phone</b><small id="feedModeSub">This phone sends the mixer to the room</small></span>
-          <label class="sw" aria-label="Mixer phone"><input type="checkbox" id="feedMode"><i></i></label>
+          <label class="sw" aria-label="Mixer phone"><input type="checkbox" autocomplete="off" id="feedMode"><i></i></label>
         </div>
       </div>
       <div class="card pref" id="isoPref">
         <div class="tx-head">
           <span><b>Voice isolation</b><small id="isoSub">On · removes background noise</small></span>
-          <label class="sw" aria-label="Voice isolation"><input type="checkbox" id="isoOn" checked><i></i></label>
+          <label class="sw" aria-label="Voice isolation"><input type="checkbox" autocomplete="off" id="isoOn" checked><i></i></label>
         </div>
       </div>
         <div class="card pref">
@@ -390,7 +390,7 @@ b.sm{font-size:15px}
     <div id="feedHome" hidden><div class="fd-ctl" id="feedCtl">
       <div class="tx-head">
         <span><b class="sm">Listen to the mixer</b><small id="feedFrom"></small></span>
-        <label class="sw" aria-label="Listen to the mixer"><input type="checkbox" id="feedListen"><i></i></label>
+        <label class="sw" aria-label="Listen to the mixer"><input type="checkbox" autocomplete="off" id="feedListen"><i></i></label>
       </div>
       <div id="feedBody" hidden>
         <div class="fd-tone" id="feedTone" hidden></div>
@@ -398,13 +398,13 @@ b.sm{font-size:15px}
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>
           <input type="range" id="feedVol" min="0" max="150" step="5" value="100" aria-label="Mixer feed volume"><span class="vv" id="feedVolV">100%</span>
         </div>
-        <div class="tx-head fd-row"><span><b class="sm">Auto level</b><small>Keeps the feed at a steady, comfortable level</small></span><label class="sw sm" aria-label="Auto level"><input type="checkbox" id="feedAgc" checked><i></i></label></div>
+        <div class="tx-head fd-row"><span><b class="sm">Auto level</b><small>Keeps the feed at a steady, comfortable level</small></span><label class="sw sm" aria-label="Auto level"><input type="checkbox" autocomplete="off" id="feedAgc" checked><i></i></label></div>
       </div>
     </div></div>
     <div class="card" id="txCard">
       <div class="tx-head">
         <span><b>Transcript</b><small id="txSub">Off · needs internet when on</small></span>
-        <label class="sw" aria-label="Transcript"><input type="checkbox" id="txOn"><i></i></label>
+        <label class="sw" aria-label="Transcript"><input type="checkbox" autocomplete="off" id="txOn"><i></i></label>
       </div>
       <div class="tx-warn" id="txWarn" hidden></div>
       <div class="tx-list" id="txList" hidden></div>
@@ -419,7 +419,7 @@ b.sm{font-size:15px}
       <div class="fp-row"><span>Gain</span><input type="range" id="fpGain" min="-12" max="30" step="0.5" value="0"><b id="fpGainV">0.0 dB</b></div>
       <div class="fp-row"><span>Channel</span><div class="seg" id="fpChan"><button data-v="left">Left</button><button data-v="both">Both</button><button data-v="right">Right</button></div></div>
       <div class="fp-row"><span>Input</span><select id="fpDev"><option value="">Default (mixer)</option></select></div>
-      <div class="tx-head fp-auto"><span><b class="sm">Auto gain from tone</b><small id="fpToneSub">Send tone from the mixer to set the level</small></span><label class="sw sm" aria-label="Auto gain from tone"><input type="checkbox" id="fpAuto" checked><i></i></label></div>
+      <div class="tx-head fp-auto"><span><b class="sm">Auto gain from tone</b><small id="fpToneSub">Send tone from the mixer to set the level</small></span><label class="sw sm" aria-label="Auto gain from tone"><input type="checkbox" autocomplete="off" id="fpAuto" checked><i></i></label></div>
     </div>
     <div class="ptt-wrap">
       <button class="ptt" id="ptt" aria-label="Push to talk">
@@ -1117,7 +1117,8 @@ const TX = { on: false, at: 0, by: '', lines: new Map(), queue: [], sending: fal
 // The transcript belongs to the room (its id), not the phone: switch rooms and it starts over.
 function txLoad(){
   TX.lines.clear();
-  try { const t = JSON.parse(store.get('ic-talk-tx') || 'null'); if (t && t.rid === ROOM.rid) (t.lines || []).forEach(l => TX.lines.set(l.id, l)); } catch {}
+  try { const t = JSON.parse(store.get('ic-talk-tx') || 'null'); if (t && t.rid === ROOM.rid) { (t.lines || []).forEach(l => TX.lines.set(l.id, l)); if (t.on != null && (t.at || 0) > TX.at) { TX.on = !!t.on; TX.at = t.at; TX.by = t.by || ''; } } } catch {}
+  $('txOn').checked = TX.on;
 }
 function txReset(){ TX.lines.clear(); TX.queue = []; TX.clip = null; TX.on = false; TX.at = 0; TX.by = ''; txSave(); $('txOn').checked = false; txSub(); txPaint(); }
 function txTap(src){
@@ -1190,13 +1191,14 @@ function txAdd(l, quiet){
   if (!l.pending) txSave();
   if (!quiet) txPaint();
 }
-function txSave(){ try { store.set('ic-talk-tx', JSON.stringify({ rid: ROOM.rid, lines: [...TX.lines.values()].filter(l => !l.pending).sort((a, b) => a.at - b.at).slice(-800) })); } catch {} }
+function txSave(){ try { store.set('ic-talk-tx', JSON.stringify({ rid: ROOM.rid, on: TX.on, at: TX.at, by: TX.by, lines: [...TX.lines.values()].filter(l => !l.pending).sort((a, b) => a.at - b.at).slice(-800) })); } catch {} }
 function txSet(on, by, at, share = true){
   TX.on = on; TX.by = by || ''; TX.at = at || Date.now();
   $('txOn').checked = on;
   if (!on) { TX.clip = null; }
   else if (talking) txClipStart();
   if (share) broadcast({ t: 'tx', on, by: me.name, at: TX.at });
+  txSave();
   if (!share && TX.by) toast(`${TX.by} turned the transcript ${on ? 'on' : 'off'}`);
   txSub(); txPaint();
 }
