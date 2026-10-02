@@ -204,7 +204,6 @@ b.sm{font-size:15px}
 .tx-line.cont{margin-top:-10px;padding-top:4px}
 .tx-line.cont .who,.tx-line.cont .at,.tx-line.cont .to{display:none}
 .tx-line.cont .tx{margin-top:0}
-.app.feedmode #hsPref{display:none!important}
 .role-hint{display:block;margin-top:8px;font-size:13px;color:var(--label2)}
 .nm .role{font-size:13px;color:var(--label2);margin-left:7px;font-weight:400}
 .app.feedmode #roleRow{display:none}
@@ -412,13 +411,7 @@ b.sm{font-size:15px}
           <label class="sw" aria-label="Mixer phone"><input type="checkbox" autocomplete="off" id="feedMode"><i></i></label>
         </div>
       </div>
-      <div class="card pref" id="hsPref">
-        <div class="tx-head">
-          <span><b>Headset button</b><small>Press your headphones’ play/pause button to turn the mic on and off</small></span>
-          <label class="sw" aria-label="Headset button"><input type="checkbox" id="hsOn" autocomplete="off" checked><i></i></label>
-        </div>
-      </div>
-      <div class="card pref" id="isoPref">
+<div class="card pref" id="isoPref">
         <div class="tx-head">
           <span><b>Voice isolation</b><small id="isoSub">On · removes background noise</small></span>
           <label class="sw" aria-label="Voice isolation"><input type="checkbox" autocomplete="off" id="isoOn" checked><i></i></label>
@@ -971,68 +964,8 @@ function pttHint(){
     : priv ? (none ? `No one in ${lbl || 'your pick'} is here` : `Hold to talk to ${lbl}`) : 'Hold to talk · double‑tap to lock';
 }
 
-/* ---------- Headset button ----------
-   AirPods / EarPods / Bluetooth play-pause turns the mic on and off (a press can't be held, so it latches).
-   Browsers only send those buttons to a page that is "playing", so we loop a silent clip and take over
-   the play/pause actions (Media Session). A quiet chirp in your ear confirms on (rising) / off (falling). */
-const HS = { on: store.get('ic-talk-hs') !== '0', el: null, url: '' };
-function hsSilence(){
-  const n = 8000, b = new DataView(new ArrayBuffer(44 + n * 2)), w = (o, t) => [...t].forEach((c, i) => b.setUint8(o + i, c.charCodeAt(0)));
-  w(0, 'RIFF'); b.setUint32(4, 36 + n * 2, true); w(8, 'WAVEfmt '); b.setUint32(16, 16, true); b.setUint16(20, 1, true); b.setUint16(22, 1, true);
-  b.setUint32(24, 8000, true); b.setUint32(28, 16000, true); b.setUint16(32, 2, true); b.setUint16(34, 16, true); w(36, 'data'); b.setUint32(40, n * 2, true);
-  return URL.createObjectURL(new Blob([b], { type: 'audio/wav' }));
-}
-function hsStart(){
-  if (!HS.on || FEED.mode || !mic || !('mediaSession' in navigator)) return;
-  if (!HS.el) {
-    HS.url = HS.url || hsSilence();
-    HS.el = Object.assign(document.createElement('audio'), { src: HS.url, loop: true, playsInline: true });
-    HS.el.setAttribute('playsinline', ''); document.body.appendChild(HS.el);
-    const ms = navigator.mediaSession;
-    try { ms.metadata = new MediaMetadata({ title: 'Talkback', artist: 'Press to talk', album: 'Intercom' }); } catch {}
-    // The silent clip plays while the mic is on and is paused while it's off, so the headset/lock screen
-    // shows the real state: "play" can only mean "start talking", "pause" only "stop". A stray pause the
-    // phone sends by itself when it locks can therefore never turn the mic ON.
-    try { ms.setActionHandler('play', () => hsAction(true)); } catch {}
-    try { ms.setActionHandler('pause', () => hsAction(false)); } catch {}
-    try { ms.setActionHandler('stop', () => hsAction(false)); } catch {}
-    try { ms.setActionHandler('togglemicrophone', () => hsAction(!talking)); } catch {}
-    HS.el.play().then(() => { if (!talking) HS.el?.pause(); }).catch(() => {});   // one real play registers us as "now playing"
-  }
-  hsSync();
-}
-function hsSync(){                                         // keep the clip/lock-screen state in step with the mic
-  if (!HS.el) return;
-  if (talking) HS.el.play().catch(() => {}); else HS.el.pause();
-  try { navigator.mediaSession.playbackState = talking ? 'playing' : 'paused'; } catch {}
-}
-function hsStop(){
-  if (!HS.el) return;
-  try { HS.el.pause(); HS.el.remove(); } catch {} HS.el = null;
-  ['play', 'pause', 'stop', 'togglemicrophone'].forEach(a => { try { navigator.mediaSession.setActionHandler(a, null); } catch {} });
-}
-let hsLast = 0, hsVis = 0;
-document.addEventListener('visibilitychange', () => { hsVis = performance.now(); if (document.hidden && talking && !locked) setTalk(false); });   // screen locked mid-hold: let go
-function hsAction(on){
-  const now = performance.now();
-  if (now - hsLast < 350) return; hsLast = now;            // some headsets send two actions for one press
-  if (on && now - hsVis < 1500) return hsSync();          // locking/unlocking can send a "play" by itself — never open the mic from that
-  ensureAudio(); if (FEED.mode || !mic) return hsSync();
-  if (on && !talking) { locked = true; setTalk(true); chirp(true); }
-  else if (!on && talking) { locked = false; setTalk(false); chirp(false); }
-  hsSync();
-}
-function chirp(up){
-  if (!ctx) return;
-  const t = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain();
-  o.frequency.setValueAtTime(up ? 660 : 990, t); o.frequency.exponentialRampToValueAtTime(up ? 990 : 660, t + 0.09);
-  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.06, t + 0.01); g.gain.linearRampToValueAtTime(0, t + 0.11);
-  o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t + 0.12);
-}
-$('hsOn').checked = HS.on;
-$('hsOn').onchange = e => { HS.on = e.target.checked; store.set('ic-talk-hs', HS.on ? '1' : '0'); if (HS.on) hsStart(); else hsStop(); };
-const hsPress = () => hsAction(!talking);
-addEventListener('keydown', e => { if (e.key === 'MediaPlayPause' && !navigator.mediaSession) { e.preventDefault(); hsPress(); } });
+// Screen locked or app switched while holding the talk button: let go (a locked-on mic stays on).
+document.addEventListener('visibilitychange', () => { if (document.hidden && talking && !locked) setTalk(false); });
 
 /* ---------- Push to talk (hold) + lock (double-tap) ---------- */
 function setTalk(on){
@@ -1049,7 +982,7 @@ function setTalk(on){
     ++TALK.gen; const was = TALK.to; TALK.to = null; if (was) routeTalk();
   }
   broadcast({ t: 'ptt', on, to: on && TALK.to ? [...TALK.to] : null });
-  $('ptt').classList.toggle('on', on); $('ptt').classList.toggle('locked', on && locked); feedDuck(); prioDuck(); hsSync();
+  $('ptt').classList.toggle('on', on); $('ptt').classList.toggle('locked', on && locked); feedDuck(); prioDuck();
   pttHint();
   paint();
 }
@@ -1082,7 +1015,6 @@ function ensureAudio(){
   if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch { return; } }
   if (ctx.state !== 'running') ctx.resume().catch(() => {});
   peers.forEach(p => p.audio.paused && p.audio.srcObject && p.audio.play().catch(() => {}));
-  if (HS.on && mic && !HS.el) hsStart();
 }
 function startLevel(){
   if (!ctx || !mic) return;
@@ -2005,7 +1937,7 @@ addEventListener('offline', () => { ICE_CFG = TEST_ICE ? ICE_CFG : { iceServers:
    Every tab on this phone/computer shares one identity, so only one may be in the room (like WhatsApp Web).
    A browser lock marks the active tab. "Use here" takes the lock; the old tab hears it right away,
    leaves the room and reloads into the "moved to another tab" screen. */
-const VERSION = '0.11.9-beta';                     // same as the home page (index.html) — bump both together
+const VERSION = '0.11.10-beta';                     // same as the home page (index.html) — bump both together
 const TAB_LOCK = 'ic-talk-active';
 let tabClaim = null;
 function showBusy(moved){
