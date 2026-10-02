@@ -136,7 +136,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
    the rest. Each area scrolls on its own, so nothing gets cut off. */
 .app.inroom{height:100dvh;padding-bottom:0;overflow:hidden}
 #room{display:flex;flex-direction:column;gap:14px;flex:1;min-height:0}
-.side{display:flex;flex-direction:column;gap:14px;flex:0 1 auto;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;margin:-6px -20px 0;padding:6px 20px 4px}
+.side{display:flex;flex-direction:column;gap:14px;flex:0 1 auto;min-height:0;overflow:auto;margin:-6px -20px 0;padding:6px 20px 4px}
 .mem-block{position:relative}
 .tools{display:flex;flex-direction:column;gap:14px}
 .tools-head{display:none;align-items:center;justify-content:space-between}
@@ -178,10 +178,10 @@ button{border:0;background:none;padding:0;cursor:pointer}
   .tools .pref{display:none}                 /* voice isolation + name: always in the Room sheet on a phone */
   .tools.open .pref{display:block}
   #room:not(.alone) .tools{display:none}     /* in a room: invite tools move into the sheet too */
-  #room .tools.open{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--bg);
+  .tools.open{display:flex!important;position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--bg);
     border-radius:20px 20px 0 0;padding:18px 20px calc(env(safe-area-inset-bottom) + 20px);max-height:88dvh;overflow:auto;
     box-shadow:0 -10px 40px rgba(0,0,0,.2);animation:up .32s cubic-bezier(.2,.8,.2,1);max-width:480px;margin:0 auto}
-  #room .tools.open .tools-head{display:flex}
+  .tools.open .tools-head{display:flex}
   /* Transcript on: people shrink to a row of avatars so the transcript gets the room */
   #room.txon:not(.alone) .side{overflow:visible;flex:none}
   #room.txon:not(.alone) #countLbl{display:none}
@@ -383,7 +383,10 @@ let ICE_CFG = { iceServers: [] };
 try { const t = JSON.parse(localStorage.getItem('ic-talk-ice') || 'null'); if (t) ICE_CFG = t; } catch {}   // testing only
 const $ = id => document.getElementById(id);
 const store = { get: k => { try { return localStorage.getItem(k) } catch { return null } }, set: (k, v) => { try { localStorage.setItem(k, v) } catch {} } };
-const me = { id: Array.from(crypto.getRandomValues(new Uint8Array(4)), b => b.toString(16).padStart(2, '0')).join(''), name: '' };
+const rnd = n => Array.from(crypto.getRandomValues(new Uint8Array(n)), b => b.toString(16).padStart(2, '0')).join('');
+// The phone keeps the same id across visits, so rejoining replaces your old entry instead of
+// leaving a ghost "Reconnecting…" behind. sess changes every time the page opens.
+const me = { id: (() => { try { let v = localStorage.getItem('ic-talk-id'); if (!v) { v = rnd(4); localStorage.setItem('ic-talk-id', v); } return v; } catch { return rnd(4); } })(), sess: rnd(4), name: '' };
 const peers = new Map();                    // id → peer (only after we know who they are)
 let mic = null, talking = false, locked = false;
 let ctx = null, micLvl = null;
@@ -430,7 +433,7 @@ function newPeer(id, polite){
   pc.ontrack = e => { p.audio.srcObject = e.streams[0] || new MediaStream([e.track]); p.audio.play().catch(() => {}); if (p.gain) { try { p.gainSrc.disconnect(); p.gain.disconnect(); } catch {} p.gain = null; } applyVol(p); if (p.jb) setBuffer(p, p.jb); };
   pc.onconnectionstatechange = () => watchLink(p);
   dc.onmessage = e => { let m; try { m = JSON.parse(e.data) } catch { return; } onMsg(p, m); };
-  dc.onopen = () => { send(p, { t: 'hello', id: me.id, name: me.name, talking, peers: memberIds(), room: ROOM.joining ? '' : ROOM.code, rid: ROOM.joining ? '' : ROOM.rid, since: ROOM.since, est: ROOM.est, beacon: !!ROOM.beacon && !ROOM.joining, tx: { on: TX.on, at: TX.at, by: TX.by } }); };
+  dc.onopen = () => { send(p, { t: 'hello', id: me.id, sess: me.sess, name: me.name, talking, peers: memberIds(), room: ROOM.joining ? '' : ROOM.code, rid: ROOM.joining ? '' : ROOM.rid, since: ROOM.since, est: ROOM.est, beacon: !!ROOM.beacon && !ROOM.joining, tx: { on: TX.on, at: TX.at, by: TX.by } }); };
   dc.onclose = () => { if (p.ready && peers.get(p.id) === p) dropPeer(p, 'left'); };
   return p;
 }
@@ -550,13 +553,14 @@ function onHello(p, m){
   if (!m.id || m.id === me.id) return closePeer(p);
   const old = peers.get(m.id);
   if (old && old !== p) {
-    // Already linked to them (e.g. scanned someone we'd met through the room) — keep the working link.
-    if (old.pc.connectionState === 'connected') { closePeer(p); return; }
-    closePeer(old);
+    // Same phone, new visit (they left and came back): the new link replaces the old one right away.
+    // Same visit, second link (we met twice at once): keep the one that's working.
+    if (old.sess === m.sess && old.pc.connectionState === 'connected') { closePeer(p); return; }
+    closePeer(old); p.helloed = old.helloed && old.sess === m.sess;   // a returning phone gets a "joined" note
   }
   if (!old && peers.size >= MAX - 1) { send(p, { t: 'full' }); setTimeout(() => closePeer(p), 300); return; }
   const first = !p.helloed; p.helloed = true;
-  p.id = m.id; p.name = String(m.name || '').slice(0, 20); p.talking = !!m.talking; p.polite = me.id > m.id;
+  p.id = m.id; p.sess = m.sess; p.name = String(m.name || '').slice(0, 20); p.talking = !!m.talking; p.polite = me.id > m.id;
   peers.set(p.id, p);
   const wasPair = pair.peer === p;
   activate(p); applyVol(p);
@@ -637,7 +641,14 @@ function dropPeer(p, why){
   else if (p.helloed && why === 'left') toast(`${p.name || 'Someone'} left`);
   announce(); paint();
 }
-window.addEventListener('pagehide', () => broadcast({ t: 'bye' }));
+// Leaving (closing, going back, switching apps away for good): say bye and close the links properly,
+// so the others see "left" at once instead of "Reconnecting…" for a few seconds.
+function leaveAll(){ broadcast({ t: 'bye' }); peers.forEach(p => { try { p.pc.close(); } catch {} }); }
+window.addEventListener('pagehide', leaveAll);
+document.querySelector('.back').addEventListener('click', e => {
+  if (!peers.size) return;
+  e.preventDefault(); broadcast({ t: 'bye' }); setTimeout(() => { leaveAll(); location.href = './'; }, 120);
+});
 
 /* ---------- Push to talk (hold) + lock (double-tap) ---------- */
 function setTalk(on){
@@ -808,7 +819,7 @@ function txClipEnd(){
   const secs = c.len / ctx.sampleRate;
   let pk = 0; for (const a of c.chunks) for (let i = 0; i < a.length; i += 4) { const v = Math.abs(a[i]); if (v > pk) pk = v; }
   if (secs < 0.5 || pk < 0.005) return;                // a tap or silence — don't spend allowance on it
-  const id = me.id + '-' + (++TX.n);
+  const id = me.id + '-' + me.sess + '-' + (++TX.n);
   TX.queue.push({ id, at: c.at, dur: secs, wav: toWav(c.chunks, c.len, ctx.sampleRate) });
   txAdd({ id, who: me.name, at: c.at, dur: secs, text: '', pending: true }, true); txPaint();
   txSend();
@@ -1337,8 +1348,19 @@ $('startBtn').onclick = () => {
   startTalk();
 };
 // Room tools (code, QR, voice isolation, name): inline when alone / on a laptop, a sheet on a phone in a room.
-function openTools(){ $('tools').classList.add('open'); $('toolsBg').hidden = false; paintRoom(); }
-function closeTools(){ $('tools').classList.remove('open'); $('toolsBg').hidden = true; if (typeof paintRoom === 'function' && mic) paintRoom(); }
+// The sheet is moved to the top level of the page while open, so nothing in the room screen
+// (like the talk button) can ever sit on top of it.
+const toolsHome = document.createComment('tools');
+function openTools(){
+  const t = $('tools'); if (t.classList.contains('open')) return;
+  t.parentNode.insertBefore(toolsHome, t); document.body.appendChild(t);
+  t.classList.add('open'); $('toolsBg').hidden = false; paintRoom();
+}
+function closeTools(){
+  const t = $('tools');
+  if (t.classList.contains('open')) { t.classList.remove('open'); toolsHome.parentNode?.insertBefore(t, toolsHome); toolsHome.remove(); }
+  $('toolsBg').hidden = true; if (mic) paintRoom();
+}
 $('toolsBtn').onclick = openTools; $('toolsDone').onclick = closeTools; $('toolsBg').onclick = closeTools;
 // Change name any time (Room → Change). Everyone in the room sees the new name right away.
 $('nameBtn').onclick = () => {
