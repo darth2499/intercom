@@ -143,6 +143,8 @@ button{border:0;background:none;padding:0;cursor:pointer}
 .tools-head b{font-size:22px}
 .tools-head button{color:var(--blue);font-size:17px;font-weight:600;padding:6px}
 .rc-more{color:var(--blue);font-size:15px;margin-top:10px;padding:4px 0;display:block;text-align:left}
+.alone-hint{font-size:15px;line-height:1.4;color:var(--label2);padding:4px 4px 0}
+.alone-hint b{color:var(--label);font-weight:600}
 .pill{color:var(--blue);font-size:15px;font-weight:600;padding:8px 12px;border-radius:10px;background:var(--fill)}
 .main{display:flex;flex-direction:column;gap:12px;flex:1 0 auto;min-height:0}
 .main .spacer{flex:1}
@@ -161,11 +163,25 @@ button{border:0;background:none;padding:0;cursor:pointer}
 
 /* Phone, in a room: room tools move into a sheet (Room button, top right) */
 @media (max-width:899px){
-  #room:not(.alone) .tools{display:none}
-  #room:not(.alone) .tools.open{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--bg);
+  /* Before anyone joins: no list (it's just you); the page simply scrolls if a small screen needs it */
+  #room.alone .mem-block{display:none}
+  .app.inroom.alone-mode{height:auto;min-height:100dvh;overflow:visible}
+  #room.alone .side{overflow:visible;flex:none}
+  #room.alone .main{flex:1 0 auto}
+  #room.alone.txon .main{flex:1 1 0}
+  /* Transcript on before anyone joins: the code shrinks to one line so the transcript gets the space */
+  #room.txon .tools #rcJoin,#room.txon .tools #rcMore,#room.txon .tools #qrMore,#room.txon .tools .alone-hint{display:none!important}
+  #room.txon .tools.open #rcJoin,#room.txon .tools.open #qrMore{display:flex!important}
+  #room.txon .tools:not(.open) #codeCard{padding:12px 18px}
+  #room.txon .tools:not(.open) .rc-row b{font-size:26px}
+  #room.txon .tools:not(.open) .rc-row small{display:none}
+  .tools .pref{display:none}                 /* voice isolation + name: always in the Room sheet on a phone */
+  .tools.open .pref{display:block}
+  #room:not(.alone) .tools{display:none}     /* in a room: invite tools move into the sheet too */
+  #room .tools.open{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--bg);
     border-radius:20px 20px 0 0;padding:18px 20px calc(env(safe-area-inset-bottom) + 20px);max-height:88dvh;overflow:auto;
     box-shadow:0 -10px 40px rgba(0,0,0,.2);animation:up .32s cubic-bezier(.2,.8,.2,1);max-width:480px;margin:0 auto}
-  #room:not(.alone) .tools.open .tools-head{display:flex}
+  #room .tools.open .tools-head{display:flex}
   /* Transcript on: people shrink to a row of avatars so the transcript gets the room */
   #room.txon:not(.alone) .side{overflow:visible;flex:none}
   #room.txon:not(.alone) #countLbl{display:none}
@@ -274,18 +290,19 @@ button{border:0;background:none;padding:0;cursor:pointer}
         <div class="rc-note" id="rcNote"></div>
           <button class="rc-more" id="qrMore">Someone has no internet? Pair with QR</button>
       </div>
+      <div class="alone-hint" id="aloneHint" hidden><b>Nobody else here yet.</b> Add someone with a QR code — no internet needed. Everyone just needs the same Wi‑Fi or hotspot.</div>
       <div class="row2" id="qrRow">
         <button class="btn tinted" id="addBtn">Add person</button>
         <button class="btn tinted" id="joinBtn">Join a room</button>
       </div>
 
-      <div class="card">
+      <div class="card pref">
         <div class="tx-head">
           <span><b>Voice isolation</b><small id="isoSub">On · removes background noise</small></span>
           <label class="sw" aria-label="Voice isolation"><input type="checkbox" id="isoOn" checked><i></i></label>
         </div>
       </div>
-        <div class="card">
+        <div class="card pref">
           <div class="tx-head">
             <span><b id="meName"></b><small>Your name in the room</small></span>
             <button class="pill" id="nameBtn">Change</button>
@@ -857,7 +874,7 @@ function txPaint(){
   const list = [...TX.lines.values()].sort((a, b) => a.at - b.at);
   const box = $('txList'), atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
   box.hidden = !TX.on; $('txActs').hidden = !TX.on || !list.some(l => !l.pending);
-  $('room').classList.toggle('txon', TX.on);
+  if ($('room').classList.contains('txon') !== TX.on) { $('room').classList.toggle('txon', TX.on); paint(); }
   box.innerHTML = list.length ? list.map(l => `<div class="tx-line${l.pending ? ' pending' : ''}"><span class="who">${esc(l.who)}</span><span class="at">${fmtClock(l.at)}</span><span class="tx">${l.pending ? (TX.limit ? 'Waiting · daily limit reached' : !navigator.onLine ? 'Waiting for internet' : 'Transcribing…') : esc(l.text)}</span></div>`).join('')
     : '<div class="empty">Talk to see the transcript here.</div>';
   if (atEnd) box.scrollTop = box.scrollHeight;
@@ -908,14 +925,15 @@ function paint(){
   });
   [...box.children].forEach(el => { if (!keys.has(el.dataset.k)) el.remove(); });
   let empty = box.querySelector('.empty');
-  const showEmpty = !(list.length || (codeWorks() && ROOM.code));
+  const showEmpty = false;   // (alone: the room code / QR hint says it)
   if (showEmpty && !empty) { empty = Object.assign(document.createElement('div'), { className: 'empty', innerHTML: 'No one else yet. Tap <b>Add person</b> to show your code, or <b>Join a room</b> to scan someone else’s.' }); box.appendChild(empty); }
   if (!showEmpty && empty) empty.remove();
   $('countLbl').textContent = list.length ? `In the room · ${list.length + 1}` : 'In the room';
   $('addBtn').disabled = list.length >= MAX - 1;
-  $('room').classList.toggle('alone', !list.length); $('toolsBtn').hidden = !list.length || !mic;
+  $('room').classList.toggle('alone', !list.length); $('toolsBtn').hidden = !mic;
+  document.querySelector('.app').classList.toggle('alone-mode', !list.length && !TX.on);   // transcript on: fixed screen so it can fill
+  $('aloneHint').hidden = !!list.length || codeWorks();
   $('meName').textContent = me.name;
-  if (!list.length) closeTools();
   const inRoom = list.length > 0;                      // in a room: tuck "join another code" away
   if (!inRoom) ROOM.moreOpen = false;
   else if (!ROOM.moreOpen && !ROOM.joining && $('rcNote').classList.contains('err')) rcNote('');
