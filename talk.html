@@ -600,14 +600,36 @@ function activate(p){
   if (p.ready) return;
   p.ready = true;
   p.pc.onnegotiationneeded = () => offerNow(p);
-  if (mic && !p.pc.getSenders().some(s => s.track)) { const t = outTrack(); p.pc.addTrack(t, new MediaStream([t])); preferRed(p.pc); feedRoute(p); if (talking && TALK.to) routeTalk(); }
+  if (mic && !(p.expectOffer && !p.pc.remoteDescription)) { ensureAudioTx(p); feedRoute(p); if (talking && TALK.to) routeTalk(); }
+}
+// What we send on a link right now (mixer feed only to listeners, nothing to a mixer phone, private talk rules).
+function sendTrackFor(p){
+  if (!mic) return null;
+  if (FEED.mode) return p.sub && p.helloed ? FEED.track : null;
+  if (p.feed) return null;
+  return wantTrack(p);
+}
+// One audio "slot" per link, agreed in the very first handshake whenever possible (room-code pairing carries full
+// descriptions). Then voice never has to be added later — that later step is where iPhones get stuck after a
+// rejoin (both phones add their mic at once, one gets rolled back and never comes back). Swapping what goes into
+// the slot (voice, nothing, the mixer feed) needs no new handshake.
+function ensureAudioTx(p){
+  const all = p.pc.getTransceivers().filter(t => !t.stopped && (t.receiver.track?.kind === 'audio' || t.sender.track?.kind === 'audio'));
+  let tr = all.find(t => t.mid !== null) || all[0];       // the one both sides agreed on, if there is one
+  try {
+    if (!tr) { tr = p.pc.addTransceiver('audio', { direction: 'sendrecv' }); preferRed(p.pc); }
+    else if (tr.direction !== 'sendrecv') tr.direction = 'sendrecv';
+  } catch { return null; }
+  const want = sendTrackFor(p);
+  if (tr.sender.track !== want) tr.sender.replaceTrack(want).then(() => capBitrate(p)).catch(() => {});
+  return tr;
 }
 // Ask for lost packets again (NACK)…
 async function offerNow(p, onlyIfStable){
   if (onlyIfStable && (p.makingOffer || p.pc.signalingState !== 'stable')) return;
   try { p.makingOffer = true; const o = await p.pc.createOffer(); if (onlyIfStable && p.pc.signalingState !== 'stable') return;
     await p.pc.setLocalDescription({ type: 'offer', sdp: nack(o.sdp) }); await waitGather(p.pc, 1500); signal(p, { desc: p.pc.localDescription }); }
-  catch {} finally { p.makingOffer = false; }
+  catch (e) { p.negErr = 'offer: ' + (e?.message || e); } finally { p.makingOffer = false; }
 }
 // After every negotiation: is our voice actually agreed on this link? When both phones add their mic at the same
 // moment (always the case right after (re)joining), one side's offer is rolled back — and iPhone Safari doesn't
@@ -677,9 +699,7 @@ setInterval(() => peers.forEach(async p => {
 }), 2000);
 function resync(p){                                        // make sure we send our voice on this link, then renegotiate
   if (FEED.mode) feedRoute(p); else if (!p.feed) { const want = wantTrack(p);
-    const tr = p.pc.getTransceivers().find(t => t.receiver.track?.kind === 'audio');
-    if (tr && tr.sender.track !== want) tr.sender.replaceTrack(want).catch(() => {});
-    if (!tr && mic) { const t = outTrack(); p.pc.addTrack(t, new MediaStream([t])); preferRed(p.pc); } }
+    if (mic) ensureAudioTx(p); }
   setTimeout(() => checkSend(p), 300);
   try { if (!p.polite) p.pc.restartIce(); } catch {}
 }
@@ -694,12 +714,12 @@ async function onSignal(p, d){
       // then our change is offered again once this one settles.
       if (collision && pc.signalingState === 'have-local-offer') await pc.setLocalDescription({ type: 'rollback' }).catch(() => {});
       await pc.setRemoteDescription(d.desc);
-      if (d.desc.type === 'offer') { const a = await pc.createAnswer(); await pc.setLocalDescription({ type: 'answer', sdp: nack(a.sdp) }); await waitGather(pc, 1500); signal(p, { desc: pc.localDescription }); }
+      if (d.desc.type === 'offer') { if (mic && p.ready) { ensureAudioTx(p); if (p.expectOffer) { p.expectOffer = false; feedRoute(p); if (talking && TALK.to) routeTalk(); } } const a = await pc.createAnswer(); await pc.setLocalDescription({ type: 'answer', sdp: nack(a.sdp) }); await waitGather(pc, 1500); signal(p, { desc: pc.localDescription }); }
       capBitrate(p);
     } else if (d.cand) {
       try { await pc.addIceCandidate(d.cand); } catch (e) { if (!p.ignoreOffer) throw e; }
     }
-  } catch {}
+  } catch (e) { p.negErr = (d.desc?.type || 'cand') + ': ' + (e?.message || e); }
 }
 function capBitrate(p){                      // voice ~32 kbps + its redundant copy
   p.pc.getSenders().forEach(s => { if (!s.track) return; const prm = s.getParameters(); if (!prm.encodings?.length) return;
@@ -755,7 +775,7 @@ function onMsg(p, m){
         let q = peers.get(m.from);
         if (!q && m.d.desc?.type === 'offer' && m.from !== me.id) {
           if (peers.size >= MAX - 1) return;
-          q = newPeer(m.from, me.id > m.from); peers.set(m.from, q); activate(q); paint();
+          q = newPeer(m.from, me.id > m.from); q.expectOffer = true; peers.set(m.from, q); activate(q); paint();   // their offer brings the audio slot
         }
         if (q) onSignal(q, m.d);
       } else if (--m.ttl > 0) relay(m, p);
@@ -1674,7 +1694,7 @@ setInterval(() => {
     if (dt > 0) {
       const o = Math.round((out - p.dg.out) / dt), i = Math.round((inn - p.dg.inn) / dt);
       const tr = p.pc.getTransceivers().find(t => t.sender.track?.kind === 'audio' || t.receiver.track?.kind === 'audio');
-      d.textContent = `sending ${o}/s · receiving ${i}/s · ${tr ? (tr.currentDirection || 'not set up') : 'no audio'} · ${linkState(p)}`;
+      d.textContent = `sending ${o}/s · receiving ${i}/s · ${tr ? (tr.currentDirection || 'not set up') : 'no audio'} · ${linkState(p)} · ${p.pc.signalingState}${p.makingOffer ? ' (offering)' : ''}${p.negErr ? ' · ' + p.negErr.slice(0, 90) : ''}`;
       d.classList.toggle('bad', (!!tr?.sender.track && o === 0) || (i === 0 && !p.privOut));
     }
     p.dg = { t: now, out, inn };
@@ -1947,7 +1967,8 @@ function onNewcomer(conn){
     await refreshIce();
     p = newPeer(null, false); p.via = conn;
     try {
-      const o = await p.pc.createOffer(); await p.pc.setLocalDescription(o); await waitGather(p.pc, 2500);
+      if (mic) ensureAudioTx(p);                           // voice is part of the very first handshake
+      const o = await p.pc.createOffer(); await p.pc.setLocalDescription({ type: 'offer', sdp: nack(o.sdp) }); await waitGather(p.pc, 2500);
       conn.send({ t: 'offer', sdp: p.pc.localDescription.sdp, room: ROOM.code, rid: ROOM.rid, est: ROOM.est, name: me.name });
     } catch { bail(); }
   });
@@ -2000,7 +2021,8 @@ async function joinCode(code, opt = {}){
       };
       try {
         await p.pc.setRemoteDescription({ type: 'offer', sdp: d.sdp });
-        await p.pc.setLocalDescription(await p.pc.createAnswer()); await waitGather(p.pc, 2500);
+        if (mic) ensureAudioTx(p);                         // answer with our voice included
+        const a = await p.pc.createAnswer(); await p.pc.setLocalDescription({ type: 'answer', sdp: nack(a.sdp) }); await waitGather(p.pc, 2500);
         conn.send({ t: 'answer', sdp: p.pc.localDescription.sdp });
       } catch { end('Couldn’t connect. Try again.', true); }
     });
@@ -2046,7 +2068,7 @@ addEventListener('offline', () => { ICE_CFG = TEST_ICE ? ICE_CFG : { iceServers:
    Every tab on this phone/computer shares one identity, so only one may be in the room (like WhatsApp Web).
    A browser lock marks the active tab. "Use here" takes the lock; the old tab hears it right away,
    leaves the room and reloads into the "moved to another tab" screen. */
-const VERSION = '0.11.13-beta';                     // same as the home page (index.html) — bump both together
+const VERSION = '0.11.14-beta';                     // same as the home page (index.html) — bump both together
 const TAB_LOCK = 'ic-talk-active';
 let tabClaim = null;
 function showBusy(moved){
