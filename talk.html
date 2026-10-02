@@ -28,6 +28,8 @@
   --shadow:none;
 }}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+/* No double-tap zoom anywhere (pinch zoom still works). Controls that need raw touches keep touch-action:none. */
+*{touch-action:manipulation}
 html,body{margin:0;background:var(--bg);color:var(--label);
   font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",system-ui,sans-serif;
   -webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%}
@@ -116,7 +118,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
 .steps i{width:7px;height:7px;border-radius:4px;background:var(--label3)}
 .steps i.on{background:var(--blue);width:20px}
 .manual{display:flex;gap:8px}
-.manual input{flex:1;height:44px;border-radius:12px;border:0;background:var(--card);padding:0 12px;font-size:15px;min-width:0}
+.manual input{flex:1;height:44px;border-radius:12px;border:0;background:var(--card);padding:0 12px;font-size:16px;min-width:0}
 .manual button{color:var(--blue);font-weight:600;padding:0 10px}
 .linkbtn{color:var(--blue);font-size:15px;align-self:center;padding:6px}
 .tx-head{display:flex;align-items:center;gap:12px}

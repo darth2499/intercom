@@ -28,6 +28,8 @@
   --shadow:none;
 }}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+/* No double-tap zoom anywhere (pinch zoom still works). Controls that need raw touches keep touch-action:none. */
+*{touch-action:manipulation}
 html,body{margin:0;background:var(--bg);color:var(--label);
   font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",system-ui,sans-serif;
   -webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%}
@@ -536,7 +538,7 @@ a.tile{text-decoration:none;color:inherit}
               sender watchdog re-acquires a lost input, listener auto-resyncs a bloated buffer. */
 
 /* ============ Config ============ */
-const VERSION = '0.10.1-beta';                     // shown on the home screen — go to 1.0.0 when ready
+const VERSION = '0.10.2-beta';                     // shown on the home screen — go to 1.0.0 when ready
 const PREFIX = 'asahina-intercom-';            // namespace for room ids on the PeerJS server
 const ICE = [
   { urls: 'stun:stun.l.google.com:19302' },
