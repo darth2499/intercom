@@ -768,6 +768,8 @@ function onMsg(p, m){
   switch (m.t) {
     case 'sdp': return m.d && onSignal(p, m.d);
     case 'resync': return resync(p);
+    case 'ping': return send(p, { t: 'pong' });
+    case 'pong': return;                                 // (lastMsg already updated)
     case 'sig':
       if (seen.has(m.mid)) return;
       seen.add(m.mid); if (seen.size > 500) seen.clear();
@@ -1855,7 +1857,27 @@ async function keepAwake(){
   try { if (!wake || wake.released) wake = await navigator.wakeLock?.request('screen'); } catch {}
   try { await keepVid.play(); } catch {}
 }
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && mic) { keepAwake(); ensureAudio(); } });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && mic) { keepAwake(); ensureAudio(); onResume('visible'); } });
+/* Back from a locked screen / another app: while the page was asleep the others may have dropped us (or we them),
+   but our links can still look "connected" for a while. Ping everyone; anyone who doesn't answer within a few
+   seconds is a dead link — drop it right away so the room links us again, instead of waiting ~30 s. */
+let resumeAt = 0;
+function onResume(why){
+  if (!mic || Date.now() - resumeAt < 3000) return;
+  resumeAt = Date.now();
+  const at = Date.now();
+  peers.forEach(p => { if (p.helloed) { p.mute0 = 0; p.rxPk = null; send(p, { t: 'ping' }); } });
+  announce(); paint();
+  setTimeout(() => {
+    peers.forEach(p => { if (p.helloed && peers.get(p.id) === p && !((p.lastMsg || 0) > at)) { if (p.beacon) setTimeout(maybeClaim, 300); dropPeer(p, 'quiet'); } });
+    peers.forEach(p => checkSend(p)); maybeClaim(); announce();
+  }, 3500);
+}
+addEventListener('pageshow', () => onResume('pageshow'));
+addEventListener('focus', () => onResume('focus'));
+// iPhones can freeze the page without telling it; a big jump in the clock means we were asleep.
+let tickAt = Date.now();
+setInterval(() => { const now = Date.now(); if (now - tickAt > 6000) onResume('woke'); tickAt = now; }, 1000);
 
 /* ---------- Room code (when there's internet) ----------
    The room's code lives on the public PeerJS pairing server as the name "asahina-talk-<code>",
@@ -2068,7 +2090,7 @@ addEventListener('offline', () => { ICE_CFG = TEST_ICE ? ICE_CFG : { iceServers:
    Every tab on this phone/computer shares one identity, so only one may be in the room (like WhatsApp Web).
    A browser lock marks the active tab. "Use here" takes the lock; the old tab hears it right away,
    leaves the room and reloads into the "moved to another tab" screen. */
-const VERSION = '0.11.14-beta';                     // same as the home page (index.html) — bump both together
+const VERSION = '0.11.15-beta';                     // same as the home page (index.html) — bump both together
 const TAB_LOCK = 'ic-talk-active';
 let tabClaim = null;
 function showBusy(moved){
