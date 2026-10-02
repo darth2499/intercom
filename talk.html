@@ -131,17 +131,77 @@ button{border:0;background:none;padding:0;cursor:pointer}
 .sw input:checked + i{background:var(--green)}
 .sw input:checked + i::after{transform:translateX(20px)}
 .tx-warn{margin-top:12px;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,var(--orange) 15%,transparent);color:var(--orange);font-size:14px;line-height:1.35}
-/* Room: the page scrolls normally; the talk button is docked at the bottom so it's always in reach. */
-.app.inroom{padding-bottom:0}
-.dock{position:sticky;bottom:0;z-index:5;margin:0 -20px;padding:14px 20px calc(env(safe-area-inset-bottom) + 10px);
-  background:linear-gradient(to bottom,transparent,var(--bg) 22px);display:flex;flex-direction:column;gap:6px}
+/* ---- Room layout ----
+   Full-height screen: people (+ room tools when alone) at the top, transcript and talk button take
+   the rest. Each area scrolls on its own, so nothing gets cut off. */
+.app.inroom{height:100dvh;padding-bottom:0;overflow:hidden}
+#room{display:flex;flex-direction:column;gap:14px;flex:1;min-height:0}
+.side{display:flex;flex-direction:column;gap:14px;flex:0 1 auto;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;margin:-6px -20px 0;padding:6px 20px 4px}
+.mem-block{position:relative}
+.tools{display:flex;flex-direction:column;gap:14px}
+.tools-head{display:none;align-items:center;justify-content:space-between}
+.tools-head b{font-size:22px}
+.tools-head button{color:var(--blue);font-size:17px;font-weight:600;padding:6px}
+.rc-more{color:var(--blue);font-size:15px;margin-top:10px;padding:4px 0;display:block;text-align:left}
+.pill{color:var(--blue);font-size:15px;font-weight:600;padding:8px 12px;border-radius:10px;background:var(--fill)}
+.main{display:flex;flex-direction:column;gap:12px;flex:1 0 auto;min-height:0}
+.main .spacer{flex:1}
+.main .spacer:last-child{display:none}
+#room.txon .main{flex:1 1 0}
+#room.txon #txCard{flex:1 1 0;min-height:0;display:flex;flex-direction:column}
+#room.txon .main .spacer{display:none}
+.dock{display:flex;flex-direction:column;gap:6px;padding:4px 0 calc(env(safe-area-inset-bottom) + 10px)}
 .dock .ptt-wrap{padding:0;gap:8px}
 .ptt{width:168px;height:168px}
-@media (max-height:740px){.ptt{width:124px;height:124px}.ptt svg{width:42px;height:42px}#roomFoot{display:none}.dock{padding-top:10px}}
-#room.txon .ptt{width:124px;height:124px}
-#room.txon .ptt svg{width:42px;height:42px}
-.rc-more{color:var(--blue);font-size:15px;margin-top:10px;padding:4px 0;display:block}
-.tx-list{margin-top:12px;max-height:38dvh;min-height:60px;overflow:auto;display:flex;flex-direction:column;gap:10px;-webkit-overflow-scrolling:touch}
+#room.txon .ptt{width:120px;height:120px}
+#room.txon .ptt svg{width:40px;height:40px}
+#room.txon #roomFoot{display:none}
+@media (max-height:740px){.ptt{width:132px;height:132px}.ptt svg{width:42px;height:42px}#roomFoot{display:none}}
+.tools-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:29;animation:fade .2s}
+
+/* Phone, in a room: room tools move into a sheet (Room button, top right) */
+@media (max-width:899px){
+  #room:not(.alone) .tools{display:none}
+  #room:not(.alone) .tools.open{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--bg);
+    border-radius:20px 20px 0 0;padding:18px 20px calc(env(safe-area-inset-bottom) + 20px);max-height:88dvh;overflow:auto;
+    box-shadow:0 -10px 40px rgba(0,0,0,.2);animation:up .32s cubic-bezier(.2,.8,.2,1);max-width:480px;margin:0 auto}
+  #room:not(.alone) .tools.open .tools-head{display:flex}
+  /* Transcript on: people shrink to a row of avatars so the transcript gets the room */
+  #room.txon:not(.alone) .side{overflow:visible;flex:none}
+  #room.txon:not(.alone) #countLbl{display:none}
+  #room.txon:not(.alone) .members{flex-direction:row;overflow-x:auto;gap:2px;padding:10px 8px;scrollbar-width:none}
+  #room.txon:not(.alone) .mrow{border:0;flex:none}
+  #room.txon:not(.alone) .mrow:not(.open) .vol{display:none}
+  #room.txon:not(.alone) .member{flex-direction:column;gap:4px;padding:2px 6px;width:auto}
+  #room.txon:not(.alone) .member .nm{font-size:12px;max-width:66px;text-align:center}
+  #room.txon:not(.alone) .member .st,#room.txon:not(.alone) .member .chev{display:none}
+  #room.txon:not(.alone) .member .vb{font-size:11px;margin-top:-2px}
+  #room.txon:not(.alone) .member .vb:empty{display:none}
+  #room.txon:not(.alone) .mrow.open .av{box-shadow:0 0 0 2px var(--blue)}
+  #room.txon:not(.alone) .mrow.open .vol{position:absolute;left:0;right:0;top:100%;margin-top:8px;z-index:6;background:var(--card);
+    border-radius:16px;box-shadow:0 8px 28px rgba(0,0,0,.18);padding:0 16px}
+  #room.txon:not(.alone) .vol .vin{padding:14px 0}
+}
+
+/* Laptop / tablet: sidebar + big transcript and talk area */
+@media (min-width:900px){
+  .app.inroom{max-width:1200px;padding-left:32px;padding-right:32px}
+  #room{display:grid;grid-template-columns:minmax(320px,380px) 1fr;grid-template-rows:minmax(0,1fr);gap:28px;padding-bottom:20px}
+  .side{overflow:auto;margin:0;padding:0 4px 20px;flex:none}
+  #toolsBtn{display:none!important}
+  .main{min-height:0;flex:none;height:100%}
+  #room .main{display:flex}
+  #room.txon #txCard{flex:1 1 0}
+  #txCard{padding:22px 24px}
+  .tx-line{font-size:17px}
+  .ptt{width:220px;height:220px}
+  #room:not(.txon) .main .spacer:last-child{display:block;flex:1}
+  .ptt-hint::after{content:' · or hold Space'}
+  #room.txon .ptt{width:150px;height:150px}
+  #room.txon .ptt svg{width:48px;height:48px}
+  .dock{padding-bottom:0}
+}
+.tx-list{margin-top:12px;flex:1;min-height:80px;overflow:auto;display:flex;flex-direction:column;gap:10px;-webkit-overflow-scrolling:touch}
 .tx-line{font-size:15px;line-height:1.35}
 .tx-line .who{font-weight:600}
 .tx-line .at{color:var(--label3);font-size:12px;margin-left:6px;font-variant-numeric:tabular-nums}
@@ -172,7 +232,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
 <div class="app">
   <nav class="navbar">
     <a class="back" href="./"><svg viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2 2 10l8 8"/></svg>Intercom</a>
-    <span class="nav-title" id="navTitle"></span><button class="navbtn" id="nameBtn" hidden>Name</button>
+    <span class="nav-title" id="navTitle"></span><button class="navbtn" id="toolsBtn" hidden>Room</button>
   </nav>
 
   <!-- START -->
@@ -197,28 +257,43 @@ button{border:0;background:none;padding:0;cursor:pointer}
     <p class="foot" id="startErr" style="margin-top:10px;color:var(--red)" hidden></p>
   </section>
 
-  <!-- ROOM -->
-  <section id="room" hidden style="display:flex;flex-direction:column;gap:14px;flex:1">
-    <div>
-      <p class="sect" id="countLbl">In the room</p>
-      <div class="card members" id="members"></div>
-    </div>
-    <div class="card" id="codeCard" hidden>
-      <div class="rc-row"><span><small>Room code</small><b id="rcCode">····</b></span><button id="rcShare">Share</button></div>
-      <button class="rc-more" id="rcMore" hidden>Join a different room</button>
-      <div class="rc-join" id="rcJoin"><input id="rcIn" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="Join another code"><button id="rcGo">Join</button></div>
-      <div class="rc-note" id="rcNote"></div>
-    </div>
-    <div class="row2">
-      <button class="btn tinted" id="addBtn">Add person</button>
-      <button class="btn tinted" id="joinBtn">Join a room</button>
-    </div>
-    <div class="card">
-      <div class="tx-head">
-        <span><b>Voice isolation</b><small id="isoSub">On · removes background noise</small></span>
-        <label class="sw" aria-label="Voice isolation"><input type="checkbox" id="isoOn" checked><i></i></label>
+  <!-- ROOM: phone = people up top, transcript + talk button fill the rest, room tools in a sheet;
+       laptop = sidebar (people + tools) and a big transcript/talk area -->
+  <section id="room" hidden>
+    <aside class="side" id="side">
+      <div class="mem-block">
+        <p class="sect" id="countLbl">In the room</p>
+        <div class="card members" id="members"></div>
       </div>
-    </div>
+      <div class="tools" id="tools">
+        <div class="tools-head"><b>Room</b><button id="toolsDone">Done</button></div>
+      <div class="card" id="codeCard" hidden>
+        <div class="rc-row"><span><small>Room code</small><b id="rcCode">····</b></span><button id="rcShare">Share</button></div>
+        <button class="rc-more" id="rcMore" hidden>Join a different room</button>
+        <div class="rc-join" id="rcJoin"><input id="rcIn" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="Join another code"><button id="rcGo">Join</button></div>
+        <div class="rc-note" id="rcNote"></div>
+          <button class="rc-more" id="qrMore">Someone has no internet? Pair with QR</button>
+      </div>
+      <div class="row2" id="qrRow">
+        <button class="btn tinted" id="addBtn">Add person</button>
+        <button class="btn tinted" id="joinBtn">Join a room</button>
+      </div>
+
+      <div class="card">
+        <div class="tx-head">
+          <span><b>Voice isolation</b><small id="isoSub">On · removes background noise</small></span>
+          <label class="sw" aria-label="Voice isolation"><input type="checkbox" id="isoOn" checked><i></i></label>
+        </div>
+      </div>
+        <div class="card">
+          <div class="tx-head">
+            <span><b id="meName"></b><small>Your name in the room</small></span>
+            <button class="pill" id="nameBtn">Change</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+    <main class="main">
     <div class="card" id="txCard">
       <div class="tx-head">
         <span><b>Transcript</b><small id="txSub">Off · needs internet when on</small></span>
@@ -228,7 +303,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
       <div class="tx-list" id="txList" hidden></div>
       <div class="tx-acts" id="txActs" hidden><button id="txTxt">Export .txt</button><button id="txSrt">Export .srt</button><span class="grow"></span><button id="txClear" style="color:var(--red)">Clear</button></div>
     </div>
-    <div style="flex:1"></div>
+      <div class="spacer"></div>
     <div class="dock">
     <div class="ptt-wrap">
       <button class="ptt" id="ptt" aria-label="Push to talk">
@@ -238,10 +313,13 @@ button{border:0;background:none;padding:0;cursor:pointer}
     </div>
     <p class="foot" id="roomFoot">Audio goes straight between phones on this Wi‑Fi.</p>
     </div>
+      <div class="spacer"></div>
+    </main>
   </section>
 </div>
 
 <!-- Pairing sheet -->
+<div class="tools-bg" id="toolsBg" hidden></div>
 <div class="sheet-bg" id="sheetBg" hidden>
   <div class="sheet" id="sheet">
     <div class="steps" id="steps"><i></i><i></i></div>
@@ -830,11 +908,14 @@ function paint(){
   });
   [...box.children].forEach(el => { if (!keys.has(el.dataset.k)) el.remove(); });
   let empty = box.querySelector('.empty');
-  const showEmpty = !(list.length || (hasNet() && ROOM.code));
+  const showEmpty = !(list.length || (codeWorks() && ROOM.code));
   if (showEmpty && !empty) { empty = Object.assign(document.createElement('div'), { className: 'empty', innerHTML: 'No one else yet. Tap <b>Add person</b> to show your code, or <b>Join a room</b> to scan someone else’s.' }); box.appendChild(empty); }
   if (!showEmpty && empty) empty.remove();
   $('countLbl').textContent = list.length ? `In the room · ${list.length + 1}` : 'In the room';
   $('addBtn').disabled = list.length >= MAX - 1;
+  $('room').classList.toggle('alone', !list.length); $('toolsBtn').hidden = !list.length || !mic;
+  $('meName').textContent = me.name;
+  if (!list.length) closeTools();
   const inRoom = list.length > 0;                      // in a room: tuck "join another code" away
   if (!inRoom) ROOM.moreOpen = false;
   else if (!ROOM.moreOpen && !ROOM.joining && $('rcNote').classList.contains('err')) rcNote('');
@@ -894,7 +975,7 @@ $('shManualBtn').onclick = () => { $('shManual').hidden = false; $('shCode').foc
 $('shCodeGo').onclick = () => { const v = $('shCode').value.trim(); if (v) pair.onCode?.(v); };
 
 async function addPerson(){
-  ensureAudio();
+  ensureAudio(); closeTools();
   if (peers.size >= MAX - 1) return toast('Room is full (6 people max)', 'warn');
   const p = newPeer(null, false); pair.peer = p; pair.mode = 'add';
   sheet({ step: 0, title: 'Add a person', text: 'Getting your code…' });
@@ -920,7 +1001,7 @@ function scanReply(p){
   startScan();
 }
 function joinRoom(){
-  ensureAudio();
+  ensureAudio(); closeTools();
   pair.mode = 'join'; pair.peer = null;
   sheet({ step: 0, title: 'Join a room', text: 'Someone in the room taps Add person. Scan the code on their screen.', cam: true });
   pair.onCode = async code => {
@@ -1023,13 +1104,17 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
    left or lost signal), whoever grabs it first takes over. */
 const TALK_PREFIX = 'asahina-talk-';
 const RELAY_URL = 'https://intercom-turn.imsk8erboi.workers.dev/';
-const ROOM = { code: '', est: false, beacon: null, claiming: false, joining: null, relay: null, relayExp: 0 };
+const ROOM = { code: '', est: false, server: null, beacon: null, claiming: false, joining: null, relay: null, relayExp: 0 };
 const TEST_ICE = !!localStorage.getItem('ic-talk-ice');
 const hasNet = () => navigator.onLine && typeof Peer === 'function';
+// "Online" means the pairing server actually answered — a phone on Wi‑Fi with no internet still
+// reports itself as online, and there QR pairing must stay front and centre.
+const codeWorks = () => !!mic && hasNet() && (ROOM.server === true || [...peers.values()].some(p => p.helloed && p.beacon));
+function serverSeen(ok){ if (ROOM.server !== ok) { ROOM.server = ok; if (!ok) { if (!TEST_ICE) ICE_CFG = { iceServers: [] }; } paintRoom(); } }
 // Online: let links also cross different networks (STUN, plus the Cloudflare relay if needed).
 async function refreshIce(){
   if (TEST_ICE) return;
-  if (!navigator.onLine) { ICE_CFG = { iceServers: [] }; return; }
+  if (!navigator.onLine || ROOM.server === false) { ICE_CFG = { iceServers: [] }; return; }
   if (Date.now() > ROOM.relayExp) {
     try {
       const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 4000);
@@ -1059,9 +1144,10 @@ function maybeClaim(){
   if ([...peers.values()].some(p => p.helloed && p.beacon && p.pc.connectionState === 'connected')) return;
   ROOM.claiming = true;
   const code = ROOM.code, pe = new Peer(TALK_PREFIX + code, { config: ICE_CFG, debug: 0 });
-  const done = () => { ROOM.claiming = false; };
+  const done = () => { ROOM.claiming = false; clearTimeout(t); };
+  const t = setTimeout(() => { if (!pe.open) { done(); try { pe.destroy(); } catch {} serverSeen(false); } }, 8000);   // no answer: no internet
   pe.on('open', () => {
-    done();
+    done(); serverSeen(true);
     if (ROOM.code !== code || ROOM.beacon) return pe.destroy();
     ROOM.beacon = pe; announce(); paintRoom();
   });
@@ -1069,6 +1155,8 @@ function maybeClaim(){
   pe.on('disconnected', () => { if (ROOM.beacon === pe) setTimeout(() => { try { if (!pe.destroyed) pe.reconnect(); } catch {} }, 2000); });
   pe.on('error', e => {
     if (ROOM.beacon !== pe) { done(); try { pe.destroy(); } catch {} }      // code taken (someone else holds it) or no server
+    if (e.type === 'unavailable-id') serverSeen(true);
+    else if (['network', 'server-error', 'socket-error', 'socket-closed'].includes(e.type)) serverSeen(false);
     if (e.type === 'unavailable-id' && !peers.size && ROOM.code === code && !ROOM.joining) { // alone and the code is taken elsewhere → new code
       ROOM.code = ''; newCode();
     }
@@ -1122,7 +1210,7 @@ async function joinCode(code){
     conn.on('data', async d => {
       if (d?.t === 'full') return end('That room is full (6 people max).', true);
       if (d?.t !== 'offer') return;
-      p = newPeer(null, false); pair.peer = p; pair.mode = 'code'; pair.onJoined = () => { const solo = peers.size <= 1; ROOM.moreOpen = false; end(); if (solo) { dropBeacon(); ROOM.code = ''; } roomCode(code, true); rcNote(''); $('rcIn').value = ''; rcBusy(false); };
+      p = newPeer(null, false); pair.peer = p; pair.mode = 'code'; pair.onJoined = () => { const solo = peers.size <= 1; ROOM.moreOpen = false; end(); serverSeen(true); if (solo) { dropBeacon(); ROOM.code = ''; } roomCode(code, true); rcNote(''); $('rcIn').value = ''; rcBusy(false); };
       try {
         await p.pc.setRemoteDescription({ type: 'offer', sdp: d.sdp });
         await p.pc.setLocalDescription(await p.pc.createAnswer()); await waitGather(p.pc, 2500);
@@ -1137,15 +1225,16 @@ function rcNote(t, err){
   clearTimeout(rcNote.t); if (err) rcNote.t = setTimeout(() => { if (n.textContent === t) rcNote(''); }, 7000);   // errors fade out
 }
 function paintRoom(){
-  const on = hasNet() && !!mic;
+  const on = codeWorks();
   $('codeCard').hidden = !on;
   $('rcCode').textContent = ROOM.code || '····'; paint();
-  $('rcCode').style.opacity = ROOM.beacon || [...peers.values()].some(p => p.beacon) ? 1 : .45;
+  $('qrRow').hidden = on && !ROOM.qrOpen; $('qrMore').hidden = !on || !!ROOM.qrOpen;   // online: the code is enough; QR on request
   $('addBtn').textContent = on ? 'Add with QR' : 'Add person';
   $('joinBtn').textContent = on ? 'Join with QR' : 'Join a room';
-  $('roomFoot').textContent = on ? 'No internet? QR pairing still works.' : 'No internet · pair with QR codes.';
+  $('roomFoot').textContent = on ? 'Audio goes straight between phones.' : 'No internet · pair with QR codes.';
 }
 $('rcGo').onclick = () => joinCode($('rcIn').value);
+$('qrMore').onclick = () => { ROOM.qrOpen = true; paintRoom(); };
 $('rcMore').onclick = () => { ROOM.moreOpen = true; paintRoom(); $('rcIn').focus(); };
 $('rcIn').addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 4); if (e.target.value.length === 4) joinCode(e.target.value); });
 $('rcIn').addEventListener('keydown', e => { if (e.key === 'Enter') joinCode(e.target.value); });
@@ -1166,7 +1255,11 @@ $('startBtn').onclick = () => {
   me.name = name.slice(0, 20); store.set('ic-talk-name', me.name);
   startTalk();
 };
-// Change name any time (top right). Everyone in the room sees the new name right away.
+// Room tools (code, QR, voice isolation, name): inline when alone / on a laptop, a sheet on a phone in a room.
+function openTools(){ $('tools').classList.add('open'); $('toolsBg').hidden = false; }
+function closeTools(){ $('tools').classList.remove('open'); $('toolsBg').hidden = true; }
+$('toolsBtn').onclick = openTools; $('toolsDone').onclick = closeTools; $('toolsBg').onclick = closeTools;
+// Change name any time (Room → Change). Everyone in the room sees the new name right away.
 $('nameBtn').onclick = () => {
   const n = (prompt('Your name', me.name) || '').trim().slice(0, 20);
   if (!n || n === me.name) return;
@@ -1185,7 +1278,7 @@ async function startTalk(){
     $('startErr').textContent = 'Talkback needs the microphone. Allow it in your browser settings and try again.';
     return;
   }
-  $('start').hidden = true; $('room').hidden = false; $('navTitle').textContent = 'Talkback'; $('nameBtn').hidden = false;
+  $('start').hidden = true; $('room').hidden = false; $('navTitle').textContent = 'Talkback'; 
   document.querySelector('.app').classList.add('inroom');
   startLevel(); paint(); txSub(); txPaint();
   await refreshIce();
