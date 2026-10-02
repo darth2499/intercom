@@ -13,7 +13,9 @@
 <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <title>Talkback</title>
+<script>/* name saved → never flash the name screen while the page loads */ try { if ((localStorage.getItem('ic-talk-name') || '').trim()) document.documentElement.classList.add('has-name'); } catch {}</script>
 <style>
+.has-name #start{display:none}
 :root{
   --bg:#f2f2f7; --card:#fff; --label:#000; --label2:rgba(60,60,67,.6); --label3:rgba(60,60,67,.3);
   --sep:rgba(60,60,67,.18); --fill:rgba(118,118,128,.12);
@@ -147,6 +149,38 @@ button{border:0;background:none;padding:0;cursor:pointer}
 .rc-more{color:var(--blue);font-size:15px;margin-top:10px;padding:4px 0;display:block;text-align:left}
 .alone-hint{font-size:15px;line-height:1.4;color:var(--label2);padding:4px 4px 0}
 .alone-hint b{color:var(--label);font-weight:600}
+/* Mixer feed (listener card + mixer phone panel) */
+.fd-ctl{padding:2px 0 14px 48px}
+.fd-ctl .vin{padding:0}
+.fd-row{margin-top:12px}
+.fd-row.vin{display:flex;align-items:center;gap:12px}
+.fd-row svg{width:20px;height:20px;color:var(--label2);flex:none}
+.fd-row input[type=range]{flex:1;min-width:0;accent-color:var(--blue);height:28px}
+.fd-row .vv{width:44px;text-align:right;font-size:15px;font-variant-numeric:tabular-nums;color:var(--label2)}
+b.sm{font-size:15px}
+.sw.sm{transform:scale(.85);transform-origin:right center}
+.fd-tone{margin-top:12px;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,var(--orange) 15%,transparent);color:var(--orange);font-size:14px;cursor:pointer}
+.feed-panel{display:flex;flex-direction:column;gap:12px;padding:16px 18px}
+.fp-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.fp-head b{font-size:17px}
+.fp-head small{font-size:13px;color:var(--label2)}
+.fp-start{background:var(--orange);color:#fff;font-weight:600;border-radius:12px;height:44px}
+.fp-meter{position:relative;height:22px;border-radius:7px;background:var(--fill);overflow:hidden}
+.fp-meter i{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(90deg,var(--green) 0 70%,#ffcc00 70% 88%,var(--red) 88%);border-radius:7px;transition:width .06s linear}
+.fp-meter span{position:absolute;right:8px;top:2px;font-size:13px;font-variant-numeric:tabular-nums;color:var(--label)}
+.fp-row{display:flex;align-items:center;gap:12px;font-size:15px}
+.fp-row > span{width:62px;color:var(--label2);flex:none}
+.fp-row input[type=range]{flex:1;min-width:0;accent-color:var(--blue)}
+.fp-row b{width:84px;white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.fp-row select{flex:1;min-width:0;height:36px;border-radius:10px;border:0;background:var(--fill);padding:0 10px;font-size:16px}
+.role-seg{flex:none}
+.role-hint{display:block;margin-top:8px;font-size:13px;color:var(--label2)}
+.nm .role{font-size:13px;color:var(--label2);margin-left:7px;font-weight:400}
+.app.feedmode #roleRow{display:none}
+.seg{display:flex;flex:1;background:var(--fill);border-radius:10px;padding:2px}
+.seg button{flex:1;height:32px;border-radius:8px;font-size:15px;color:var(--label)}
+.seg button.on{background:var(--card);box-shadow:0 1px 3px rgba(0,0,0,.12);font-weight:600}
+.app.feedmode .mrow .chev,.app.feedmode .ptt-wrap,.app.feedmode #roomFoot,.app.feedmode #txCard,.app.feedmode #isoPref{display:none!important}
 .pill{color:var(--blue);font-size:15px;font-weight:600;padding:8px 12px;border-radius:10px;background:var(--fill)}
 .main{display:flex;flex-direction:column;gap:12px;flex:1 0 auto;min-height:0}
 .main .spacer{flex:1}
@@ -193,12 +227,15 @@ button{border:0;background:none;padding:0;cursor:pointer}
   #room.txon:not(.alone) .member{flex-direction:column;gap:4px;padding:2px 6px;width:auto}
   #room.txon:not(.alone) .member .nm{font-size:12px;max-width:66px;text-align:center}
   #room.txon:not(.alone) .member .st,#room.txon:not(.alone) .member .chev{display:none}
+  #room.txon:not(.alone) .nm .role{display:none}
   #room.txon:not(.alone) .member .vb{font-size:11px;margin-top:-2px}
   #room.txon:not(.alone) .member .vb:empty{display:none}
   #room.txon:not(.alone) .mrow.open .av{box-shadow:0 0 0 2px var(--blue)}
   #room.txon:not(.alone) .mrow.open .vol{position:absolute;left:0;right:0;top:100%;margin-top:8px;z-index:6;background:var(--card);
     border-radius:16px;box-shadow:0 8px 28px rgba(0,0,0,.18);padding:0 16px}
   #room.txon:not(.alone) .vol .vin{padding:14px 0}
+  #room.txon:not(.alone) .vol .fd-ctl{padding:14px 2px}
+  #room.txon:not(.alone) .vol .fd-ctl .vin{padding:0}
 }
 
 /* Laptop / tablet: sidebar + big transcript and talk area */
@@ -293,8 +330,14 @@ button{border:0;background:none;padding:0;cursor:pointer}
       <label for="nameIn">Your name</label>
       <input id="nameIn" maxlength="20" autocomplete="off" placeholder="e.g. Yuki">
     </div>
+    <div class="field" style="margin-top:14px">
+      <label>Your role</label>
+      <div class="seg role-seg" data-role-seg><button data-v="dir">Director</button><button data-v="cam">Cam Op</button><button data-v="pa">PA</button></div>
+      <small class="role-hint">Director is heard over everyone. Cam Op is heard over PA.</small>
+    </div>
     <div style="height:14px"></div>
     <button class="btn primary" id="startBtn">Start talkback</button>
+    <button class="linkbtn" id="startFeedBtn" style="display:block;margin:12px auto 0">This phone is plugged into the mixer</button>
     <p class="foot" id="startErr" style="margin-top:10px;color:var(--red)" hidden></p>
   </section>
 
@@ -322,7 +365,13 @@ button{border:0;background:none;padding:0;cursor:pointer}
         <button class="btn tinted" id="joinBtn">Join a room</button>
       </div>
 
-      <div class="card pref">
+      <div class="card pref" id="feedPref">
+        <div class="tx-head">
+          <span><b>Mixer phone</b><small id="feedModeSub">This phone sends the mixer to the room</small></span>
+          <label class="sw" aria-label="Mixer phone"><input type="checkbox" id="feedMode"><i></i></label>
+        </div>
+      </div>
+      <div class="card pref" id="isoPref">
         <div class="tx-head">
           <span><b>Voice isolation</b><small id="isoSub">On · removes background noise</small></span>
           <label class="sw" aria-label="Voice isolation"><input type="checkbox" id="isoOn" checked><i></i></label>
@@ -333,10 +382,25 @@ button{border:0;background:none;padding:0;cursor:pointer}
             <span><b id="meName"></b><small>Your name in the room</small></span>
             <button class="pill" id="nameBtn">Change</button>
           </div>
+          <div class="seg role-seg" id="roleRow" data-role-seg style="margin-top:12px"><button data-v="dir">Director</button><button data-v="cam">Cam Op</button><button data-v="pa">PA</button></div>
         </div>
       </div>
     </aside>
     <main class="main">
+    <div id="feedHome" hidden><div class="fd-ctl" id="feedCtl">
+      <div class="tx-head">
+        <span><b class="sm">Listen to the mixer</b><small id="feedFrom"></small></span>
+        <label class="sw" aria-label="Listen to the mixer"><input type="checkbox" id="feedListen"><i></i></label>
+      </div>
+      <div id="feedBody" hidden>
+        <div class="fd-tone" id="feedTone" hidden></div>
+        <div class="vin fd-row">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>
+          <input type="range" id="feedVol" min="0" max="150" step="5" value="100" aria-label="Mixer feed volume"><span class="vv" id="feedVolV">100%</span>
+        </div>
+        <div class="tx-head fd-row"><span><b class="sm">Auto level</b><small>Keeps the feed at a steady, comfortable level</small></span><label class="sw sm" aria-label="Auto level"><input type="checkbox" id="feedAgc" checked><i></i></label></div>
+      </div>
+    </div></div>
     <div class="card" id="txCard">
       <div class="tx-head">
         <span><b>Transcript</b><small id="txSub">Off · needs internet when on</small></span>
@@ -348,6 +412,15 @@ button{border:0;background:none;padding:0;cursor:pointer}
     </div>
       <div class="spacer"></div>
     <div class="dock">
+    <div class="card feed-panel" id="feedPanel" hidden>
+      <div class="fp-head"><b>Sending the mixer</b><small id="fpSubs">No one listening yet</small></div>
+      <button class="fp-start" id="fpStart" hidden>Tap to start sending</button>
+      <div class="fp-meter"><i id="fpBar"></i><span id="fpDb">−∞</span></div>
+      <div class="fp-row"><span>Gain</span><input type="range" id="fpGain" min="-12" max="30" step="0.5" value="0"><b id="fpGainV">0.0 dB</b></div>
+      <div class="fp-row"><span>Channel</span><div class="seg" id="fpChan"><button data-v="left">Left</button><button data-v="both">Both</button><button data-v="right">Right</button></div></div>
+      <div class="fp-row"><span>Input</span><select id="fpDev"><option value="">Default (mixer)</option></select></div>
+      <div class="tx-head fp-auto"><span><b class="sm">Auto gain from tone</b><small id="fpToneSub">Send tone from the mixer to set the level</small></span><label class="sw sm" aria-label="Auto gain from tone"><input type="checkbox" id="fpAuto" checked><i></i></label></div>
+    </div>
     <div class="ptt-wrap">
       <button class="ptt" id="ptt" aria-label="Push to talk">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4"/></svg>
@@ -457,7 +530,7 @@ function newPeer(id, polite){
   pc.ontrack = e => { p.audio.srcObject = e.streams[0] || new MediaStream([e.track]); p.audio.play().catch(() => {}); if (p.gain) { try { p.gainSrc.disconnect(); p.gain.disconnect(); } catch {} p.gain = null; } applyVol(p); if (p.jb) setBuffer(p, p.jb); };
   pc.onconnectionstatechange = () => watchLink(p);
   dc.onmessage = e => { let m; try { m = JSON.parse(e.data) } catch { return; } onMsg(p, m); };
-  dc.onopen = () => { send(p, { t: 'hello', id: me.id, sess: me.sess, name: me.name, talking, peers: memberIds(), room: ROOM.joining ? '' : ROOM.code, rid: ROOM.joining ? '' : ROOM.rid, since: ROOM.since, est: ROOM.est, beacon: !!ROOM.beacon && !ROOM.joining, tx: { on: TX.on, at: TX.at, by: TX.by } }); };
+  dc.onopen = () => { send(p, { t: 'hello', id: me.id, sess: me.sess, name: me.name, role: me.role, feed: FEED.mode, feedsub: FL.on, talking, peers: memberIds(), room: ROOM.joining ? '' : ROOM.code, rid: ROOM.joining ? '' : ROOM.rid, since: ROOM.since, est: ROOM.est, beacon: !!ROOM.beacon && !ROOM.joining, tx: { on: TX.on, at: TX.at, by: TX.by } }); };
   dc.onclose = () => { if (p.ready && peers.get(p.id) === p) dropPeer(p, 'left'); };
   return p;
 }
@@ -470,7 +543,7 @@ function activate(p){
     try { p.makingOffer = true; const o = await p.pc.createOffer(); await p.pc.setLocalDescription({ type: 'offer', sdp: nack(o.sdp) }); await waitGather(p.pc, 1500); signal(p, { desc: p.pc.localDescription }); }
     catch {} finally { p.makingOffer = false; }
   };
-  if (mic && !p.pc.getSenders().some(s => s.track)) { const t = outTrack(); p.pc.addTrack(t, new MediaStream([t])); preferRed(p.pc); }
+  if (mic && !p.pc.getSenders().some(s => s.track)) { const t = outTrack(); p.pc.addTrack(t, new MediaStream([t])); preferRed(p.pc); feedRoute(p); }
 }
 // Ask for lost packets again (NACK)…
 function nack(sdp){
@@ -529,7 +602,8 @@ async function onSignal(p, d){
 }
 function capBitrate(p){                      // voice ~32 kbps + its redundant copy
   p.pc.getSenders().forEach(s => { if (!s.track) return; const prm = s.getParameters(); if (!prm.encodings?.length) return;
-    if (prm.encodings[0].maxBitrate !== 64000) { prm.encodings[0].maxBitrate = 64000; s.setParameters(prm).catch(() => {}); } });
+    const want = FEED.mode ? 128000 : 64000;           // mixer feed: fuller voice quality (incl. its redundant copy)
+    if (prm.encodings[0].maxBitrate !== want) { prm.encodings[0].maxBitrate = want; s.setParameters(prm).catch(() => {}); } });
 }
 const isOpen = p => p.dc.readyState === 'open';
 function send(p, m){ try { if (isOpen(p)) p.dc.send(JSON.stringify(m)); } catch {} }
@@ -563,7 +637,10 @@ function onMsg(p, m){
       return;
     case 'peers': p.peers = m.peers || []; p.beacon = !!m.beacon; if (m.room) roomCode(m.room, !!m.est, m.rid);
       if (m.rid) { p.rid = m.rid; if (m.since) p.since = +m.since; fillGap(p); } meet(p.peers); return;
-    case 'ptt': p.talking = !!m.on; paint(); return;
+    case 'ptt': p.talking = !!m.on; paint(); feedDuck(); prioDuck(); return;
+    case 'role': p.role = ROLES[m.role] ? m.role : 'pa'; prioDuck(); paint(); return;
+    case 'feedsub': p.sub = !!m.on; feedRoute(p); feedPaint(); return;
+    case 'feedst': p.tone = !!m.tone; p.toneHz = m.hz || 0; if (!p.tone) p.toneHear = false; paint(); return;
     case 'name': p.name = String(m.name || '').slice(0, 20); applyVol(p); paint(); return;
     case 'bye': return dropPeer(p, 'left');
     case 'full': toast('That room is full (6 people max)', 'warn'); return dropPeer(p, 'full');
@@ -584,10 +661,10 @@ function onHello(p, m){
   }
   if (!old && peers.size >= MAX - 1) { send(p, { t: 'full' }); setTimeout(() => closePeer(p), 300); return; }
   const first = !p.helloed; p.helloed = true;
-  p.id = m.id; p.sess = m.sess; p.name = String(m.name || '').slice(0, 20); p.talking = !!m.talking; p.polite = me.id > m.id;
+  p.id = m.id; p.sess = m.sess; p.name = String(m.name || '').slice(0, 20); p.role = ROLES[m.role] ? m.role : 'pa'; p.feed = !!m.feed; p.sub = !!m.feedsub; p.talking = !!m.talking; p.polite = me.id > m.id;
   peers.set(p.id, p);
   const wasPair = pair.peer === p;
-  activate(p); applyVol(p);
+  activate(p); feedRoute(p); applyVol(p);
   if (wasPair) pairDone(p);
   else if (first) toast(`${p.name || 'Someone'} joined`);
   p.peers = m.peers || []; p.beacon = !!m.beacon;
@@ -638,14 +715,39 @@ setInterval(() => {
 const VOL = (() => { try { return JSON.parse(store.get('ic-talk-vol') || '{}'); } catch { return {}; } })();
 const canElVol = (() => { try { const a = new Audio(); a.volume = 0.5; return a.volume === 0.5; } catch { return false; } })();
 const volOf = p => { const v = VOL[(p.name || '').toLowerCase()]; return typeof v === 'number' ? v : 1; };
+// Priority: while someone with a higher role is talking, lower roles are turned down ~15 dB on every phone
+// (Director over everyone, Cam Op over PA). Same role = same priority. Only affects what you hear.
+const ROLES = { dir: { r: 3, t: 'Director' }, cam: { r: 2, t: 'Cam Op' }, pa: { r: 1, t: 'PA' } };
+me.role = ROLES[store.get('ic-talk-role')] ? store.get('ic-talk-role') : 'pa';
+const rankOf = role => (ROLES[role] || ROLES.pa).r;
+let prioTop = 0;
+function prioCalc(){
+  let top = talking && !FEED.mode ? rankOf(me.role) : 0;
+  peers.forEach(q => { if (!q.feed && q.helloed && q.talking && q.pc.connectionState === 'connected') top = Math.max(top, rankOf(q.role)); });
+  return top;
+}
+const prioOf = p => !p.feed && rankOf(p.role) < prioTop ? dbTo(-15) : 1;
+function prioDuck(){
+  const top = prioCalc(); if (top === prioTop) return;
+  prioTop = top; peers.forEach(p => { if (!p.feed) applyVol(p); });
+}
+function setRole(r){
+  if (!ROLES[r]) return; me.role = r; store.set('ic-talk-role', r);
+  document.querySelectorAll('[data-role-seg] button').forEach(b => b.classList.toggle('on', b.dataset.v === r));
+  if (mic) { broadcast({ t: 'role', role: r }); prioDuck(); paint(); }
+}
+document.querySelectorAll('[data-role-seg] button').forEach(b => b.onclick = () => setRole(b.dataset.v));
+setTimeout(() => setRole(me.role), 0);
 function setVol(p, v){
   v = Math.max(0, Math.min(1.5, v));
   const k = (p.name || '').toLowerCase(); if (k) { if (v === 1) delete VOL[k]; else VOL[k] = v; store.set('ic-talk-vol', JSON.stringify(VOL)); }
   applyVol(p);
 }
 function applyVol(p){
-  const v = volOf(p), stream = p.audio.srcObject;
+  const v = volOf(p) * prioOf(p), stream = p.audio.srcObject;
   if (!stream) return;
+  if (FEED.mode) { p.audio.muted = true; return; }      // the mixer phone never plays the room (it could end up on the recording)
+  if (p.feed) return feedChain(p);
   if (!p.gain && (v === 1 || (canElVol && v <= 1))) { p.audio.muted = false; if (canElVol) p.audio.volume = v; return; }
   if (!p.gain && ctx) {
     try {
@@ -656,7 +758,7 @@ function applyVol(p){
   if (p.gain) { p.audio.muted = true; p.gain.gain.setTargetAtTime(v, ctx.currentTime, 0.03); }   // element stays attached (needed for the stream to flow) but silent
   else if (canElVol) { p.audio.muted = false; p.audio.volume = Math.min(1, v); }
 }
-function closePeer(p){ try { p.gainSrc?.disconnect(); p.gain?.disconnect(); } catch {} try { p.dc.close() } catch {} try { p.pc.close() } catch {} p.audio.srcObject = null; p.audio.remove(); }
+function closePeer(p){ try { p.gainSrc?.disconnect(); p.gain?.disconnect(); p.fc?.src.disconnect(); p.fc?.out.disconnect(); } catch {} try { p.dc.close() } catch {} try { p.pc.close() } catch {} p.audio.srcObject = null; p.audio.remove(); }
 function dropPeer(p, why){
   if (peers.get(p.id) !== p) { closePeer(p); return; }
   peers.delete(p.id); closePeer(p);
@@ -676,10 +778,11 @@ document.querySelector('.back').addEventListener('click', e => {
 
 /* ---------- Push to talk (hold) + lock (double-tap) ---------- */
 function setTalk(on){
+  if (FEED.mode) return;                                  // the mixer phone only sends the feed
   if (on && !talking) txClipStart(); else if (!on && talking) txClipEnd();
   talking = on; if (mic) mic.enabled = on;
   broadcast({ t: 'ptt', on });
-  $('ptt').classList.toggle('on', on); $('ptt').classList.toggle('locked', on && locked);
+  $('ptt').classList.toggle('on', on); $('ptt').classList.toggle('locked', on && locked); feedDuck(); prioDuck();
   $('pttHint').textContent = on ? (locked ? 'Mic locked on · tap to stop' : 'Talking…') : 'Hold to talk · double‑tap to lock';
   paint();
 }
@@ -717,7 +820,7 @@ function startLevel(){
   if (!ctx || !mic) return;
   try {
     const src = ctx.createMediaStreamSource(new MediaStream([mic])); micLvl = ctx.createAnalyser(); micLvl.fftSize = 512; src.connect(micLvl);
-    startIsolation(src);
+    if (FEED.mode) startFeed(src); else startIsolation(src);
     const buf = new Float32Array(512);
     const tick = () => {
       if (talking) { micLvl.getFloatTimeDomainData(buf); let pk = 0; for (const v of buf) pk = Math.max(pk, Math.abs(v)); $('ptt').style.setProperty('--lvl', Math.min(1, pk * 3).toFixed(2)); }
@@ -779,7 +882,7 @@ registerProcessor('rnn', class extends AudioWorkletProcessor {
 });`;
 let workletP = null;
 const loadWorklets = () => workletP || (workletP = ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([WORKLETS], { type: 'application/javascript' }))));
-const outTrack = () => ISO.track || mic;                // what we send: cleaned mic if available
+const outTrack = () => FEED.mode ? (FEED.track || mic) : (ISO.track || mic);   // what we send: cleaned mic, or the mixer feed
 async function startIsolation(src){
   try {
     await loadWorklets();
@@ -810,6 +913,199 @@ function paintIso(){
   $('isoSub').textContent = ISO.ok === false ? 'Not available on this phone' : ISO.on ? 'On · removes background noise' : 'Off · sends everything your mic hears';
 }
 $('isoOn').onchange = e => { ensureAudio(); setIso(e.target.checked); };
+
+/* ---------- Mixer feed ----------
+   One phone in the room can be the "mixer phone": plugged into the mixer, it sends the mix (mono)
+   instead of a mic, and only to the people who switch on "Listen". It never talks, never plays the
+   room (that could leak onto the recording) and is never transcribed.
+   Mixer phone: channel pick (L / both / R) → gain → out, with a meter and tone auto-gain (send tone →
+   gain is set so it reads −20 dBFS, like the Send page; it switches itself off after one success).
+   Listeners: feed → auto level (steady, comfortable) → ducks −12 dB while anyone talks → drops to a
+   quiet level while tone is on (tap to hear) → own volume → limiter → speaker. */
+const FEED = { mode: store.get('ic-talk-feed') === '1', dev: store.get('ic-talk-feed-dev') || '', chan: store.get('ic-talk-feed-ch') || 'both',
+  gainDb: Number(store.get('ic-talk-feed-gain')) || 0, auto: store.get('ic-talk-feed-auto') !== '0', track: null, n: null, toneSet: false };
+const FL = { on: store.get('ic-talk-feedlisten') === '1', vol: Number(store.get('ic-talk-feedvol') ?? 1), agc: store.get('ic-talk-feedagc') !== '0' };
+if (!(FL.vol >= 0)) FL.vol = 1;
+const TONE_REF = -20;                                    // dBFS the tone should read (peak), same as the Send page
+const dbTo = d => Math.pow(10, d / 20);
+// --- mixer phone
+function startFeed(src){
+  const c = ctx, n = FEED.n = {};
+  n.split = c.createChannelSplitter(2); src.connect(n.split);
+  n.l = c.createGain(); n.r = c.createGain(); n.split.connect(n.l, 0); n.split.connect(n.r, 1);
+  n.mono = c.createGain(); n.mono.channelCount = 1; n.mono.channelCountMode = 'explicit'; n.l.connect(n.mono); n.r.connect(n.mono);
+  n.pre = c.createAnalyser(); n.pre.fftSize = 4096; n.pre.smoothingTimeConstant = 0; n.mono.connect(n.pre);
+  n.gain = c.createGain(); n.mono.connect(n.gain);
+  n.post = c.createAnalyser(); n.post.fftSize = 1024; n.gain.connect(n.post);
+  const dest = c.createMediaStreamDestination(); dest.channelCount = 1; n.gain.connect(dest);
+  n.stereo = (mic.getSettings?.().channelCount || 2) > 1;
+  FEED.track = dest.stream.getAudioTracks()[0];
+  setFeedChan(FEED.chan); setFeedGain(FEED.gainDb);
+  peers.forEach(p => feedRoute(p));
+  feedMeterLoop(); setInterval(feedToneTick, 100);
+  listDevices(); paintFeedTone();
+}
+function setFeedChan(ch){
+  FEED.chan = ch; store.set('ic-talk-feed-ch', ch);
+  const n = FEED.n; if (n) {
+    const mono = !n.stereo;                              // a mono input only has a left channel
+    n.l.gain.value = ch === 'right' && !mono ? 0 : ch === 'both' && !mono ? 0.5 : 1;
+    n.r.gain.value = mono ? 0 : ch === 'left' ? 0 : ch === 'both' ? 0.5 : 1;
+  }
+  [...$('fpChan').children].forEach(b => b.classList.toggle('on', b.dataset.v === ch));
+}
+function setFeedGain(db){
+  FEED.gainDb = Math.max(-12, Math.min(30, Math.round(db * 2) / 2)); store.set('ic-talk-feed-gain', String(FEED.gainDb));
+  if (FEED.n) FEED.n.gain.gain.setTargetAtTime(dbTo(FEED.gainDb), ctx.currentTime, 0.02);
+  $('fpGain').value = FEED.gainDb; $('fpGainV').textContent = (FEED.gainDb > 0 ? '+' : '') + FEED.gainDb.toFixed(1) + ' dB';
+}
+// Send the feed only to people who are listening (saves everyone's data); never our mic to the mixer phone.
+function feedRoute(p){
+  if (FEED.mode) {
+    const want = p.sub && p.helloed ? FEED.track : null;
+    p.pc.getTransceivers().forEach(t => { if (t.receiver.track?.kind === 'audio' && t.sender.track !== want) t.sender.replaceTrack(want).then(() => capBitrate(p)).catch(() => {}); });
+  } else if (p.feed) {
+    p.pc.getTransceivers().forEach(t => { if (t.receiver.track?.kind === 'audio' && t.sender.track) t.sender.replaceTrack(null).catch(() => {}); });
+    p.audio.muted = true; feedChain(p);
+  }
+}
+function feedMeterLoop(){
+  const a = FEED.n.post, buf = new Float32Array(a.fftSize); let hold = -100, holdT = 0;
+  const tick = () => {
+    a.getFloatTimeDomainData(buf); let pk = 0; for (const v of buf) { const x = Math.abs(v); if (x > pk) pk = x; }
+    const db = pk > 0 ? 20 * Math.log10(pk) : -100, now = performance.now();
+    if (db > hold || now - holdT > 1200) { hold = db; holdT = now; }
+    $('fpBar').style.width = Math.max(0, Math.min(100, (db + 60) / 60 * 100)) + '%';
+    $('fpDb').textContent = hold > -60 ? hold.toFixed(1) + ' dB' : '−∞';
+    $('fpStart').hidden = ctx.state === 'running';
+    requestAnimationFrame(tick);
+  };
+  tick();
+}
+// Tone: same test as the Send page (one pure, steady pitch). Quick check tells listeners (they duck);
+// with auto gain on, 1.5 s of steady tone sets the gain.
+const TN = { hist: [], present: false, lastSeen: 0, td: new Float32Array(4096), fd: new Float32Array(2048), hz: 0 };
+const med = a => { const b = [...a].sort((x, y) => x - y); return b[b.length >> 1]; };
+function feedToneTick(){
+  const a = FEED.n?.pre; if (!a) return;
+  a.getFloatTimeDomainData(TN.td); let sum = 0; for (const v of TN.td) sum += v * v;
+  const rmsDb = 10 * Math.log10(sum / TN.td.length + 1e-12), now = performance.now();
+  let tone = false, hz = 0;
+  if (rmsDb > -70) {
+    a.getFloatFrequencyData(TN.fd);
+    let k = 2, max = -Infinity; for (let i = 2; i < TN.fd.length - 1; i++) if (TN.fd[i] > max) { max = TN.fd[i]; k = i; }
+    let tot = 0, pk = 0; for (let i = 1; i < TN.fd.length; i++) { const pw = Math.pow(10, TN.fd[i] / 10); tot += pw; if (Math.abs(i - k) <= 5) pk += pw; }
+    const y1 = TN.fd[k - 1], y2 = TN.fd[k], y3 = TN.fd[k + 1], den = y1 - 2 * y2 + y3;
+    hz = (k + (den ? 0.5 * (y1 - y3) / den : 0)) * ctx.sampleRate / a.fftSize;
+    tone = tot > 0 && pk / tot > 0.97 && hz >= 60 && hz <= 12000;
+  }
+  TN.hist.push({ t: now, tone, hz, rmsDb }); while (TN.hist.length && now - TN.hist[0].t > 2000) TN.hist.shift();
+  const last = TN.hist.filter(f => now - f.t <= 560);
+  if (last.length >= 3 && last.every(f => f.tone)) { const m = med(last.map(f => f.hz)); if (last.every(f => Math.abs(f.hz - m) / m < 0.02)) { TN.lastSeen = now; TN.hz = m; } }
+  const present = now - TN.lastSeen < 1200;
+  if (present !== TN.present) { TN.present = present; broadcast({ t: 'feedst', tone: present, hz: Math.round(TN.hz) }); paintFeedTone(); }
+  if (!FEED.auto || FEED.toneSet || TN.hist.length < 15 || now - TN.hist[0].t < 1500) return;
+  const tf = TN.hist.filter(f => f.tone); if (tf.length < TN.hist.length * 0.75) return;
+  const f0 = med(tf.map(f => f.hz)); if (tf.some(f => Math.abs(f.hz - f0) / f0 > 0.02)) return;
+  const lv = tf.map(f => f.rmsDb).sort((x, y) => x - y), L = med(lv.slice(lv.length >> 1));
+  setFeedGain(TONE_REF - (L + 3.01));                   // a sine's peak is its RMS + 3 dB
+  FEED.toneSet = true; FEED.toneMsg = `Set to ${(FEED.gainDb > 0 ? '+' : '') + FEED.gainDb.toFixed(1)} dB from ${f0 >= 990 ? (f0 / 1000).toFixed(1) + ' kHz' : Math.round(f0) + ' Hz'} tone`;
+  toast('Gain set from tone'); paintFeedTone();
+}
+function paintFeedTone(){
+  $('fpAuto').checked = FEED.auto;
+  $('fpToneSub').textContent = FEED.toneSet ? FEED.toneMsg + (TN.present ? ' · tone on' : '') : !FEED.auto ? 'Off' : TN.present ? 'Tone on line — setting level…' : 'Send tone from the mixer to set the level';
+}
+async function listDevices(){
+  try {
+    const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'audioinput');
+    $('fpDev').innerHTML = '<option value="">Default (mixer)</option>' + devs.map(d => `<option value="${esc(d.deviceId)}">${esc(d.label || 'Input')}</option>`).join('');
+    $('fpDev').value = FEED.dev && devs.some(d => d.deviceId === FEED.dev) ? FEED.dev : '';
+  } catch {}
+}
+$('fpGain').oninput = e => { setFeedGain(+e.target.value); FEED.toneSet = false; paintFeedTone(); };
+$('fpChan').onclick = e => { const v = e.target.closest('button')?.dataset.v; if (v) setFeedChan(v); };
+$('fpAuto').onchange = e => { FEED.auto = e.target.checked; FEED.toneSet = false; TN.hist = []; store.set('ic-talk-feed-auto', FEED.auto ? '1' : '0'); paintFeedTone(); };
+$('fpDev').onchange = e => { store.set('ic-talk-feed-dev', e.target.value); leaveAll(); setTimeout(() => location.reload(), 150); };
+$('fpStart').onclick = () => ensureAudio();
+$('feedMode').onchange = e => {
+  const on = e.target.checked;
+  if (!confirm(on ? 'Make this the mixer phone? It will send the mixer to the room instead of talking.' : 'Stop sending the mixer and use this phone for talking?')) { e.target.checked = !on; return; }
+  store.set('ic-talk-feed', on ? '1' : '0'); leaveAll(); setTimeout(() => location.reload(), 150);   // rejoins the same room right away
+};
+$('startFeedBtn').onclick = () => { store.set('ic-talk-feed', '1'); FEED.mode = true; if (!$('nameIn').value.trim()) $('nameIn').value = 'Mixer'; $('startBtn').click(); };
+// --- listeners
+function feedChain(p){
+  if (FEED.mode || !p.audio.srcObject || !ctx) return;
+  if (!p.fc || p.fc.stream !== p.audio.srcObject) {
+    try { p.fc?.src.disconnect(); p.fc?.out.disconnect(); } catch {}
+    const c = ctx, f = p.fc = { stream: p.audio.srcObject, agcDb: 0, loud: -20 };
+    f.src = c.createMediaStreamSource(f.stream);
+    f.an = c.createAnalyser(); f.an.fftSize = 2048; f.src.connect(f.an);
+    f.agc = c.createGain(); f.duck = c.createGain(); f.tone = c.createGain(); f.vol = c.createGain();
+    f.out = c.createDynamicsCompressor(); f.out.threshold.value = -3; f.out.knee.value = 0; f.out.ratio.value = 20; f.out.attack.value = 0.002; f.out.release.value = 0.15;
+    f.src.connect(f.agc); f.agc.connect(f.duck); f.duck.connect(f.tone); f.tone.connect(f.vol); f.vol.connect(f.out); f.out.connect(c.destination);
+    f.buf = new Float32Array(2048);
+  }
+  p.audio.muted = true;
+  feedLevels(p); feedDuck();
+}
+function feedLevels(p){
+  const f = p.fc; if (!f) return;
+  const t = ctx.currentTime;
+  f.vol.gain.setTargetAtTime(FL.on ? FL.vol : 0, t, 0.05);
+  f.tone.gain.setTargetAtTime(p.tone && !p.toneHear ? dbTo(-24) : 1, t, 0.06);
+}
+function feedDuck(){
+  if (!ctx) return;
+  const someone = talking || [...peers.values()].some(q => !q.feed && q.helloed && q.talking);
+  peers.forEach(p => { if (p.fc) p.fc.duck.gain.setTargetAtTime(someone ? dbTo(-12) : 1, ctx.currentTime, someone ? 0.03 : 0.25); });
+}
+// Auto level: follow the feed's loudness (~1.5 s) and steer it toward a comfortable −20 dBFS average,
+// within ±18 dB. Silence and tone don't move it, so room noise isn't pumped up between lines.
+setInterval(() => {
+  peers.forEach(p => {
+    const f = p.fc; if (!f || !p.feed) return;
+    f.an.getFloatTimeDomainData(f.buf); let s = 0; for (const v of f.buf) s += v * v;
+    const db = 10 * Math.log10(s / f.buf.length + 1e-12);
+    if (db > -50 && !p.tone) f.loud += (db - f.loud) * (db > f.loud ? 0.08 : 0.03);
+    const want = FL.agc ? Math.max(-18, Math.min(18, -20 - f.loud)) : 0;
+    const step = want > f.agcDb ? 0.3 : 1.0;             // up gently (~6 dB/s), down faster (~20 dB/s)
+    f.agcDb += Math.max(-step, Math.min(step, want - f.agcDb));
+    f.agc.gain.setTargetAtTime(dbTo(f.agcDb), ctx.currentTime, 0.05);
+  });
+}, 50);
+function feedPaint(){
+  const feeds = [...peers.values()].filter(p => p.feed && p.helloed);
+  document.querySelector('.app').classList.toggle('feedmode', FEED.mode && !!mic);
+  $('feedPanel').hidden = !FEED.mode || !mic;
+  $('feedMode').checked = FEED.mode;
+  if (FEED.mode) {
+    const n = [...peers.values()].filter(p => p.helloed && p.sub).length;
+    $('fpSubs').textContent = n ? `${n} listening` : 'No one listening yet';
+    return;
+  }
+  if (!feeds.length) return;
+  $('feedFrom').textContent = FL.on ? 'Lowers while people talk' : 'Off · only you hear it';
+  $('feedListen').checked = FL.on; $('feedBody').hidden = !FL.on;
+  if (document.activeElement !== $('feedVol')) $('feedVol').value = Math.round(FL.vol * 100);
+  $('feedVolV').textContent = FL.vol ? Math.round(FL.vol * 100) + '%' : 'Off';
+  $('feedAgc').checked = FL.agc;
+  const tp = feeds.find(p => p.tone);
+  $('feedTone').hidden = !FL.on || !tp;
+  if (tp) { const hz = tp.toneHz ? ` (${tp.toneHz >= 990 ? (tp.toneHz / 1000).toFixed(1) + ' kHz' : tp.toneHz + ' Hz'})` : '';
+    $('feedTone').textContent = tp.toneHear ? `Tone on line${hz} · full volume — tap to lower` : `Tone on line${hz} · lowered — tap to hear`; }
+  feeds.forEach(feedLevels);
+}
+$('feedListen').onchange = e => {
+  ensureAudio(); FL.on = e.target.checked; store.set('ic-talk-feedlisten', FL.on ? '1' : '0');
+  peers.forEach(p => { if (p.feed) feedChain(p); });
+  broadcast({ t: 'feedsub', on: FL.on });
+  paint();
+};
+$('feedVol').oninput = e => { FL.vol = e.target.value / 100; store.set('ic-talk-feedvol', String(FL.vol)); paint(); };
+$('feedAgc').onchange = e => { FL.agc = e.target.checked; store.set('ic-talk-feedagc', FL.agc ? '1' : '0'); };
+$('feedTone').onclick = () => { peers.forEach(p => { if (p.feed && p.tone) p.toneHear = !p.toneHear; }); feedPaint(); };
 
 /* ---------- Transcript (optional, off by default) ----------
    Each phone transcribes only its own mic, so every line already carries the right name.
@@ -927,7 +1223,8 @@ function txPaint(){
   const list = [...TX.lines.values()].sort((a, b) => a.at - b.at);
   const box = $('txList'), atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
   box.hidden = !TX.on; $('txActs').hidden = !TX.on || !list.some(l => !l.pending);
-  if ($('room').classList.contains('txon') !== TX.on) { $('room').classList.toggle('txon', TX.on); paint(); }
+  const txv = TX.on && !FEED.mode;                     // the mixer phone keeps its panel; the feed isn't transcribed
+  if ($('room').classList.contains('txon') !== txv) { $('room').classList.toggle('txon', txv); paint(); }
   box.innerHTML = list.length ? list.map(l => `<div class="tx-line${l.pending ? ' pending' : ''}"><span class="who">${esc(l.who)}</span><span class="at">${fmtClock(l.at)}</span><span class="tx">${l.pending ? (TX.limit ? 'Waiting · daily limit reached' : !navigator.onLine ? 'Waiting for internet' : 'Transcribing…') : esc(l.text)}</span></div>`).join('')
     : '<div class="empty">Talk to see the transcript here.</div>';
   if (atEnd) box.scrollTop = box.scrollHeight;
@@ -961,11 +1258,13 @@ addEventListener('offline', txSub);
 /* ---------- Room list ---------- */
 const initials = n => (n || '?').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?';
 function paint(){
+  prioDuck();
   const list = [...peers.values()].filter(p => p.helloed);
-  const rows = [{ k: 'me', name: me.name + ' (you)', ini: initials(me.name), talking, st: talking ? 'Talking' : '' },
+  const rows = [{ k: 'me', name: me.name + ' (you)', role: FEED.mode ? '' : ROLES[me.role].t, ini: initials(me.name), talking, st: talking ? 'Talking' : '' },
     ...list.map(p => {
       const st = p.pc.connectionState;
-      return { k: p.id, p, name: p.name || 'Someone', ini: initials(p.name), talking: p.talking && st === 'connected',
+      if (p.feed) return { k: p.id, f: p, role: '', name: p.name || 'Mixer', ini: 'MX', talking: false, st: st !== 'connected' ? 'Reconnecting…' : !FL.on ? 'Mixer · off' : p.tone ? 'Tone' : 'Listening', warn: st !== 'connected' };
+      return { k: p.id, p, role: ROLES[p.role]?.t || 'PA', name: p.name || 'Someone', ini: initials(p.name), talking: p.talking && st === 'connected',
         st: p.talking && st === 'connected' ? 'Talking' : st === 'connected' ? '' : (st === 'new' || st === 'connecting') && !p.wasUp ? 'Connecting…' : 'Reconnecting…',
         warn: st !== 'connected' };
     })];
@@ -977,10 +1276,13 @@ function paint(){
     if (!el) el = makeRow(r);
     if (box.children[i] !== el) box.insertBefore(el, box.children[i] || null);
     el.querySelector('.member').classList.toggle('talking', !!r.talking);
-    el.querySelector('.av').textContent = r.ini; el.querySelector('.nm').textContent = r.name;
+    el.querySelector('.av').textContent = r.ini; el.querySelector('.nm').innerHTML = esc(r.name) + (r.role ? `<small class="role">${r.role}</small>` : '');
     const st = el.querySelector('.st'); st.textContent = r.st; st.classList.toggle('warn', !!r.warn);
     if (r.p) paintVol(el, r.p);
+    if (r.f) { const host = el.querySelector('.vol > div'); if (!host.contains($('feedCtl')) && !box.querySelector('.mrow.feed .fd-ctl')) host.appendChild($('feedCtl'));
+      const vb = el.querySelector('.vb'), pct = Math.round(FL.vol * 100); vb.textContent = FL.on && pct !== 100 ? (pct ? pct + '%' : 'Muted') : ''; vb.classList.toggle('mute', FL.on && !pct); }
   });
+  if (!box.querySelector('.mrow.feed .fd-ctl')) $('feedHome').appendChild($('feedCtl'));
   [...box.children].forEach(el => { if (!keys.has(el.dataset.k)) el.remove(); });
   let empty = box.querySelector('.empty');
   const showEmpty = false;   // (alone: the room code / QR hint says it)
@@ -989,6 +1291,7 @@ function paint(){
   $('countLbl').textContent = list.length ? `In the room · ${list.length + 1}` : 'In the room';
   $('addBtn').disabled = list.length >= MAX - 1;
   $('room').classList.toggle('alone', !list.length); $('toolsBtn').hidden = !mic;
+  feedPaint();
   document.querySelector('.app').classList.toggle('alone-mode', !list.length && !TX.on);   // transcript on: fixed screen so it can fill
   $('aloneHint').hidden = !!list.length || codeWorks();
   $('meName').textContent = me.name;
@@ -999,14 +1302,15 @@ function paint(){
 }
 function makeRow(r){
   const el = document.createElement('div');
-  el.className = 'mrow' + (r.p ? ' other' : ''); el.dataset.k = r.k;
-  el.innerHTML = `<div class="member" ${r.p ? 'role="button" tabindex="0"' : ''}><span class="av"></span><span class="nm"></span><span class="vb"></span><span class="st"></span>${r.p ? '<svg class="chev" viewBox="0 0 9 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5 7.5 8l-6 6.5"/></svg>' : ''}</div>`
+  el.className = 'mrow' + (r.p || r.f ? ' other' : '') + (r.f ? ' feed' : ''); el.dataset.k = r.k;
+  el.innerHTML = `<div class="member" ${r.p || r.f ? 'role="button" tabindex="0"' : ''}><span class="av"></span><span class="nm"></span><span class="vb"></span><span class="st"></span>${r.p || r.f ? '<svg class="chev" viewBox="0 0 9 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5 7.5 8l-6 6.5"/></svg>' : ''}</div>`
     + (r.p ? `<div class="vol"><div><div class="vin">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>
-        <input type="range" min="0" max="150" step="5" aria-label="Volume"><span class="vv"></span></div></div></div>` : '');
+        <input type="range" min="0" max="150" step="5" aria-label="Volume"><span class="vv"></span></div></div></div>` : r.f ? '<div class="vol"><div></div></div>' : '');
+  if (r.f) el.querySelector('.member').onclick = () => { ensureAudio(); el.classList.toggle('open'); };
   if (r.p) {
     const id = r.k;
-    el.querySelector('.member').onclick = () => { ensureAudio(); el.classList.toggle('open'); };
+    el.querySelector('.member').onclick = () => { ensureAudio(); if (!FEED.mode) el.classList.toggle('open'); };
     const rng = el.querySelector('input');
     rng.oninput = () => { const p = peers.get(id); if (!p) return; setVol(p, rng.value / 100); paintVol(el, p, true); };
     rng.addEventListener('pointerdown', e => e.stopPropagation());
@@ -1371,6 +1675,13 @@ addEventListener('offline', () => { ICE_CFG = TEST_ICE ? ICE_CFG : { iceServers:
 
 /* ---------- Start ---------- */
 $('nameIn').value = store.get('ic-talk-name') || '';
+// Easter egg: the example name cycles through famous directors' first names.
+(() => {
+  const D = ['Steven','Quentin','George','Martin','Christopher','Stanley','Alfred','Akira','Greta','Sofia','Kathryn','Ridley','Spike','Wes','Hayao','Guillermo','Denis','Francis','Jordan','Ava','Orson','Agnès','David','James'];
+  let i = Math.floor(Math.random() * D.length);
+  const show = () => { $('nameIn').placeholder = 'e.g. ' + D[i]; };
+  show(); setInterval(() => { if (!$('start').hidden && !$('nameIn').value) { i = (i + 1 + Math.floor(Math.random() * (D.length - 1))) % D.length; show(); } }, 2200);
+})();
 $('startBtn').onclick = () => {
   const name = $('nameIn').value.trim();
   if (!name) { $('nameIn').focus(); $('startErr').hidden = false; $('startErr').textContent = 'Enter your name so others know who’s talking.'; return; }
@@ -1403,11 +1714,14 @@ async function startTalk(){
   ensureAudio(); keepAwake();
   $('startBtn').disabled = true; $('startErr').hidden = true;
   try {
-    const proc = !new URLSearchParams(location.search).has('raw');   // ?raw: no voice processing (testing)
-    const s = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: proc, noiseSuppression: proc, autoGainControl: proc, channelCount: 1 } });
-    mic = s.getAudioTracks()[0]; mic.enabled = false;
+    const proc = !FEED.mode && !new URLSearchParams(location.search).has('raw');   // the mixer gets no voice processing at all
+    const want = FEED.mode ? { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: { ideal: 2 }, ...(FEED.dev ? { deviceId: { exact: FEED.dev } } : {}) }
+                           : { echoCancellation: proc, noiseSuppression: proc, autoGainControl: proc, channelCount: 1 };
+    let s; try { s = await navigator.mediaDevices.getUserMedia({ audio: want }); }
+    catch (e) { if (!FEED.dev) throw e; delete want.deviceId; s = await navigator.mediaDevices.getUserMedia({ audio: want }); }
+    mic = s.getAudioTracks()[0]; mic.enabled = FEED.mode;               // the mixer feed is always live; voice waits for push-to-talk
   } catch {
-    $('start').hidden = false; $('startBtn').disabled = false; $('startErr').hidden = false;
+    document.documentElement.classList.remove('has-name'); $('start').hidden = false; $('startBtn').disabled = false; $('startErr').hidden = false;
     $('startErr').textContent = 'Talkback needs the microphone. Allow it in your browser settings and try again.';
     return;
   }
