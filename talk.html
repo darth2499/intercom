@@ -71,16 +71,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
 .mrow.other .member{cursor:pointer}
 .member .vb{font-size:13px;color:var(--blue);font-variant-numeric:tabular-nums}
 .member .vb.mute{color:var(--red)}
-.member .chev{width:8px;height:14px;color:var(--label3);transition:transform .25s;flex:none}
-.mrow.open .chev{transform:rotate(90deg)}
 /* Per-person volume: slides open under their name; only affects this phone */
-.vol{display:grid;grid-template-rows:0fr;transition:grid-template-rows .28s cubic-bezier(.2,.8,.2,1)}
-.mrow.open .vol{grid-template-rows:1fr}
-.vol > div{overflow:hidden;min-height:0}
-.vol .vin{display:flex;align-items:center;gap:12px;padding:2px 0 14px 48px}
-.vol svg{width:20px;height:20px;color:var(--label2);flex:none}
-.vol input[type=range]{flex:1;min-width:0;accent-color:var(--blue);height:28px}
-.vol .vv{width:44px;text-align:right;font-size:15px;font-variant-numeric:tabular-nums;color:var(--label2)}
 .av{width:36px;height:36px;border-radius:18px;background:var(--fill);display:grid;place-items:center;font-weight:600;font-size:15px;flex:none;
   transition:box-shadow .15s,background .15s}
 .member.talking .av{background:var(--green);color:#fff;box-shadow:0 0 0 4px color-mix(in srgb,var(--green) 30%,transparent)}
@@ -100,7 +91,6 @@ button{border:0;background:none;padding:0;cursor:pointer}
 .ptt.on{background:var(--red);transform:scale(.97);box-shadow:0 0 0 calc(6px + var(--lvl,0) * 18px) color-mix(in srgb,var(--red) 25%,transparent)}
 .ptt.on svg{color:#fff}
 .ptt.locked::after{content:'LOCKED';position:absolute;bottom:34px;font-size:12px;font-weight:700;letter-spacing:.08em;color:#fff}
-.ptt:disabled{opacity:.45}
 .ptt-hint{font-size:15px;color:var(--label2);text-align:center;min-height:20px}
 
 /* Sheet */
@@ -207,7 +197,6 @@ b.sm{font-size:15px}
 .mix-row input{grid-area:rg;width:100%;accent-color:var(--blue);height:28px}
 #mixFeed .fd-ctl{padding:16px 18px}
 .tg-row{display:flex;justify-content:center;min-height:32px}
-.tg-row::-webkit-scrollbar{display:none}
 .tg{flex:none;height:32px;padding:0 13px;border-radius:16px;background:var(--fill);font-size:14px;font-weight:500;color:var(--label);white-space:nowrap}
 .tg.on{background:var(--blue);color:#fff}
 .ptt.priv.on{background:var(--purple,#AF52DE);box-shadow:0 0 0 calc(10px + var(--lvl,0)*22px) color-mix(in srgb,var(--purple,#AF52DE) 25%,transparent)}
@@ -222,7 +211,7 @@ b.sm{font-size:15px}
 .seg{display:flex;flex:1;background:var(--fill);border-radius:10px;padding:2px}
 .seg button{flex:1;height:32px;border-radius:8px;font-size:15px;color:var(--label)}
 .seg button.on{background:var(--card);box-shadow:0 1px 3px rgba(0,0,0,.12);font-weight:600}
-.app.feedmode .mrow .chev,.app.feedmode .ptt-wrap,.app.feedmode #roomFoot,.app.feedmode #txCard,.app.feedmode #isoPref{display:none!important}
+.app.feedmode .ptt-wrap,.app.feedmode #roomFoot,.app.feedmode #txCard,.app.feedmode #isoPref{display:none!important}
 .pill{color:var(--blue);font-size:15px;font-weight:600;padding:8px 12px;border-radius:10px;background:var(--fill)}
 .main{display:flex;flex-direction:column;gap:12px;flex:1 0 auto;min-height:0}
 .main .spacer{flex:1}
@@ -271,19 +260,12 @@ b.sm{font-size:15px}
   #room.txon:not(.alone) .ghead.on{background:var(--blue);color:#fff}
   #room.txon:not(.alone) .mrow.on,#room.txon:not(.alone) .mrow.ingrp{margin:0;padding:0;background:none}
   #room.txon:not(.alone) .mrow.on .av,#room.txon:not(.alone) .mrow.ingrp .av{box-shadow:0 0 0 2px var(--blue)}
-  #room.txon:not(.alone) .mrow:not(.open) .vol{display:none}
   #room.txon:not(.alone) .member{flex-direction:column;gap:4px;padding:2px 6px;width:auto}
   #room.txon:not(.alone) .member .nm{font-size:12px;max-width:66px;text-align:center}
-  #room.txon:not(.alone) .member .st,#room.txon:not(.alone) .member .chev{display:none}
+  #room.txon:not(.alone) .member .st{display:none}
   #room.txon:not(.alone) .nm .role{display:none}
   #room.txon:not(.alone) .member .vb{font-size:11px;margin-top:-2px}
   #room.txon:not(.alone) .member .vb:empty{display:none}
-  #room.txon:not(.alone) .mrow.open .av{box-shadow:0 0 0 2px var(--blue)}
-  #room.txon:not(.alone) .mrow.open .vol{position:absolute;left:0;right:0;top:100%;margin-top:8px;z-index:6;background:var(--card);
-    border-radius:16px;box-shadow:0 8px 28px rgba(0,0,0,.18);padding:0 16px}
-  #room.txon:not(.alone) .vol .vin{padding:14px 0}
-  #room.txon:not(.alone) .vol .fd-ctl{padding:14px 2px}
-  #room.txon:not(.alone) .vol .fd-ctl .vin{padding:0}
 }
 
 /* Laptop / tablet: sidebar + big transcript and talk area */
@@ -603,7 +585,7 @@ function newPeer(id, polite){
   p.audio.setAttribute('playsinline', ''); document.body.appendChild(p.audio);
   pc.ontrack = e => { p.audio.srcObject = e.streams[0] || new MediaStream([e.track]); p.audio.play().catch(() => {}); if (p.gain) { try { p.gainSrc.disconnect(); p.gain.disconnect(); } catch {} p.gain = null; } applyVol(p); if (p.jb) setBuffer(p, p.jb); };
   pc.onconnectionstatechange = () => watchLink(p); pc.oniceconnectionstatechange = () => watchLink(p);
-  dc.onmessage = e => { p.lastMsg = Date.now(); let m; try { m = JSON.parse(e.data) } catch { return; } onMsg(p, m); };
+  dc.onmessage = e => { p.lastMsg = Date.now(); let m; try { m = JSON.parse(e.data) } catch { return; } if (!m || typeof m !== 'object') return; try { onMsg(p, m); } catch (err) { console.warn('talkback msg', m.t, err); } };
   dc.onopen = () => { send(p, { t: 'hello', id: me.id, sess: me.sess, name: me.name, role: me.role, color: me.color, tcn: Object.fromEntries([...TX.lines.values()].filter(l => l.c != null).map(l => [l.who, l.c])), feed: FEED.mode, feedsub: FL.on, talking, talkTo: talking && TALK.to ? [...TALK.to] : null, peers: memberIds(), psess: memberSess(), room: ROOM.joining ? '' : ROOM.code, rid: ROOM.joining ? '' : ROOM.rid, since: ROOM.since, est: ROOM.est, beacon: !!ROOM.beacon && !ROOM.joining, tx: { on: TX.on, at: TX.at, by: TX.by } }); };
   dc.onclose = () => { if (p.ready && peers.get(p.id) === p) dropPeer(p, 'left'); };
   return p;
@@ -643,7 +625,7 @@ function setBuffer(p, ms){
   p.pc.getReceivers().forEach(r => { try { if ('jitterBufferTarget' in r) r.jitterBufferTarget = ms; else if ('playoutDelayHint' in r) r.playoutDelayHint = ms / 1000; } catch {} });
 }
 async function tuneBuffer(p){
-  if (p.pc.connectionState !== 'connected') return;
+  if (!isUp(p)) return;
   let inb = null; try { (await p.pc.getStats()).forEach(r => { if (r.type === 'inbound-rtp' && r.kind === 'audio') inb = r; }); } catch { return; }
   if (!inb) return;
   const prev = p.jbStat; p.jbStat = { c: inb.concealedSamples || 0, s: inb.silentConcealedSamples || 0, t: inb.totalSamplesReceived || 0, lost: inb.packetsLost || 0 };
@@ -659,6 +641,30 @@ async function tuneBuffer(p){
   else if (p.jb > JB.min && now - (p.jbCalm || 0) > JB.calmMs) { p.jbCalm = now; setBuffer(p, JB.steps[Math.max(0, JB.steps.indexOf(p.jb) - 1)]); }
 }
 setInterval(() => peers.forEach(p => p.ready && tuneBuffer(p)), 1000);
+// Audio check: every link should carry packets from the other phone (a muted mic still sends silence).
+// If a link is up but nothing arrives for ~8 s, the audio part of the link didn't set up (e.g. after an app was
+// force-quit and reopened): ask both sides to set it up again; if that doesn't help, rebuild the link.
+function expectsAudio(p){ return p.helloed && !p.feed && !FEED.mode && !p.privOut && isUp(p) && Date.now() - (p.helloAt || 0) > 6000; }
+setInterval(() => peers.forEach(async p => {
+  if (!expectsAudio(p)) { p.rxPk = null; p.mute0 = 0; return; }
+  let pk = 0; try { (await p.pc.getStats()).forEach(r => { if (r.type === 'inbound-rtp' && r.kind === 'audio') pk += r.packetsReceived || 0; }); } catch { return; }
+  if (peers.get(p.id) !== p) return;
+  if (p.rxPk != null && pk > p.rxPk) { p.mute0 = 0; p.fixes = 0; }
+  else if (p.rxPk != null) p.mute0 = (p.mute0 || 0) + 1;
+  p.rxPk = pk;
+  if (p.mute0 >= 4) {                                    // ~8 s with no audio packets
+    p.mute0 = 0; p.fixes = (p.fixes || 0) + 1;
+    if (p.fixes > 2) return dropPeer(p, 'lost');          // still nothing: drop it, the room check links us again
+    send(p, { t: 'resync' }); resync(p);
+  }
+}), 2000);
+function resync(p){                                        // make sure we send our voice on this link, then renegotiate
+  if (FEED.mode) feedRoute(p); else if (!p.feed) { const want = wantTrack(p);
+    const tr = p.pc.getTransceivers().find(t => t.receiver.track?.kind === 'audio');
+    if (tr && tr.sender.track !== want) tr.sender.replaceTrack(want).catch(() => {});
+    if (!tr && mic) { const t = outTrack(); p.pc.addTrack(t, new MediaStream([t])); preferRed(p.pc); } }
+  try { if (!p.polite) p.pc.restartIce(); } catch {}
+}
 async function onSignal(p, d){
   const pc = p.pc;
   try {
@@ -666,6 +672,9 @@ async function onSignal(p, d){
       const collision = d.desc.type === 'offer' && (p.makingOffer || pc.signalingState !== 'stable');
       p.ignoreOffer = !p.polite && collision;
       if (p.ignoreOffer) return;
+      // We offered at the same moment and we're the polite side: undo ours first (older iPhones can't do this implicitly),
+      // then our change is offered again once this one settles.
+      if (collision && pc.signalingState === 'have-local-offer') await pc.setLocalDescription({ type: 'rollback' }).catch(() => {});
       await pc.setRemoteDescription(d.desc);
       if (d.desc.type === 'offer') { const a = await pc.createAnswer(); await pc.setLocalDescription({ type: 'answer', sdp: nack(a.sdp) }); await waitGather(pc, 1500); signal(p, { desc: pc.localDescription }); }
       capBitrate(p);
@@ -686,7 +695,7 @@ function broadcast(m, except){ peers.forEach(p => { if (p !== except) send(p, m)
 // Local network only, so addresses are known at once — each description goes out complete (no trickle).
 const seen = new Set();
 function signal(p, d){
-  if (isOpen(p) && isUp(p)) return send(p, { t: 'sdp', d });
+  if (isOpen(p)) return send(p, { t: 'sdp', d });     // the link's own channel works even while its state is catching up
   relay({ t: 'sig', mid: Math.random().toString(36).slice(2), from: me.id, to: p.id, ttl: 5, d });
 }
 function relay(m, except){ seen.add(m.mid); broadcast(m, except); }
@@ -719,7 +728,8 @@ function onMsg(p, m){
   if (m.t === 'hello') return onHello(p, m);
   if (!p.ready) return;
   switch (m.t) {
-    case 'sdp': return onSignal(p, m.d);
+    case 'sdp': return m.d && onSignal(p, m.d);
+    case 'resync': return resync(p);
     case 'sig':
       if (seen.has(m.mid)) return;
       seen.add(m.mid); if (seen.size > 500) seen.clear();
@@ -754,11 +764,11 @@ function onHello(p, m){
   if (old && old !== p) {
     // Same phone, new visit (they left and came back): the new link replaces the old one right away.
     // Same visit, second link (we met twice at once): keep the one that's working.
-    if (old.sess === m.sess && isUp(old) && old.dc.readyState === 'open') { closePeer(p); return; }
+    if (old.sess === m.sess && isUp(old) && old.dc.readyState === 'open') { const pairing = pair.peer === p; closePeer(p); if (pairing) pairDone(old); return; }
     closePeer(old); p.helloed = old.helloed && old.sess === m.sess;   // a returning phone gets a "joined" note
   }
   if (!old && peers.size >= MAX - 1) { send(p, { t: 'full' }); setTimeout(() => closePeer(p), 300); return; }
-  const first = !p.helloed; p.helloed = true;
+  const first = !p.helloed; p.helloed = true; p.helloAt = Date.now();
   p.id = m.id; p.sess = m.sess; p.name = String(m.name || '').slice(0, 20); p.role = ROLES[m.role] ? m.role : 'pa'; p.color = Number.isInteger(m.color) ? m.color : null; p.tcn = m.tcn && typeof m.tcn === 'object' ? m.tcn : {}; p.feed = !!m.feed; p.sub = !!m.feedsub; p.talking = !!m.talking; p.privTo = m.talking && Array.isArray(m.talkTo) ? m.talkTo : null; p.privOut = !!p.privTo && !p.privTo.includes(me.id); p.polite = me.id > m.id;
   peers.set(p.id, p);
   fixColor();
@@ -822,7 +832,7 @@ setInterval(() => {
    Saved by name, so it's remembered next time. Phones that allow it change the player's volume;
    iPhones don't (their audio volume is fixed), and boosting past 100% needs it too, so then the
    person's audio goes through a gain stage instead. */
-const VOL = (() => { try { return JSON.parse(store.get('ic-talk-vol') || '{}'); } catch { return {}; } })();
+const VOL = (() => { try { const v = JSON.parse(store.get('ic-talk-vol') || '{}'); return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; } catch { return {}; } })();
 const canElVol = (() => { try { const a = new Audio(); a.volume = 0.5; return a.volume === 0.5; } catch { return false; } })();
 // Volumes are kept per phone (so two people with the same name don't share one); older saves by name still work.
 const volOf = p => { const v = VOL['#' + p.id] ?? VOL[(p.name || '').toLowerCase()]; return typeof v === 'number' ? v : 1; };
@@ -892,7 +902,7 @@ function dropPeer(p, why){
   if (p.beacon) setTimeout(maybeClaim, 500 + Math.random() * 2000);   // they held the room code — someone take it over
   if (p.helloed && why === 'lost') toast(`Lost ${dn(p)}`, 'warn');
   else if (p.helloed && why === 'left') toast(`${dn(p)} left`);
-  announce(); paint();
+  announce(); feedDuck(); prioDuck(); paint();
 }
 // Leaving (closing, going back, switching apps away for good): say bye and close the links properly,
 // so the others see "left" at once instead of "Reconnecting…" for a few seconds.
@@ -907,7 +917,7 @@ document.querySelector('.back').addEventListener('click', e => {
    Directors and Cam Ops can pick who hears them: roles below theirs and/or single people (Directors: anyone).
    The pick sticks until changed. Our voice is only SENT to those people (others get no audio at all);
    as a second guard, phones that aren't included also mute a private talker. */
-const TG = (() => { try { const t = JSON.parse(store.get('ic-talk-tg') || '{}'); return { roles: new Set(t.roles || []), ids: new Set(t.ids || []) }; } catch { return { roles: new Set(), ids: new Set() }; } })();
+const TG = (() => { try { const t = JSON.parse(store.get('ic-talk-tg') || '{}') || {}; const arr = a => Array.isArray(a) ? a.filter(x => typeof x === 'string') : []; return { roles: new Set(arr(t.roles).filter(r => r in ROLES)), ids: new Set(arr(t.ids)) }; } catch { return { roles: new Set(), ids: new Set() }; } })();
 const TALK = { to: null, lbl: '', gen: 0 };
 const ROLE_PL = { dir: 'Directors', cam: 'Cam Ops', pa: 'PAs' };
 const canPick = () => !FEED.mode && rankOf(me.role) > 1;
@@ -916,7 +926,7 @@ const pickPeople = () => [...peers.values()].filter(p => p.helloed && !p.feed &&
 const tgSave = () => store.set('ic-talk-tg', JSON.stringify({ roles: [...TG.roles], ids: [...TG.ids] }));
 function tgPrune(){                                       // after a role change: keep only what this role may pick
   const ok = new Set(pickRoles()); [...TG.roles].forEach(r => { if (!ok.has(r)) TG.roles.delete(r); });
-  if (!canPick()) TG.ids.clear(); tgSave();
+  if (!canPick() && !FEED.mode) TG.ids.clear(); tgSave();
 }
 const isPrivate = () => canPick() && (TG.roles.size > 0 || TG.ids.size > 0);
 const inTarget = p => TG.roles.has(p.role) || TG.ids.has(p.id);
@@ -977,28 +987,40 @@ function hsStart(){
   if (!HS.el) {
     HS.url = HS.url || hsSilence();
     HS.el = Object.assign(document.createElement('audio'), { src: HS.url, loop: true, playsInline: true });
-    HS.el.setAttribute('playsinline', ''); HS.el.addEventListener('pause', () => { if (HS.on && HS.el) setTimeout(() => HS.el?.play().catch(() => {}), 50); });   // keep it "playing"; never treated as a press
-    document.body.appendChild(HS.el);
+    HS.el.setAttribute('playsinline', ''); document.body.appendChild(HS.el);
     const ms = navigator.mediaSession;
     try { ms.metadata = new MediaMetadata({ title: 'Talkback', artist: 'Press to talk', album: 'Intercom' }); } catch {}
-    ['play', 'pause', 'stop'].forEach(a => { try { ms.setActionHandler(a, hsPress); } catch {} });
-    try { ms.setActionHandler('togglemicrophone', hsPress); } catch {}
+    // The silent clip plays while the mic is on and is paused while it's off, so the headset/lock screen
+    // shows the real state: "play" can only mean "start talking", "pause" only "stop". A stray pause the
+    // phone sends by itself when it locks can therefore never turn the mic ON.
+    try { ms.setActionHandler('play', () => hsAction(true)); } catch {}
+    try { ms.setActionHandler('pause', () => hsAction(false)); } catch {}
+    try { ms.setActionHandler('stop', () => hsAction(false)); } catch {}
+    try { ms.setActionHandler('togglemicrophone', () => hsAction(!talking)); } catch {}
+    HS.el.play().then(() => { if (!talking) HS.el?.pause(); }).catch(() => {});   // one real play registers us as "now playing"
   }
-  HS.el.play().catch(() => {}); try { navigator.mediaSession.playbackState = 'playing'; } catch {}
+  hsSync();
+}
+function hsSync(){                                         // keep the clip/lock-screen state in step with the mic
+  if (!HS.el) return;
+  if (talking) HS.el.play().catch(() => {}); else HS.el.pause();
+  try { navigator.mediaSession.playbackState = talking ? 'playing' : 'paused'; } catch {}
 }
 function hsStop(){
   if (!HS.el) return;
   try { HS.el.pause(); HS.el.remove(); } catch {} HS.el = null;
   ['play', 'pause', 'stop', 'togglemicrophone'].forEach(a => { try { navigator.mediaSession.setActionHandler(a, null); } catch {} });
 }
-let hsLast = 0;
-let hsVis = 0; document.addEventListener('visibilitychange', () => { hsVis = performance.now(); if (document.hidden && talking && !locked) setTalk(false); });   // screen locked mid-hold: let go
-function hsPress(){
-  const now = performance.now(); if (now - hsLast < 350) return; hsLast = now;
-  if (now - hsVis < 1500) return;                      // locking/unlocking the phone can send play/pause by itself — not a press   // some headsets send play + pause for one press
-  ensureAudio(); if (FEED.mode || !mic) return;
-  if (talking) { locked = false; setTalk(false); chirp(false); } else { locked = true; setTalk(true); chirp(true); }
-  HS.el?.play().catch(() => {}); try { navigator.mediaSession.playbackState = 'playing'; } catch {}
+let hsLast = 0, hsVis = 0;
+document.addEventListener('visibilitychange', () => { hsVis = performance.now(); if (document.hidden && talking && !locked) setTalk(false); });   // screen locked mid-hold: let go
+function hsAction(on){
+  const now = performance.now();
+  if (now - hsLast < 350) return; hsLast = now;            // some headsets send two actions for one press
+  if (on && now - hsVis < 1500) return hsSync();          // locking/unlocking can send a "play" by itself — never open the mic from that
+  ensureAudio(); if (FEED.mode || !mic) return hsSync();
+  if (on && !talking) { locked = true; setTalk(true); chirp(true); }
+  else if (!on && talking) { locked = false; setTalk(false); chirp(false); }
+  hsSync();
 }
 function chirp(up){
   if (!ctx) return;
@@ -1009,6 +1031,7 @@ function chirp(up){
 }
 $('hsOn').checked = HS.on;
 $('hsOn').onchange = e => { HS.on = e.target.checked; store.set('ic-talk-hs', HS.on ? '1' : '0'); if (HS.on) hsStart(); else hsStop(); };
+const hsPress = () => hsAction(!talking);
 addEventListener('keydown', e => { if (e.key === 'MediaPlayPause' && !navigator.mediaSession) { e.preventDefault(); hsPress(); } });
 
 /* ---------- Push to talk (hold) + lock (double-tap) ---------- */
@@ -1026,7 +1049,7 @@ function setTalk(on){
     ++TALK.gen; const was = TALK.to; TALK.to = null; if (was) routeTalk();
   }
   broadcast({ t: 'ptt', on, to: on && TALK.to ? [...TALK.to] : null });
-  $('ptt').classList.toggle('on', on); $('ptt').classList.toggle('locked', on && locked); feedDuck(); prioDuck();
+  $('ptt').classList.toggle('on', on); $('ptt').classList.toggle('locked', on && locked); feedDuck(); prioDuck(); hsSync();
   pttHint();
   paint();
 }
@@ -1059,7 +1082,7 @@ function ensureAudio(){
   if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch { return; } }
   if (ctx.state !== 'running') ctx.resume().catch(() => {});
   peers.forEach(p => p.audio.paused && p.audio.srcObject && p.audio.play().catch(() => {}));
-  if (HS.on && mic && (!HS.el || HS.el.paused)) hsStart();
+  if (HS.on && mic && !HS.el) hsStart();
 }
 function startLevel(){
   if (!ctx || !mic) return;
@@ -1140,7 +1163,7 @@ async function startIsolation(src){
     const dest = ctx.createMediaStreamDestination();
     src.connect(node); node.connect(dest);
     ISO.node = node; ISO.track = dest.stream.getAudioTracks()[0]; ISO.ok = true;
-    txTap(node);                                         // the transcript hears the cleaned voice too
+    try { txTap(node); } catch {}                        // the transcript hears the cleaned voice too
     peers.forEach(p => p.pc.getSenders().forEach(s => { if (s.track === mic) s.replaceTrack(ISO.track).catch(() => {}); }));
   } catch {
     ISO.ok = false; ISO.track = null;
@@ -1215,14 +1238,15 @@ function feedRoute(p){
   }
 }
 function feedMeterLoop(){
-  const a = FEED.n.post, buf = new Float32Array(a.fftSize); let hold = -100, holdT = 0;
+  const a = FEED.n.post, buf = new Float32Array(a.fftSize), bar = $('fpBar'), dbl = $('fpDb'), st = $('fpStart'); let hold = -100, holdT = 0;
   const tick = () => {
     a.getFloatTimeDomainData(buf); let pk = 0; for (const v of buf) { const x = Math.abs(v); if (x > pk) pk = x; }
     const db = pk > 0 ? 20 * Math.log10(pk) : -100, now = performance.now();
     if (db > hold || now - holdT > 1200) { hold = db; holdT = now; }
-    $('fpBar').style.width = Math.max(0, Math.min(100, (db + 60) / 60 * 100)) + '%';
-    $('fpDb').textContent = hold > -60 ? hold.toFixed(1) + ' dB' : '−∞';
-    $('fpStart').hidden = ctx.state === 'running';
+    const w = Math.round(Math.max(0, Math.min(100, (db + 60) / 60 * 100))) + '%', t = hold > -60 ? hold.toFixed(1) + ' dB' : '−∞';
+    if (bar.style.width !== w) bar.style.width = w;        // only touch the page when something changed
+    if (dbl.textContent !== t) dbl.textContent = t;
+    const run = ctx.state === 'running'; if (st.hidden !== run) st.hidden = run;
     requestAnimationFrame(tick);
   };
   tick();
@@ -1283,6 +1307,7 @@ $('feedMode').onchange = e => {
 $('startFeedBtn').onclick = () => { store.set('ic-talk-feed', '1'); FEED.mode = true; const auto = !$('nameIn').value.trim(); if (auto) $('nameIn').value = 'Mixer'; $('startBtn').click(); if (auto) store.set('ic-talk-name-auto', '1'); };
 // --- listeners
 function feedChain(p){
+  if (p.gain) { try { p.gainSrc.disconnect(); p.gain.disconnect(); } catch {} p.gain = null; p.gainSrc = null; }   // it was set up as a voice before we knew
   if (FEED.mode || !p.audio.srcObject || !ctx) return;
   if (!p.fc || p.fc.stream !== p.audio.srcObject) {
     try { p.fc?.src.disconnect(); p.fc?.out.disconnect(); } catch {}
@@ -1305,12 +1330,13 @@ function feedLevels(p){
 }
 function feedDuck(){
   if (!ctx) return;
-  const someone = talking || [...peers.values()].some(q => !q.feed && q.helloed && q.talking && !q.privOut);
+  const someone = talking || [...peers.values()].some(q => !q.feed && q.helloed && q.talking && !q.privOut && isUp(q));
   peers.forEach(p => { if (p.fc) p.fc.duck.gain.setTargetAtTime(someone ? dbTo(-12) : 1, ctx.currentTime, someone ? 0.03 : 0.25); });
 }
 // Auto level: follow the feed's loudness (~1.5 s) and steer it toward a comfortable −20 dBFS average,
 // within ±18 dB. Silence and tone don't move it, so room noise isn't pumped up between lines.
 setInterval(() => {
+  if (!FL.on) return;
   peers.forEach(p => {
     const f = p.fc; if (!f || !p.feed) return;
     f.an.getFloatTimeDomainData(f.buf); let s = 0; for (const v of f.buf) s += v * v;
@@ -1418,6 +1444,7 @@ async function txSend(){
     if (!r.ok && !res?.error) res = { error: 'http ' + r.status };
   } catch { res = null; }                              // no internet → keep it and try again
   TX.sending = false;
+  if (TX.queue[0] !== c) return txSend();               // room changed meanwhile: that clip is gone
   if (!res) { txSub(); setTimeout(txSend, 15000); return; }
   if (res.error === 'limit') { txLimit(res.resetsAt); broadcast({ t: 'txlimit', resetsAt: res.resetsAt }); return; }
   if (res.error === 'busy') { setTimeout(txSend, 10000); return; }
@@ -1540,8 +1567,11 @@ function colorOfLine(l){
 
 /* ---------- Room list ---------- */
 const initials = n => (n || '?').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?';
-function paint(){
-  prioDuck();
+// paint(): ask for a redraw. Many events fire in bursts (links, messages), so the page is redrawn at most once per
+// ~frame; audio decisions (ducking) never wait for it.
+let paintT = 0;
+function paint(){ prioDuck(); if (!paintT) paintT = setTimeout(() => { paintT = 0; paintNow(); }, 16); }
+function paintNow(){
   const list = [...peers.values()].filter(p => p.helloed);
   dnCalc();
   const rows = [{ k: 'me', name: myDn() + ' (you)', role: FEED.mode ? '' : ROLES[me.role].t, ini: initials(me.name), talking, st: talking ? (TALK.to ? 'Private' : 'Talking') : '' },
@@ -1571,10 +1601,6 @@ function paint(){
   }).join('');
   if (mixr.length) html += `<div class="grp" data-g="mix"><div class="ghead">Mixer</div>${mixr.map(rowHtml).join('')}</div>`;
   if (box._h !== html) { box.innerHTML = html; box._h = html; }
-  let empty = box.querySelector('.empty');
-  const showEmpty = false;   // (alone: the room code / QR hint says it)
-  if (showEmpty && !empty) { empty = Object.assign(document.createElement('div'), { className: 'empty', innerHTML: 'No one else yet. Tap <b>Add person</b> to show your code, or <b>Join a room</b> to scan someone else’s.' }); box.appendChild(empty); }
-  if (!showEmpty && empty) empty.remove();
   $('countLbl').textContent = list.length ? `In the room · ${list.length + 1}` : 'In the room';
   $('addBtn').disabled = list.length >= MAX - 1;
   $('room').classList.toggle('alone', !list.length); $('toolsBtn').hidden = !mic; $('mixBtn').hidden = !mic || FEED.mode || !list.length; if (!$('mixBg').hidden) mixPaint();
@@ -1617,29 +1643,6 @@ $('mixList').addEventListener('input', e => {
   const el = e.target.closest('.mix-row'), p = el && peers.get(el.dataset.id); if (!p) return;
   setVol(p, e.target.value / 100); el.querySelector('.vv').textContent = +e.target.value ? e.target.value + '%' : 'Muted'; paint();
 });
-function makeRow(r){
-  const el = document.createElement('div');
-  el.className = 'mrow' + (r.p || r.f ? ' other' : '') + (r.f ? ' feed' : ''); el.dataset.k = r.k;
-  el.innerHTML = `<div class="member" ${r.p || r.f ? 'role="button" tabindex="0"' : ''}><span class="av"></span><span class="nm"></span><span class="vb"></span><span class="st"></span>${r.p || r.f ? '<svg class="chev" viewBox="0 0 9 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5 7.5 8l-6 6.5"/></svg>' : ''}</div>`
-    + (r.p ? `<div class="vol"><div><div class="vin">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>
-        <input type="range" min="0" max="150" step="5" aria-label="Volume"><span class="vv"></span></div></div></div>` : r.f ? '<div class="vol"><div></div></div>' : '');
-  if (r.f) el.querySelector('.member').onclick = () => { ensureAudio(); el.classList.toggle('open'); };
-  if (r.p) {
-    const id = r.k;
-    el.querySelector('.member').onclick = () => { ensureAudio(); if (!FEED.mode) el.classList.toggle('open'); };
-    const rng = el.querySelector('input');
-    rng.oninput = () => { const p = peers.get(id); if (!p) return; setVol(p, rng.value / 100); paintVol(el, p, true); };
-    rng.addEventListener('pointerdown', e => e.stopPropagation());
-  }
-  return el;
-}
-function paintVol(el, p, fromSlider){
-  const v = volOf(p), pct = Math.round(v * 100);
-  const rng = el.querySelector('input'); if (!fromSlider && document.activeElement !== rng) rng.value = pct;
-  el.querySelector('.vv').textContent = pct ? pct + '%' : 'Off';
-  const vb = el.querySelector('.vb'); vb.textContent = pct === 100 ? '' : pct ? pct + '%' : 'Muted'; vb.classList.toggle('mute', !pct);
-}
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
 let toastT = 0;
 function toast(text, kind = ''){
@@ -1723,7 +1726,7 @@ function linkTimeout(p, ms = 20000){
       text: 'Make sure both phones are on the same Wi‑Fi or hotspot, then try again.' });
   }, ms);
 }
-function pairDone(p){ const j = pair.onJoined; pair.onJoined = null; closeSheet(); j?.(); toast(`Connected to ${p.name || 'them'}`); }
+function pairDone(p){ const j = pair.onJoined; pair.onJoined = null; closeSheet(); j?.(); toast(`Connected to ${dn(p)}`); }
 function scanErr(e){
   $('shStatus').style.color = 'var(--red)';
   $('shStatus').textContent = e.message === 'wrong-step'
@@ -1802,11 +1805,11 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 const TALK_PREFIX = 'asahina-talk-';
 const RELAY_URL = 'https://intercom-turn.imsk8erboi.workers.dev/';
 const ROOM = { code: '', rid: '', since: 0, est: false, server: null, beacon: null, claiming: false, joining: null, relay: null, relayExp: 0 };
-const TEST_ICE = !!localStorage.getItem('ic-talk-ice');
+const TEST_ICE = !!store.get('ic-talk-ice');
 const hasNet = () => navigator.onLine && typeof Peer === 'function';
 // "Online" means the pairing server actually answered — a phone on Wi‑Fi with no internet still
 // reports itself as online, and there QR pairing must stay front and centre.
-const codeWorks = () => !!mic && hasNet() && (ROOM.server === true || [...peers.values()].some(p => p.helloed && p.beacon));
+const codeWorks = () => !!mic && hasNet() && (ROOM.server === true || [...peers.values()].some(p => p.helloed && p.beacon && isUp(p)));
 function serverSeen(ok){ if (ROOM.server !== ok) { ROOM.server = ok; if (!ok) { if (!TEST_ICE) ICE_CFG = { iceServers: [] }; } paintRoom(); } }
 // Online: let links also cross different networks (STUN, plus the Cloudflare relay if needed).
 async function refreshIce(){
@@ -1859,6 +1862,8 @@ function roomCode(code, est, rid){
 function dropBeacon(){ try { ROOM.beacon?.destroy(); } catch {} ROOM.beacon = null; }
 // Hold the code if nobody in the room does.
 function maybeClaim(){
+  // Holding the code but cut off from the pairing server for a while (reconnect didn't work): let go and claim again.
+  if (ROOM.beacon && (ROOM.beacon.destroyed || (ROOM.beaconDown && Date.now() - ROOM.beaconDown > 12000))) { dropBeacon(); ROOM.beaconDown = 0; announce(); }
   if (!hasNet() || !ROOM.code || ROOM.beacon || ROOM.claiming || !mic) return;
   if ([...peers.values()].some(p => p.helloed && p.beacon && isUp(p))) return;
   ROOM.claiming = true;
@@ -1868,10 +1873,11 @@ function maybeClaim(){
   pe.on('open', () => {
     done(); serverSeen(true);
     if (ROOM.code !== code || ROOM.beacon) return pe.destroy();
-    ROOM.beacon = pe; announce(); paintRoom();
+    ROOM.beacon = pe; ROOM.beaconDown = 0; announce(); paintRoom();
+    pe.on('open', () => { if (ROOM.beacon === pe) ROOM.beaconDown = 0; });   // reconnected to the pairing server
   });
   pe.on('connection', conn => onNewcomer(conn));
-  pe.on('disconnected', () => { if (ROOM.beacon === pe) setTimeout(() => { try { if (!pe.destroyed) pe.reconnect(); } catch {} }, 2000); });
+  pe.on('disconnected', () => { if (ROOM.beacon !== pe) return; ROOM.beaconDown = ROOM.beaconDown || Date.now(); setTimeout(() => { try { if (!pe.destroyed) pe.reconnect(); } catch {} }, 2000); });
   pe.on('error', e => {
     if (ROOM.beacon !== pe) { done(); try { pe.destroy(); } catch {} }      // code taken (someone else holds it) or no server
     if (e.type === 'unavailable-id') serverSeen(true);
@@ -1943,6 +1949,7 @@ async function joinCode(code, opt = {}){
     conn.on('data', async d => {
       if (d?.t === 'full') return end('That room is full (6 people max).', true);
       if (d?.t !== 'offer') return;
+      clearTimeout(job.t); job.t = setTimeout(() => end('Couldn’t connect. Try again.', true), 25000);   // the room exists: give the link time
       if (quiet && d.rid && d.rid !== ROOM.rid) { end(); try { conn.close(); } catch {} return peers.size ? null : newCode(); }   // a different room took our old code
       p = newPeer(null, false); pair.peer = p; pair.mode = 'code';
       pair.onJoined = () => {
@@ -1998,7 +2005,7 @@ addEventListener('offline', () => { ICE_CFG = TEST_ICE ? ICE_CFG : { iceServers:
    Every tab on this phone/computer shares one identity, so only one may be in the room (like WhatsApp Web).
    A browser lock marks the active tab. "Use here" takes the lock; the old tab hears it right away,
    leaves the room and reloads into the "moved to another tab" screen. */
-const VERSION = '0.11.8-beta';                     // same as the home page (index.html) — bump both together
+const VERSION = '0.11.9-beta';                     // same as the home page (index.html) — bump both together
 const TAB_LOCK = 'ic-talk-active';
 let tabClaim = null;
 function showBusy(moved){
