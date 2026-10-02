@@ -257,7 +257,10 @@ b.sm{font-size:15px}
   .dock{padding-bottom:0}
 }
 .tx-list{margin-top:12px;flex:1;min-height:80px;overflow:auto;display:flex;flex-direction:column;gap:10px;-webkit-overflow-scrolling:touch}
-.tx-line{font-size:15px;line-height:1.35}
+.tx-line{font-size:15px;line-height:1.35;border-left:4px solid var(--pc,var(--fill));padding-left:10px;border-radius:2px}
+.tx-line .who{color:var(--pc,inherit)}
+.member .av[style*="--pc"]{background:color-mix(in srgb,var(--pc) 22%,transparent);color:var(--pc)}
+.member.talking .av[style*="--pc"]{background:var(--green);color:#fff}
 .tx-line .who{font-weight:600}
 .tx-line .at{color:var(--label3);font-size:12px;margin-left:6px;font-variant-numeric:tabular-nums}
 .tx-line .tx{display:block;margin-top:1px}
@@ -530,7 +533,7 @@ function newPeer(id, polite){
   pc.ontrack = e => { p.audio.srcObject = e.streams[0] || new MediaStream([e.track]); p.audio.play().catch(() => {}); if (p.gain) { try { p.gainSrc.disconnect(); p.gain.disconnect(); } catch {} p.gain = null; } applyVol(p); if (p.jb) setBuffer(p, p.jb); };
   pc.onconnectionstatechange = () => watchLink(p);
   dc.onmessage = e => { let m; try { m = JSON.parse(e.data) } catch { return; } onMsg(p, m); };
-  dc.onopen = () => { send(p, { t: 'hello', id: me.id, sess: me.sess, name: me.name, role: me.role, feed: FEED.mode, feedsub: FL.on, talking, peers: memberIds(), room: ROOM.joining ? '' : ROOM.code, rid: ROOM.joining ? '' : ROOM.rid, since: ROOM.since, est: ROOM.est, beacon: !!ROOM.beacon && !ROOM.joining, tx: { on: TX.on, at: TX.at, by: TX.by } }); };
+  dc.onopen = () => { send(p, { t: 'hello', id: me.id, sess: me.sess, name: me.name, role: me.role, color: me.color, tcn: Object.fromEntries([...TX.lines.values()].filter(l => l.c != null).map(l => [l.who, l.c])), feed: FEED.mode, feedsub: FL.on, talking, peers: memberIds(), room: ROOM.joining ? '' : ROOM.code, rid: ROOM.joining ? '' : ROOM.rid, since: ROOM.since, est: ROOM.est, beacon: !!ROOM.beacon && !ROOM.joining, tx: { on: TX.on, at: TX.at, by: TX.by } }); };
   dc.onclose = () => { if (p.ready && peers.get(p.id) === p) dropPeer(p, 'left'); };
   return p;
 }
@@ -638,6 +641,7 @@ function onMsg(p, m){
     case 'peers': p.peers = m.peers || []; p.beacon = !!m.beacon; if (m.room) roomCode(m.room, !!m.est, m.rid);
       if (m.rid) { p.rid = m.rid; if (m.since) p.since = +m.since; fillGap(p); } meet(p.peers); return;
     case 'ptt': p.talking = !!m.on; paint(); feedDuck(); prioDuck(); return;
+    case 'color': p.color = Number.isInteger(m.c) ? m.c : null; fixColor(); paint(); txPaint(); return;
     case 'role': p.role = ROLES[m.role] ? m.role : 'pa'; prioDuck(); paint(); return;
     case 'feedsub': p.sub = !!m.on; feedRoute(p); feedPaint(); return;
     case 'feedst': p.tone = !!m.tone; p.toneHz = m.hz || 0; if (!p.tone) p.toneHear = false; paint(); return;
@@ -661,8 +665,9 @@ function onHello(p, m){
   }
   if (!old && peers.size >= MAX - 1) { send(p, { t: 'full' }); setTimeout(() => closePeer(p), 300); return; }
   const first = !p.helloed; p.helloed = true;
-  p.id = m.id; p.sess = m.sess; p.name = String(m.name || '').slice(0, 20); p.role = ROLES[m.role] ? m.role : 'pa'; p.feed = !!m.feed; p.sub = !!m.feedsub; p.talking = !!m.talking; p.polite = me.id > m.id;
+  p.id = m.id; p.sess = m.sess; p.name = String(m.name || '').slice(0, 20); p.role = ROLES[m.role] ? m.role : 'pa'; p.color = Number.isInteger(m.color) ? m.color : null; p.tcn = m.tcn && typeof m.tcn === 'object' ? m.tcn : {}; p.feed = !!m.feed; p.sub = !!m.feedsub; p.talking = !!m.talking; p.polite = me.id > m.id;
   peers.set(p.id, p);
+  fixColor();
   const wasPair = pair.peer === p;
   activate(p); feedRoute(p); applyVol(p);
   if (wasPair) pairDone(p);
@@ -1142,7 +1147,7 @@ function txClipEnd(){
   if (secs < 0.5 || pk < 0.005) return;                // a tap or silence — don't spend allowance on it
   const id = me.id + '-' + me.sess + '-' + (++TX.n);
   TX.queue.push({ id, at: c.at, dur: secs, wav: toWav(c.chunks, c.len, ctx.sampleRate) });
-  txAdd({ id, who: me.name, at: c.at, dur: secs, text: '', pending: true }, true); txPaint();
+  txAdd({ id, who: me.name, c: me.color, at: c.at, dur: secs, text: '', pending: true }, true); txPaint();
   txSend();
 }
 function toWav(chunks, len, rate){                     // 16 kHz mono 16-bit — small and what Whisper wants
@@ -1178,7 +1183,7 @@ async function txSend(){
   TX.queue.shift();
   const l = TX.lines.get(c.id);
   if (res.error || !res.text) { TX.lines.delete(c.id); }  // nothing intelligible (or a failed clip): drop it
-  else { const done = { id: c.id, rid: ROOM.rid, who: me.name, at: c.at, dur: c.dur, text: res.text }; TX.lines.set(c.id, done); broadcast({ t: 'line', l: done }); }
+  else { const done = { id: c.id, rid: ROOM.rid, who: me.name, c: me.color, at: c.at, dur: c.dur, text: res.text }; TX.lines.set(c.id, done); broadcast({ t: 'line', l: done }); }
   txSave(); txPaint(); txSend();
 }
 function txAdd(l, quiet){
@@ -1187,7 +1192,7 @@ function txAdd(l, quiet){
   if (!l.pending && l.at < ROOM.since - 1000 && !TX.lines.has(l.id)) return;   // from before we were here (or before we cleared)
   const had = TX.lines.get(l.id);
   if (had && !had.pending && l.pending) return;
-  TX.lines.set(l.id, { id: l.id, who: String(l.who || '').slice(0, 20), at: +l.at || Date.now(), dur: +l.dur || 0, text: l.text.slice(0, 2000), pending: !!l.pending });
+  TX.lines.set(l.id, { id: l.id, who: String(l.who || '').slice(0, 20), c: Number.isInteger(l.c) ? l.c : null, at: +l.at || Date.now(), dur: +l.dur || 0, text: l.text.slice(0, 2000), pending: !!l.pending });
   if (!l.pending) txSave();
   if (!quiet) txPaint();
 }
@@ -1227,7 +1232,7 @@ function txPaint(){
   box.hidden = !TX.on; $('txActs').hidden = !TX.on || !list.some(l => !l.pending);
   const txv = TX.on && !FEED.mode;                     // the mixer phone keeps its panel; the feed isn't transcribed
   if ($('room').classList.contains('txon') !== txv) { $('room').classList.toggle('txon', txv); paint(); }
-  box.innerHTML = list.length ? list.map(l => `<div class="tx-line${l.pending ? ' pending' : ''}"><span class="who">${esc(l.who)}</span><span class="at">${fmtClock(l.at)}</span><span class="tx">${l.pending ? (TX.limit ? 'Waiting · daily limit reached' : !navigator.onLine ? 'Waiting for internet' : 'Transcribing…') : esc(l.text)}</span></div>`).join('')
+  box.innerHTML = list.length ? list.map(l => `<div class="tx-line${l.pending ? ' pending' : ''}" style="--pc:${colorOfLine(l) || 'var(--fill)'}"><span class="who">${esc(l.who)}</span><span class="at">${fmtClock(l.at)}</span><span class="tx">${l.pending ? (TX.limit ? 'Waiting · daily limit reached' : !navigator.onLine ? 'Waiting for internet' : 'Transcribing…') : esc(l.text)}</span></div>`).join('')
     : '<div class="empty">Talk to see the transcript here.</div>';
   if (atEnd) box.scrollTop = box.scrollHeight;
 }
@@ -1257,6 +1262,37 @@ $('txClear').onclick = () => {
 addEventListener('online', () => { txSend(); txSub(); });
 addEventListener('offline', txSub);
 
+/* ---------- Talker colors ----------
+   Each person owns a color and tells the room (like their name), so every phone shows the same colors.
+   No two people in the room share one: on a clash the higher phone id picks another free color.
+   Transcript lines carry the speaker's color, so lines from people who left keep theirs. */
+const PALETTE = ['#0A84FF','#FF9F0A','#BF5AF2','#30C75E','#FF375F','#32ADE6','#E5B800','#5E5CE6','#AC8E68','#FF6B2C'];
+const chash = n => { let h = 2166136261; for (const c of (n || '').trim().toLowerCase()) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return (h >>> 0) % PALETTE.length; };
+me.color = (() => { const v = parseInt(store.get('ic-talk-color'), 10); return v >= 0 && v < PALETTE.length ? v : null; })();
+function fixColor(){
+  if (FEED.mode) return;
+  const others = [...peers.values()].filter(p => p.helloed && !p.feed && p.color != null);
+  const taken = new Set(others.map(p => p.color));
+  // colors still on the transcript for people who left (ours and what others told us), so a newcomer doesn't look like them
+  const past = new Set(), here = new Set([me.name, ...others.map(p => p.name)]);
+  [...TX.lines.values()].forEach(l => { if (!here.has(l.who) && l.c != null) past.add(l.c); });
+  others.forEach(p => Object.entries(p.tcn || {}).forEach(([n, c]) => { if (!here.has(n) && Number.isInteger(c)) past.add(c); }));
+  const free = i => !taken.has(i) && !past.has(i), anyFree = PALETTE.some((_, i) => free(i));
+  const clash = me.color == null || others.some(p => p.color === me.color && p.id < me.id)
+    || (past.has(me.color) && anyFree && !others.some(p => p.color === me.color) && ![...TX.lines.values()].some(l => l.who === me.name));
+  if (!clash) return;
+  const ok = anyFree ? free : i => !taken.has(i);
+  let i = chash(me.name); for (let n = 0; !ok(i) && n < PALETTE.length; n++) i = (i + 1) % PALETTE.length;
+  me.color = i; store.set('ic-talk-color', String(i));
+  if (mic) broadcast({ t: 'color', c: i });
+}
+const pcol = i => i == null ? '' : PALETTE[i] || '';
+function colorOfLine(l){
+  if (l.who === me.name) return pcol(me.color);
+  const p = [...peers.values()].find(q => q.helloed && !q.feed && q.name === l.who);
+  return p && p.color != null ? pcol(p.color) : pcol(l.c);
+}
+
 /* ---------- Room list ---------- */
 const initials = n => (n || '?').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?';
 function paint(){
@@ -1278,7 +1314,7 @@ function paint(){
     if (!el) el = makeRow(r);
     if (box.children[i] !== el) box.insertBefore(el, box.children[i] || null);
     el.querySelector('.member').classList.toggle('talking', !!r.talking);
-    el.querySelector('.av').textContent = r.ini; el.querySelector('.nm').innerHTML = esc(r.name) + (r.role ? `<small class="role">${r.role}</small>` : '');
+    el.querySelector('.av').textContent = r.ini; const pc = r.f ? '' : pcol(r.k === 'me' ? me.color : r.p?.color); el.querySelector('.av').style.cssText = pc ? `--pc:${pc}` : ''; el.querySelector('.nm').innerHTML = esc(r.name) + (r.role ? `<small class="role">${r.role}</small>` : '');
     const st = el.querySelector('.st'); st.textContent = r.st; st.classList.toggle('warn', !!r.warn);
     if (r.p) paintVol(el, r.p);
     if (r.f) { const host = el.querySelector('.vol > div'); if (!host.contains($('feedCtl')) && !box.querySelector('.mrow.feed .fd-ctl')) host.appendChild($('feedCtl'));
@@ -1730,7 +1766,7 @@ async function startTalk(){
   $('start').hidden = true; $('room').hidden = false; $('navTitle').textContent = 'Talkback'; 
   document.querySelector('.app').classList.add('inroom');
   if (!loadRoom()) { ROOM.code = String(Math.floor(Math.random() * 10000)).padStart(4, '0'); ROOM.rid = newRid(); ROOM.since = Date.now(); saveRoom(); }
-  txLoad();
+  txLoad(); fixColor();
   startLevel(); paint(); txSub(); txPaint();
   await refreshIce();
   const want = new URLSearchParams(location.search).get('room');
