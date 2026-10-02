@@ -234,6 +234,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
 .rc-join{display:flex;gap:8px;margin-top:12px;border-top:.5px solid var(--sep);padding-top:12px}
 .rc-join input{flex:1;min-width:0;height:44px;border-radius:12px;border:0;background:var(--fill);padding:0 14px;font-size:17px;letter-spacing:.1em;outline:none}
 .rc-join button{color:var(--blue);font-weight:600;padding:0 12px;min-width:56px}
+.rc-join.off{display:none!important}
 .rc-join button:disabled,.rc-join input:disabled{opacity:.5}
 .rc-join input::placeholder{letter-spacing:0}
 .rc-note{font-size:13px;color:var(--label2);margin-top:8px}
@@ -289,6 +290,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
         <div class="rc-join" id="rcJoin"><input id="rcIn" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="Join another code"><button id="rcGo">Join</button></div>
         <div class="rc-note" id="rcNote"></div>
           <button class="rc-more" id="qrMore">Someone has no internet? Pair with QR</button>
+          <button class="rc-more" id="rcNew">New room code</button>
       </div>
       <div class="alone-hint" id="aloneHint" hidden><b>Nobody else here yet.</b> Add someone with a QR code — no internet needed. Everyone just needs the same Wi‑Fi or hotspot.</div>
       <div class="row2" id="qrRow">
@@ -428,7 +430,7 @@ function newPeer(id, polite){
   pc.ontrack = e => { p.audio.srcObject = e.streams[0] || new MediaStream([e.track]); p.audio.play().catch(() => {}); if (p.gain) { try { p.gainSrc.disconnect(); p.gain.disconnect(); } catch {} p.gain = null; } applyVol(p); if (p.jb) setBuffer(p, p.jb); };
   pc.onconnectionstatechange = () => watchLink(p);
   dc.onmessage = e => { let m; try { m = JSON.parse(e.data) } catch { return; } onMsg(p, m); };
-  dc.onopen = () => { send(p, { t: 'hello', id: me.id, name: me.name, talking, peers: memberIds(), room: ROOM.joining ? '' : ROOM.code, est: ROOM.est, beacon: !!ROOM.beacon && !ROOM.joining, tx: { on: TX.on, at: TX.at, by: TX.by } }); };
+  dc.onopen = () => { send(p, { t: 'hello', id: me.id, name: me.name, talking, peers: memberIds(), room: ROOM.joining ? '' : ROOM.code, rid: ROOM.joining ? '' : ROOM.rid, since: ROOM.since, est: ROOM.est, beacon: !!ROOM.beacon && !ROOM.joining, tx: { on: TX.on, at: TX.at, by: TX.by } }); };
   dc.onclose = () => { if (p.ready && peers.get(p.id) === p) dropPeer(p, 'left'); };
   return p;
 }
@@ -532,7 +534,8 @@ function onMsg(p, m){
         if (q) onSignal(q, m.d);
       } else if (--m.ttl > 0) relay(m, p);
       return;
-    case 'peers': p.peers = m.peers || []; p.beacon = !!m.beacon; if (m.room) roomCode(m.room, !!m.est); meet(p.peers); return;
+    case 'peers': p.peers = m.peers || []; p.beacon = !!m.beacon; if (m.room) roomCode(m.room, !!m.est, m.rid);
+      if (m.rid) { p.rid = m.rid; if (m.since) p.since = +m.since; fillGap(p); } meet(p.peers); return;
     case 'ptt': p.talking = !!m.on; paint(); return;
     case 'name': p.name = String(m.name || '').slice(0, 20); applyVol(p); paint(); return;
     case 'bye': return dropPeer(p, 'left');
@@ -560,14 +563,22 @@ function onHello(p, m){
   if (wasPair) pairDone(p);
   else if (first) toast(`${p.name || 'Someone'} joined`);
   p.peers = m.peers || []; p.beacon = !!m.beacon;
-  if (m.room) roomCode(m.room, !!m.est);
-  if (p.via) { ROOM.est = true; announce(); }          // someone joined with our code: it's this room's code now
-  if (m.tx && m.tx.at > TX.at) txSet(m.tx.on, m.tx.by, m.tx.at, false);
-  const done = [...TX.lines.values()].filter(l => !l.pending); if (done.length) send(p, { t: 'lines', list: done.slice(-150) });
+  if (m.room) roomCode(m.room, !!m.est, m.rid);
+  if (p.via) { ROOM.est = true; saveRoom(); announce(); }   // someone joined with our code: it's this room's code now
+  if (m.tx && m.tx.at > TX.at && (!m.rid || m.rid === ROOM.rid)) txSet(m.tx.on, m.tx.by, m.tx.at, false);
+  p.rid = m.rid; p.since = +m.since || Date.now(); fillGap(p);
   announce(); meet(p.peers); paint();
 }
 // Tell everyone who we're linked to; whoever has the lower id starts any missing links.
-function announce(){ broadcast({ t: 'peers', peers: memberIds(), room: ROOM.joining ? '' : ROOM.code, est: ROOM.est, beacon: !!ROOM.beacon && !ROOM.joining }); }
+function announce(){ broadcast({ t: 'peers', peers: memberIds(), room: ROOM.joining ? '' : ROOM.code, rid: ROOM.joining ? '' : ROOM.rid, since: ROOM.since, est: ROOM.est, beacon: !!ROOM.beacon && !ROOM.joining }); }
+// Someone in our room (back after a drop, or a phone we just met) gets the lines they missed —
+// but only from the time they first joined this room: newcomers start fresh.
+function fillGap(p){
+  if (p.rid !== ROOM.rid || p.filled === ROOM.rid) return;
+  p.filled = ROOM.rid;
+  const list = [...TX.lines.values()].filter(l => !l.pending && l.at >= p.since - 1000).map(l => ({ ...l, rid: ROOM.rid }));
+  for (let i = 0; i < list.length; i += 100) send(p, { t: 'lines', list: list.slice(i, i + 100) });
+}
 function meet(ids){
   ids.forEach(id => {
     if (id === me.id || peers.has(id) || me.id > id || peers.size >= MAX - 1) return;
@@ -772,7 +783,12 @@ $('isoOn').onchange = e => { ensureAudio(); setIso(e.target.checked); };
    clips wait and go out when it's back. The Worker stops at the free daily allowance. */
 const STT_URL = 'https://intercom-turn.imsk8erboi.workers.dev/stt';
 const TX = { on: false, at: 0, by: '', lines: new Map(), queue: [], sending: false, limit: 0, clip: null, n: 0, node: null };
-try { (JSON.parse(store.get('ic-talk-lines') || '[]')).forEach(l => TX.lines.set(l.id, l)); } catch {}
+// The transcript belongs to the room (its id), not the phone: switch rooms and it starts over.
+function txLoad(){
+  TX.lines.clear();
+  try { const t = JSON.parse(store.get('ic-talk-tx') || 'null'); if (t && t.rid === ROOM.rid) (t.lines || []).forEach(l => TX.lines.set(l.id, l)); } catch {}
+}
+function txReset(){ TX.lines.clear(); TX.queue = []; TX.clip = null; TX.on = false; TX.at = 0; TX.by = ''; txSave(); $('txOn').checked = false; txSub(); txPaint(); }
 function txTap(src){
   // Hand mic samples (after voice isolation) to the main thread — kept only while a clip is recording.
   {
@@ -830,18 +846,20 @@ async function txSend(){
   TX.queue.shift();
   const l = TX.lines.get(c.id);
   if (res.error || !res.text) { TX.lines.delete(c.id); }  // nothing intelligible (or a failed clip): drop it
-  else { const done = { id: c.id, who: me.name, at: c.at, dur: c.dur, text: res.text }; TX.lines.set(c.id, done); broadcast({ t: 'line', l: done }); }
+  else { const done = { id: c.id, rid: ROOM.rid, who: me.name, at: c.at, dur: c.dur, text: res.text }; TX.lines.set(c.id, done); broadcast({ t: 'line', l: done }); }
   txSave(); txPaint(); txSend();
 }
 function txAdd(l, quiet){
   if (!l?.id || typeof l.text !== 'string') return;
+  if (l.rid && l.rid !== ROOM.rid) return;              // a line from another room
+  if (!l.pending && l.at < ROOM.since - 1000 && !TX.lines.has(l.id)) return;   // from before we were here (or before we cleared)
   const had = TX.lines.get(l.id);
   if (had && !had.pending && l.pending) return;
   TX.lines.set(l.id, { id: l.id, who: String(l.who || '').slice(0, 20), at: +l.at || Date.now(), dur: +l.dur || 0, text: l.text.slice(0, 2000), pending: !!l.pending });
   if (!l.pending) txSave();
   if (!quiet) txPaint();
 }
-function txSave(){ try { store.set('ic-talk-lines', JSON.stringify([...TX.lines.values()].filter(l => !l.pending).sort((a, b) => a.at - b.at).slice(-500))); } catch {} }
+function txSave(){ try { store.set('ic-talk-tx', JSON.stringify({ rid: ROOM.rid, lines: [...TX.lines.values()].filter(l => !l.pending).sort((a, b) => a.at - b.at).slice(-800) })); } catch {} }
 function txSet(on, by, at, share = true){
   TX.on = on; TX.by = by || ''; TX.at = at || Date.now();
   $('txOn').checked = on;
@@ -896,7 +914,12 @@ function txExport(kind){
 $('txOn').onchange = e => { ensureAudio(); txSet(e.target.checked, me.name, Date.now()); };
 $('txTxt').onclick = () => txExport('txt');
 $('txSrt').onclick = () => txExport('srt');
-$('txClear').onclick = () => { if (confirm('Clear the transcript on this phone?')) { [...TX.lines.keys()].forEach(k => { if (!TX.lines.get(k).pending) TX.lines.delete(k); }); txSave(); txPaint(); } };
+$('txClear').onclick = () => {
+  if (!confirm('Clear the transcript on this phone? Others keep theirs.')) return;
+  [...TX.lines.keys()].forEach(k => { if (!TX.lines.get(k).pending) TX.lines.delete(k); });
+  ROOM.since = Date.now(); saveRoom();                 // and don't get the old lines sent back on a reconnect
+  txSave(); txPaint();
+};
 addEventListener('online', () => { txSend(); txSub(); });
 addEventListener('offline', txSub);
 
@@ -1122,7 +1145,7 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
    left or lost signal), whoever grabs it first takes over. */
 const TALK_PREFIX = 'asahina-talk-';
 const RELAY_URL = 'https://intercom-turn.imsk8erboi.workers.dev/';
-const ROOM = { code: '', est: false, server: null, beacon: null, claiming: false, joining: null, relay: null, relayExp: 0 };
+const ROOM = { code: '', rid: '', since: 0, est: false, server: null, beacon: null, claiming: false, joining: null, relay: null, relayExp: 0 };
 const TEST_ICE = !!localStorage.getItem('ic-talk-ice');
 const hasNet = () => navigator.onLine && typeof Peer === 'function';
 // "Online" means the pairing server actually answered — a phone on Wi‑Fi with no internet still
@@ -1143,16 +1166,31 @@ async function refreshIce(){
   }
   ICE_CFG = { iceServers: [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun.cloudflare.com:3478'] }, ...(ROOM.relay || [])] };
 }
-// Which code a room keeps: a code someone has joined with ("established") beats a fresh one that
-// a phone made for itself; if two established rooms merge, the lower code wins.
-function roomCode(code, est){
-  if (!/^\d{4}$/.test(code || '')) return;
-  if (code === ROOM.code) { if (est && !ROOM.est) ROOM.est = true; return; }
-  if (ROOM.code && (ROOM.est && !est || (ROOM.est === !!est && ROOM.code < code))) {
-    if (!ROOM.est) { ROOM.est = true; announce(); }  // two fresh codes: keep ours (lower), it's the room's now
-    return;
-  }
-  dropBeacon(); ROOM.code = code; ROOM.est = true; paintRoom(); announce();
+/* A room = a 4-digit code + a hidden id (so two rooms that happen to pick the same code never mix),
+   saved on the phone. It stays until you tap "New room code" or join a different code — reopen the
+   app tomorrow and you're back in the same room with the same transcript. */
+const newRid = () => Array.from(crypto.getRandomValues(new Uint8Array(6)), b => b.toString(16).padStart(2, '0')).join('');
+function loadRoom(){
+  try { const r = JSON.parse(store.get('ic-talk-room') || 'null'); if (r && /^\d{4}$/.test(r.code) && r.rid) { Object.assign(ROOM, { code: r.code, rid: r.rid, est: !!r.est, since: +r.since || Date.now() }); return true; } } catch {}
+  return false;
+}
+function saveRoom(){ store.set('ic-talk-room', JSON.stringify({ code: ROOM.code, rid: ROOM.rid, est: ROOM.est, since: ROOM.since })); }
+function setRoom(code, rid, est){
+  const moved = rid !== ROOM.rid;
+  if (code !== ROOM.code || moved) dropBeacon();
+  ROOM.code = code; ROOM.rid = rid; ROOM.est = !!est;
+  if (moved) { ROOM.since = Date.now(); txReset(); peers.forEach(p => { p.filled = null; }); }   // new room: transcript starts over
+  saveRoom(); paintRoom(); announce();
+}
+// Which room wins when two meet (e.g. QR between phones from different rooms): a room someone has
+// joined ("established") beats a fresh one a phone made for itself; otherwise the lower code (then id).
+function roomCode(code, est, rid){
+  if (!/^\d{4}$/.test(code || '') || !rid) return;
+  if (rid === ROOM.rid) { if (est && !ROOM.est) { ROOM.est = true; saveRoom(); } return; }
+  const mine = [ROOM.est ? 1 : 0, ROOM.code, ROOM.rid], theirs = [est ? 1 : 0, code, rid];
+  const keepMine = ROOM.rid && (mine[0] !== theirs[0] ? mine[0] > theirs[0] : (mine[1] + mine[2]) < (theirs[1] + theirs[2]));
+  if (keepMine) { if (!ROOM.est) { ROOM.est = true; saveRoom(); announce(); } return; }
+  setRoom(code, rid, true);
   setTimeout(maybeClaim, 1500 + Math.random() * 2000);
 }
 function dropBeacon(){ try { ROOM.beacon?.destroy(); } catch {} ROOM.beacon = null; }
@@ -1175,14 +1213,18 @@ function maybeClaim(){
     if (ROOM.beacon !== pe) { done(); try { pe.destroy(); } catch {} }      // code taken (someone else holds it) or no server
     if (e.type === 'unavailable-id') serverSeen(true);
     else if (['network', 'server-error', 'socket-error', 'socket-closed'].includes(e.type)) serverSeen(false);
-    if (e.type === 'unavailable-id' && !peers.size && ROOM.code === code && !ROOM.joining) { // alone and the code is taken elsewhere → new code
-      ROOM.code = ''; newCode();
-    }
+    // Alone and our code is held by someone: most likely our own room carrying on without us → rejoin it.
+    if (e.type === 'unavailable-id' && !peers.size && ROOM.code === code && !ROOM.joining) joinCode(code, { rejoin: true });
   });
   pe.on('close', () => { if (ROOM.beacon === pe) { ROOM.beacon = null; announce(); } });
 }
 setInterval(() => { refreshIce(); maybeClaim(); paintRoom(); }, 15000 + Math.random() * 10000);
-function newCode(){ ROOM.est = false; ROOM.code = String(Math.floor(Math.random() * 10000)).padStart(4, '0'); paintRoom(); maybeClaim(); }
+function newCode(){ setRoom(String(Math.floor(Math.random() * 10000)).padStart(4, '0'), newRid(), false); maybeClaim(); }
+// "New room code": leave everyone, start a fresh room with an empty transcript (only for this phone).
+function leaveRoom(){
+  broadcast({ t: 'bye' });
+  setTimeout(() => { [...peers.values()].forEach(p => { peers.delete(p.id); closePeer(p); }); paint(); }, 150);
+}
 // Someone typed our code: send them our half of a link over the pairing connection.
 function onNewcomer(conn){
   let p = null;
@@ -1193,7 +1235,7 @@ function onNewcomer(conn){
     p = newPeer(null, false); p.via = conn;
     try {
       const o = await p.pc.createOffer(); await p.pc.setLocalDescription(o); await waitGather(p.pc, 2500);
-      conn.send({ t: 'offer', sdp: p.pc.localDescription.sdp, room: ROOM.code, name: me.name });
+      conn.send({ t: 'offer', sdp: p.pc.localDescription.sdp, room: ROOM.code, rid: ROOM.rid, est: ROOM.est, name: me.name });
     } catch { bail(); }
   });
   conn.on('data', async d => {
@@ -1202,13 +1244,19 @@ function onNewcomer(conn){
   setTimeout(() => { if (!p?.helloed) bail(); else try { conn.close(); } catch {} }, 25000);
 }
 // Join with a code: reach whoever holds it, get their half, answer, done.
-async function joinCode(code){
+async function joinCode(code, opt = {}){
   code = String(code || '').trim();
-  if (!/^\d{4}$/.test(code)) return rcNote('Enter the 4-digit room code.', true);
-  if (code === ROOM.code) return rcNote(peers.size ? 'You’re already in that room.' : 'That’s your own room code — share it with the others.', !peers.size);
-  if (!hasNet()) return rcNote('No internet — use Add person / Join a room with QR codes instead.', true);
+  const quiet = !!opt.rejoin;                            // automatic rejoin of our own room: no messages unless it works
+  const note = (t, err) => { if (!quiet) rcNote(t, err); };
+  if (!/^\d{4}$/.test(code)) return note('Enter the 4-digit room code.', true);
+  if (code === ROOM.code && !quiet) return rcNote(peers.size ? 'You’re already in that room.' : 'That’s your own room code — share it with the others.', !peers.size);
+  if (!hasNet()) return note('No internet — use Add person / Join a room with QR codes instead.', true);
   if (ROOM.joining) return;
-  ensureAudio(); rcNote('Joining ' + code + '…'); rcBusy(true);
+  if (!quiet && [...peers.values()].some(p => p.helloed)) {
+    if (!confirm(`Leave this room and join ${code}?`)) return;
+    leaveRoom(); await new Promise(r => setTimeout(r, 300));
+  }
+  ensureAudio(); note('Joining ' + code + '…'); if (!quiet) rcBusy(true);
   await refreshIce();
   const pe = new Peer({ config: ICE_CFG, debug: 0 }), job = ROOM.joining = { pe, code };
   let p = null, finished = false;
@@ -1216,19 +1264,26 @@ async function joinCode(code){
     if (finished) return; finished = true;
     clearTimeout(job.t); if (ROOM.joining === job) ROOM.joining = null;
     setTimeout(() => { try { pe.destroy(); } catch {} }, 1500);
-    if (msg) rcNote(msg, err);
+    if (msg) note(msg, err);
     rcBusy(false);
     if (err && p && !p.helloed) closePeer(p);
     if (pair.peer === p && err) pair.peer = null;
   };
   job.t = setTimeout(() => end(`No room with code ${code}. Check the code and try again.`, true), 10000);
+  if (quiet) rcNote('');
   pe.on('error', e => end(e.type === 'peer-unavailable' ? `No room with code ${code}. Check the code and try again.` : 'Couldn’t reach the pairing server. Try again.', true));
   pe.on('open', () => {
     const conn = pe.connect(TALK_PREFIX + code, { reliable: true });
     conn.on('data', async d => {
       if (d?.t === 'full') return end('That room is full (6 people max).', true);
       if (d?.t !== 'offer') return;
-      p = newPeer(null, false); pair.peer = p; pair.mode = 'code'; pair.onJoined = () => { const solo = peers.size <= 1; ROOM.moreOpen = false; end(); serverSeen(true); if (solo) { dropBeacon(); ROOM.code = ''; } roomCode(code, true); rcNote(''); $('rcIn').value = ''; rcBusy(false); };
+      if (quiet && d.rid && d.rid !== ROOM.rid) { end(); try { conn.close(); } catch {} return newCode(); }   // a different room took our old code
+      p = newPeer(null, false); pair.peer = p; pair.mode = 'code';
+      pair.onJoined = () => {
+        ROOM.moreOpen = false; end(); serverSeen(true);
+        if (d.rid) setRoom(code, d.rid, true);            // same room → keeps its transcript; a new room → starts fresh
+        rcNote(''); $('rcIn').value = ''; rcBusy(false); announce();
+      };
       try {
         await p.pc.setRemoteDescription({ type: 'offer', sdp: d.sdp });
         await p.pc.setLocalDescription(await p.pc.createAnswer()); await waitGather(p.pc, 2500);
@@ -1243,8 +1298,11 @@ function rcNote(t, err){
   clearTimeout(rcNote.t); if (err) rcNote.t = setTimeout(() => { if (n.textContent === t) rcNote(''); }, 7000);   // errors fade out
 }
 function paintRoom(){
-  const on = codeWorks();
-  $('codeCard').hidden = !on;
+  const on = codeWorks(), sheet = $('tools').classList.contains('open');
+  $('codeCard').hidden = !on && !sheet;
+  $('rcJoin').classList.toggle('off', !on); $('rcShare').hidden = !on;
+  if (!on && sheet && !$('rcNote').textContent) $('rcNote').textContent = 'Your room’s code — it starts working once you have internet.';
+  else if (on && $('rcNote').textContent.startsWith('Your room’s code')) $('rcNote').textContent = '';
   $('rcCode').textContent = ROOM.code || '····'; paint();
   $('qrRow').hidden = on && !ROOM.qrOpen; $('qrMore').hidden = !on || !!ROOM.qrOpen;   // online: the code is enough; QR on request
   $('addBtn').textContent = on ? 'Add with QR' : 'Add person';
@@ -1252,6 +1310,11 @@ function paintRoom(){
   $('roomFoot').textContent = on ? 'Audio goes straight between phones.' : 'No internet · pair with QR codes.';
 }
 $('rcGo').onclick = () => joinCode($('rcIn').value);
+$('rcNew').onclick = () => {
+  const inRoom = [...peers.values()].some(p => p.helloed);
+  if (!confirm(inRoom ? 'Start a new room? You’ll leave everyone here, and your transcript starts over.' : 'Get a new room code? Your transcript starts over.')) return;
+  leaveRoom(); setTimeout(() => { newCode(); toast('New room ' + ROOM.code); }, 200);
+};
 $('qrMore').onclick = () => { ROOM.qrOpen = true; paintRoom(); };
 $('rcMore').onclick = () => { ROOM.moreOpen = true; paintRoom(); $('rcIn').focus(); };
 $('rcIn').addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 4); if (e.target.value.length === 4) joinCode(e.target.value); });
@@ -1274,8 +1337,8 @@ $('startBtn').onclick = () => {
   startTalk();
 };
 // Room tools (code, QR, voice isolation, name): inline when alone / on a laptop, a sheet on a phone in a room.
-function openTools(){ $('tools').classList.add('open'); $('toolsBg').hidden = false; }
-function closeTools(){ $('tools').classList.remove('open'); $('toolsBg').hidden = true; }
+function openTools(){ $('tools').classList.add('open'); $('toolsBg').hidden = false; paintRoom(); }
+function closeTools(){ $('tools').classList.remove('open'); $('toolsBg').hidden = true; if (typeof paintRoom === 'function' && mic) paintRoom(); }
 $('toolsBtn').onclick = openTools; $('toolsDone').onclick = closeTools; $('toolsBg').onclick = closeTools;
 // Change name any time (Room → Change). Everyone in the room sees the new name right away.
 $('nameBtn').onclick = () => {
@@ -1298,11 +1361,13 @@ async function startTalk(){
   }
   $('start').hidden = true; $('room').hidden = false; $('navTitle').textContent = 'Talkback'; 
   document.querySelector('.app').classList.add('inroom');
+  if (!loadRoom()) { ROOM.code = String(Math.floor(Math.random() * 10000)).padStart(4, '0'); ROOM.rid = newRid(); ROOM.since = Date.now(); saveRoom(); }
+  txLoad();
   startLevel(); paint(); txSub(); txPaint();
   await refreshIce();
   const want = new URLSearchParams(location.search).get('room');
-  if (want && hasNet()) { ROOM.code = ''; joinCode(want); }
-  else if (hasNet()) newCode();
+  if (want && want !== ROOM.code && hasNet()) joinCode(want);
+  else maybeClaim();                                     // our room's code (reopened: same code as before)
   paintRoom();
 }
 document.addEventListener('pointerdown', () => { if (mic) ensureAudio(); }, { passive: true });   // first tap unlocks sound
