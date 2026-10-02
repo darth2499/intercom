@@ -91,7 +91,7 @@ button{border:0;background:none;padding:0;cursor:pointer}
 .ptt.on{background:var(--red);transform:scale(.97);box-shadow:0 0 0 calc(6px + var(--lvl,0) * 18px) color-mix(in srgb,var(--red) 25%,transparent)}
 .ptt.on svg{color:#fff}
 .ptt.locked::after{content:'LOCKED';position:absolute;bottom:34px;font-size:12px;font-weight:700;letter-spacing:.08em;color:#fff}
-.ptt-hint{font-size:15px;color:var(--label2);text-align:center;min-height:20px}
+.ptt-hint{font-size:15px;color:var(--label2);text-align:center;height:20px;line-height:20px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* Sheet */
 .sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:flex-end;justify-content:center;z-index:10;animation:fade .2s}
@@ -196,7 +196,8 @@ b.sm{font-size:15px}
 .mix-row .av[style*="--pc"]{background:color-mix(in srgb,var(--pc) 22%,transparent);color:var(--pc)}
 .mix-row input{grid-area:rg;width:100%;accent-color:var(--blue);height:28px}
 #mixFeed .fd-ctl{padding:16px 18px}
-.tg-row{display:flex;justify-content:center;min-height:32px}
+.tg-row{display:flex;justify-content:center;height:32px}
+.tg-row[hidden]{display:flex;visibility:hidden}   /* its space is always kept, so the talk button never moves */
 .tg{flex:none;height:32px;padding:0 13px;border-radius:16px;background:var(--fill);font-size:14px;font-weight:500;color:var(--label);white-space:nowrap}
 .tg.on{background:var(--blue);color:#fff}
 .ptt.priv.on{background:var(--purple,#AF52DE);box-shadow:0 0 0 calc(10px + var(--lvl,0)*22px) color-mix(in srgb,var(--purple,#AF52DE) 25%,transparent)}
@@ -220,15 +221,21 @@ b.sm{font-size:15px}
 #room.txon .main .spacer{display:none}
 .dock{display:flex;flex-direction:column;gap:6px;padding:4px 0 calc(env(safe-area-inset-bottom) + 10px)}
 .dock .ptt-wrap{padding:0;gap:8px}
-.ptt{width:168px;height:168px}
-#room.txon .ptt{width:120px;height:120px}
-#room.txon .ptt svg{width:40px;height:40px}
-#room.txon #roomFoot{display:none}
-@media (max-height:740px){.ptt{width:132px;height:132px}.ptt svg{width:42px;height:42px}#roomFoot{display:none}}
+/* The talk button: one size and one place per screen, whatever else is showing (transcript, private talk,
+   banners, alone or in a room) — nothing can push it around, so it's never mis-pressed. */
+:root{--ptt:156px}
+@media (max-height:740px){:root{--ptt:128px}}
+.ptt{width:var(--ptt);height:var(--ptt)}
+.ptt svg{width:calc(var(--ptt) * .28);height:calc(var(--ptt) * .28)}
+.ptt.locked::after{bottom:calc(var(--ptt) * .16)}
+.app.inroom #roomFoot{display:none}
 .tools-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:29;animation:fade .2s}
 
 /* Phone, in a room: room tools move into a sheet (Room button, top right) */
 @media (max-width:899px){
+  .app.inroom:not(.feedmode) .dock{position:fixed;left:0;right:0;bottom:0;z-index:5;margin:0 auto;max-width:520px;
+    padding:14px 16px calc(env(safe-area-inset-bottom) + 10px);background:linear-gradient(to bottom, transparent, var(--bg) 14px)}
+  .app.inroom:not(.feedmode) #room{padding-bottom:calc(var(--ptt) + 108px + env(safe-area-inset-bottom))}
   /* Before anyone joins: no list (it's just you); the page simply scrolls if a small screen needs it */
   #room.alone .mem-block{display:none}
   .app.inroom.alone-mode{height:auto;min-height:100dvh;overflow:visible}
@@ -278,11 +285,9 @@ b.sm{font-size:15px}
   #room.txon #txCard{flex:1 1 0}
   #txCard{padding:22px 24px}
   .tx-line{font-size:17px}
-  .ptt{width:220px;height:220px}
-  #room:not(.txon) .main .spacer:last-child{display:block;flex:1}
+  :root{--ptt:200px}
+  .dock{margin-top:auto}
   .ptt-hint::after{content:' · or hold Space'}
-  #room.txon .ptt{width:150px;height:150px}
-  #room.txon .ptt svg{width:48px;height:48px}
   .dock{padding-bottom:0}
 }
 .tx-list{margin-top:12px;flex:1;min-height:80px;overflow:auto;display:flex;flex-direction:column;gap:10px;-webkit-overflow-scrolling:touch}
@@ -1937,7 +1942,7 @@ addEventListener('offline', () => { ICE_CFG = TEST_ICE ? ICE_CFG : { iceServers:
    Every tab on this phone/computer shares one identity, so only one may be in the room (like WhatsApp Web).
    A browser lock marks the active tab. "Use here" takes the lock; the old tab hears it right away,
    leaves the room and reloads into the "moved to another tab" screen. */
-const VERSION = '0.11.10-beta';                     // same as the home page (index.html) — bump both together
+const VERSION = '0.11.11-beta';                     // same as the home page (index.html) — bump both together
 const TAB_LOCK = 'ic-talk-active';
 let tabClaim = null;
 function showBusy(moved){
