@@ -317,6 +317,13 @@ b.sm{font-size:15px}
   </nav>
 
   <!-- START -->
+  <section id="busy" hidden>
+    <div class="hero">
+      <h1 id="busyTitle">Open in another tab</h1>
+      <p id="busyText">Talkback is already open in another tab or window. Only one can be in the room at a time.</p>
+    </div>
+    <button class="btn primary" id="busyUse" style="margin-top:18px">Use here</button>
+  </section>
   <section id="start">
     <div class="hero">
       <h1>Talkback</h1>
@@ -1711,6 +1718,38 @@ $('rcShare').onclick = async () => {
 addEventListener('online', () => { refreshIce().then(() => { if (mic && !ROOM.code) newCode(); maybeClaim(); paintRoom(); }); });
 addEventListener('offline', () => { ICE_CFG = TEST_ICE ? ICE_CFG : { iceServers: [] }; paintRoom(); });
 
+/* ---------- One tab at a time ----------
+   Every tab on this phone/computer shares one identity, so only one may be in the room (like WhatsApp Web).
+   A browser lock marks the active tab. "Use here" takes the lock; the old tab hears it right away,
+   leaves the room and reloads into the "moved to another tab" screen. */
+const VERSION = '0.11.1-beta';                     // same as the home page (index.html) — bump both together
+const TAB_LOCK = 'ic-talk-active';
+let tabClaim = null;
+function showBusy(moved){
+  document.documentElement.classList.remove('has-name');
+  $('start').hidden = true; $('room').hidden = true; $('busy').hidden = false;
+  $('busyTitle').textContent = moved ? 'Moved to another tab' : 'Open in another tab';
+  $('busyText').textContent = moved ? 'Talkback is now in the room from another tab or window. Tap below to bring it back here.'
+                                    : 'Talkback is already open in another tab or window. Only one can be in the room at a time.';
+}
+function claimTab(){
+  if (!navigator.locks?.request) return Promise.resolve(true);    // older browsers: no check
+  if (tabClaim) return tabClaim;
+  let take = false; try { take = sessionStorage.getItem('ic-talk-take') === '1'; sessionStorage.removeItem('ic-talk-take'); } catch {}
+  return tabClaim = new Promise(ok => {
+    navigator.locks.request(TAB_LOCK, take ? { steal: true } : { ifAvailable: true }, lock => {
+      if (!lock) { tabClaim = null; let moved = false; try { moved = sessionStorage.getItem('ic-talk-moved') === '1'; } catch {} showBusy(moved); ok(false); return; }
+      try { sessionStorage.removeItem('ic-talk-moved'); } catch {}
+      ok(true);
+      return new Promise(() => {});                                 // hold it while this tab is open
+    }).catch(() => {                                                // another tab took over
+      try { sessionStorage.setItem('ic-talk-moved', '1'); } catch {}
+      leaveAll(); location.reload();
+    });
+  });
+}
+$('busyUse').onclick = () => { try { sessionStorage.setItem('ic-talk-take', '1'); } catch {} location.reload(); };
+
 /* ---------- Start ---------- */
 $('nameIn').value = store.get('ic-talk-name') || '';
 // Easter egg: the example name cycles through famous directors' first names.
@@ -1749,6 +1788,7 @@ $('nameBtn').onclick = () => {
   broadcast({ t: 'name', name: n }); paint();
 };
 async function startTalk(){
+  if (!(await claimTab())) return;
   ensureAudio(); keepAwake();
   $('startBtn').disabled = true; $('startErr').hidden = true;
   try {

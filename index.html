@@ -360,6 +360,19 @@ a.tile{text-decoration:none;color:inherit}
     <p class="foot ver" id="ver"></p>
   </section>
 
+  <!-- SEND: already sending in another tab -->
+  <section class="screen" id="sendBusy">
+    <nav class="navbar">
+      <button class="back" data-back><svg viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2 2 10l8 8"/></svg>Intercom</button>
+      <span class="nav-title">Send</span><span></span>
+    </nav>
+    <header class="large-title">
+      <h1 id="sbTitle">Open in another tab</h1>
+      <p id="sbText">This browser is already sending from another tab or window. Only one can send at a time.</p>
+    </header>
+    <button class="btn primary" id="sbUse">Send from here</button>
+  </section>
+
   <!-- SEND -->
   <section class="screen" id="send">
     <nav class="navbar">
@@ -560,7 +573,7 @@ a.tile{text-decoration:none;color:inherit}
               sender watchdog re-acquires a lost input, listener auto-resyncs a bloated buffer. */
 
 /* ============ Config ============ */
-const VERSION = '0.10.4-beta';                     // shown on the home screen — go to 1.0.0 when ready
+const VERSION = '0.11.1-beta';                     // shown on the home screen — go to 1.0.0 when ready
 const PREFIX = 'asahina-intercom-';            // namespace for room ids on the PeerJS server
 const ICE = [
   { urls: 'stun:stun.l.google.com:19302' },
@@ -1241,8 +1254,28 @@ function micError(e){
   return 'Couldn’t open audio input';
 }
 
+/* One sending tab per browser: a browser lock marks the tab that's sending (like WhatsApp Web).
+   "Send from here" takes it; the other tab stops right away and shows "Moved to another tab". */
+let sendSteal = false;
+function showSendBusy(moved){
+  $('sbTitle').textContent = moved ? 'Moved to another tab' : 'Open in another tab';
+  $('sbText').textContent = moved ? 'Sending moved to another tab or window. Tap below to send from here again.'
+                                  : 'This browser is already sending from another tab or window. Only one can send at a time.';
+  show('sendBusy');
+}
+function claimSend(steal){
+  if (!navigator.locks?.request || S.lockRel) return Promise.resolve(true);
+  return new Promise(ok => {
+    navigator.locks.request('ic-send-active', steal ? { steal: true } : { ifAvailable: true }, lock => {
+      if (!lock) { ok(false); showSendBusy(false); return; }
+      ok(true); return new Promise(r => { S.lockRel = r; });       // held until we stop sending
+    }).catch(() => { S.lockRel = null; if (S.active) stopSend(); showSendBusy(true); });   // another tab took over
+  });
+}
 async function startSend(){
   if (S.active) return show('send');
+  const steal = sendSteal; sendSteal = false;
+  if (!(await claimSend(steal))) return;
   Tone.on = store.get('ic-autotone') !== '0'; Tone.autoDone = false;   // re-arm auto-gain for each session
   show('send'); paintSeg(S.mode); paintModeNote();
   setPill($('sendPill'), 'Starting…');
@@ -1737,7 +1770,7 @@ paintCtl();
 const listenerWord = () => { const n = [...S.listeners.values()].filter(e => e.live).length; return n ? `${n} ${n === 1 ? 'person is' : 'people are'} listening and ` : ''; };
 function confirmStop(msg){ return ![...S.listeners.values()].some(e => e.live) || confirm(msg); }
 function stopSend(){
-  setLock(false);
+  setLock(false); const rel = S.lockRel; S.lockRel = null; rel?.();
   S.active = false; S.issue = '';
   clearInterval(S.watch); store.set('ic-sending', '0');
   [...S.listeners.values()].forEach(dropListener);
@@ -2550,7 +2583,8 @@ if (!standalone && /iP(hone|ad|od)/.test(navigator.userAgent) && /Safari/.test(n
 }
 
 /* ============ Navigation ============ */
-$('goSend').addEventListener('click', startSend);
+$('goSend').addEventListener('click', () => startSend());
+$('sbUse').addEventListener('click', () => { sendSteal = true; startSend(); });
 $('resumeBtn').addEventListener('click', () => { $('resumeBtn').hidden = true; startSend(); });
 // Page reloaded (or crashed) while sending → one tap brings the same room back. Browsers need that tap to start audio.
 if (store.get('ic-sending') === '1' && store.get('ic-code')) {
