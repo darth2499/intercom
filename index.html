@@ -560,7 +560,7 @@ a.tile{text-decoration:none;color:inherit}
               sender watchdog re-acquires a lost input, listener auto-resyncs a bloated buffer. */
 
 /* ============ Config ============ */
-const VERSION = '0.10.3-beta';                     // shown on the home screen — go to 1.0.0 when ready
+const VERSION = '0.10.4-beta';                     // shown on the home screen — go to 1.0.0 when ready
 const PREFIX = 'asahina-intercom-';            // namespace for room ids on the PeerJS server
 const ICE = [
   { urls: 'stun:stun.l.google.com:19302' },
@@ -577,6 +577,9 @@ const FORCE_RELAY = new URLSearchParams(location.search).has('relay');
 const Relay = { servers: null, exp: 0, status: 'checking', reason: '' };
 async function getRelay(){
   if (Date.now() < Relay.exp) return;
+  // A relay pass lasts hours: keep it on the phone so reloads and the other page reuse it
+  // (each new pass counts toward the Worker's per-network hourly limit).
+  try { const c = JSON.parse(localStorage.getItem('ic-relay') || 'null'); if (c && c.exp > Date.now() + 60e3 && c.servers?.length) { Object.assign(Relay, { servers: c.servers, status: 'ready', reason: '', exp: c.exp }); setTimeout(paintRelay, 0); return; } } catch {}
   try {
     const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 4000);
     const r = await fetch(RELAY_URL, { signal: ctl.signal, cache: 'no-store' });
@@ -585,6 +588,7 @@ async function getRelay(){
     const turn = (j.iceServers || []).filter(x => [].concat(x.urls).some(u => /^turns?:/.test(u)));
     if (j.relay && turn.length) {
       Object.assign(Relay, { servers: turn, status: 'ready', reason: '', exp: Date.now() + ((j.ttl || 21600) - 900) * 1000 });
+      try { localStorage.setItem('ic-relay', JSON.stringify({ servers: turn, exp: Relay.exp })); } catch {}
     } else {
       Object.assign(Relay, { servers: null, status: 'off', reason: j.reason || j.error || 'unavailable', exp: Date.now() + 5 * 60e3 });
     }

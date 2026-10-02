@@ -1192,11 +1192,17 @@ async function refreshIce(){
   if (TEST_ICE) return;
   if (!navigator.onLine || ROOM.server === false) { ICE_CFG = { iceServers: [] }; return; }
   if (Date.now() > ROOM.relayExp) {
+    // A relay pass lasts hours: keep it on the phone so reloads and the other page reuse it
+    // (each new pass counts toward the Worker's per-network hourly limit).
+    try { const c = JSON.parse(localStorage.getItem('ic-relay') || 'null'); if (c && c.exp > Date.now() + 60e3 && c.servers?.length) { ROOM.relay = c.servers; ROOM.relayExp = c.exp; ICE_CFG = { iceServers: [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun.cloudflare.com:3478'] }, ...c.servers] }; return; } } catch {}
     try {
       const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 4000);
       const j = await (await fetch(RELAY_URL, { signal: ctl.signal, cache: 'no-store' })).json(); clearTimeout(t);
       ROOM.relay = (j.iceServers || []).filter(x => [].concat(x.urls).some(u => /^turns?:/.test(u)));
-      ROOM.relayExp = Date.now() + ((j.ttl || 21600) - 900) * 1000;
+      if (j.relay && ROOM.relay.length) {
+        ROOM.relayExp = Date.now() + ((j.ttl || 21600) - 900) * 1000;
+        try { localStorage.setItem('ic-relay', JSON.stringify({ servers: ROOM.relay, exp: ROOM.relayExp })); } catch {}
+      } else ROOM.relayExp = Date.now() + 5 * 60e3;     // no pass this time (limit, cap): try again in 5 min, not hours
     } catch { ROOM.relay = null; ROOM.relayExp = Date.now() + 60e3; }
   }
   ICE_CFG = { iceServers: [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun.cloudflare.com:3478'] }, ...(ROOM.relay || [])] };
