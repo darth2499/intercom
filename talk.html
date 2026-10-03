@@ -215,7 +215,7 @@ b.sm{font-size:15px}
 .seg{display:flex;flex:1;background:var(--fill);border-radius:10px;padding:2px}
 .seg button{flex:1;height:32px;border-radius:8px;font-size:15px;color:var(--label)}
 .seg button.on{background:var(--card);box-shadow:0 1px 3px rgba(0,0,0,.12);font-weight:600}
-.app.feedmode .ptt-wrap,.app.feedmode #roomFoot,.app.feedmode #txCard,.app.feedmode #isoPref{display:none!important}
+.app.feedmode .ptt-wrap,.app.feedmode #roomFoot,.app.feedmode #txCard,.app.feedmode #isoPref,.app.feedmode #txPref{display:none!important}
 .pill{color:var(--blue);font-size:15px;font-weight:600;padding:8px 12px;border-radius:10px;background:var(--fill)}
 .main{display:flex;flex-direction:column;gap:12px;flex:1 0 auto;min-height:0}
 .main .spacer{flex:1}
@@ -239,7 +239,7 @@ b.sm{font-size:15px}
 @media (max-width:899px){
   .app.inroom:not(.feedmode) .dock{position:fixed;left:0;right:0;bottom:0;z-index:5;margin:0 auto;max-width:520px;
     padding:14px 16px calc(env(safe-area-inset-bottom) + 10px);background:linear-gradient(to bottom, transparent, var(--bg) 14px)}
-  .app.inroom:not(.feedmode) #room{padding-bottom:calc(var(--ptt) + 108px + env(safe-area-inset-bottom))}
+  .app.inroom:not(.feedmode) #room{padding-bottom:calc(var(--ptt) + 54px + env(safe-area-inset-bottom))}
   /* Before anyone joins: no list (it's just you); the page simply scrolls if a small screen needs it */
   #room.alone .mem-block{display:none}
   .app.inroom.alone-mode{height:auto;min-height:100dvh;overflow:visible}
@@ -276,6 +276,7 @@ b.sm{font-size:15px}
   #room.txon:not(.alone) .nm .role{display:none}
   #room.txon:not(.alone) .member .vb{font-size:11px;margin-top:-2px}
   #room.txon:not(.alone) .member .vb:empty{display:none}
+  .app.typing .dock{visibility:hidden}               /* keyboard up: it would cover the talk button anyway */
 }
 
 /* Laptop / tablet: sidebar + big transcript and talk area */
@@ -304,6 +305,12 @@ b.sm{font-size:15px}
 .tx-line .tx{display:block;margin-top:1px}
 .tx-line.pending .tx{color:var(--label2);font-style:italic}
 .tx-acts{display:flex;gap:16px;margin-top:12px;border-top:.5px solid var(--sep);padding-top:10px}
+.chat-in{display:flex;gap:8px;margin-top:12px;align-items:center}
+.chat-in input{flex:1;min-width:0;height:40px;border-radius:20px;border:0;background:var(--fill);padding:0 16px;font-size:16px;color:var(--label);outline:none}
+.chat-in button{flex:none;width:36px;height:36px;border-radius:50%;background:var(--blue);color:#fff;display:grid;place-items:center}
+.chat-in button:disabled{opacity:.35}
+.chat-in button svg{width:18px;height:18px}
+.tx-line .typed{color:var(--label3)}
 .tx-acts button{color:var(--blue);font-size:15px}
 .tx-acts .grow{flex:1}
 .rc-row{display:flex;align-items:center;gap:12px}
@@ -420,7 +427,13 @@ b.sm{font-size:15px}
           <label class="sw" aria-label="Mixer phone"><input type="checkbox" autocomplete="off" id="feedMode"><i></i></label>
         </div>
       </div>
-<div class="card pref" id="isoPref">
+<div class="card pref" id="txPref">
+        <div class="tx-head">
+          <span><b>Voice to text</b><small id="txSub">Off · needs internet when on</small></span>
+          <label class="sw" aria-label="Voice to text"><input type="checkbox" autocomplete="off" id="txOn"><i></i></label>
+        </div>
+      </div>
+      <div class="card pref" id="isoPref">
         <div class="tx-head">
           <span><b>Voice isolation</b><small id="isoSub">On · removes background noise</small></span>
           <label class="sw" aria-label="Voice isolation"><input type="checkbox" autocomplete="off" id="isoOn" checked><i></i></label>
@@ -453,11 +466,14 @@ b.sm{font-size:15px}
     </div></div>
     <div class="card" id="txCard">
       <div class="tx-head">
-        <span><b>Transcript</b><small id="txSub">Off · needs internet when on</small></span>
-        <label class="sw" aria-label="Transcript"><input type="checkbox" autocomplete="off" id="txOn"><i></i></label>
+        <span><b>Chat</b><small id="chatSub">Type to everyone · voice to text is off</small></span>
       </div>
       <div class="tx-warn" id="txWarn" hidden></div>
       <div class="tx-list" id="txList" hidden></div>
+      <form class="chat-in" id="chatForm" autocomplete="off">
+        <input id="chatIn" type="text" maxlength="500" enterkeyhint="send" autocomplete="off" placeholder="Message everyone" aria-label="Message">
+        <button id="chatSend" type="submit" aria-label="Send" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+      </form>
       <div class="tx-acts" id="txActs" hidden><button id="txTxt">Export .txt</button><button id="txSrt">Export .srt</button><span class="grow"></span><button id="txClear" style="color:var(--red)">Clear</button></div>
     </div>
       <div class="spacer"></div>
@@ -1004,6 +1020,7 @@ function tgTapPerson(id){
 }
 function pttHint(){
   const priv = isPrivate(), lbl = priv ? tgLabel() : '';
+  $('chatIn').placeholder = priv && lbl ? `Message ${lbl}` : 'Message everyone';
   const none = priv && ![...peers.values()].some(p => p.helloed && !p.feed && inTarget(p));
   $('ptt').classList.toggle('priv', talking ? !!TALK.to : priv);
   $('pttHint').textContent = talking
@@ -1509,7 +1526,7 @@ function txAdd(l, quiet){
   if (!l.pending && l.at < ROOM.since - 1000 && !TX.lines.has(l.id)) return;   // from before we were here (or before we cleared)
   const had = TX.lines.get(l.id);
   if (had && !had.pending && l.pending) return;
-  TX.lines.set(l.id, { id: l.id, who: String(l.who || '').slice(0, 26), ...(l.from ? { from: String(l.from).slice(0, 16) } : {}), c: Number.isInteger(l.c) ? l.c : null, ...(Array.isArray(l.to) ? { to: l.to.slice(0, 8).map(String), toLbl: String(l.toLbl || '').slice(0, 80) } : {}), at: +l.at || Date.now(), dur: +l.dur || 0, text: l.text.slice(0, 2000), pending: !!l.pending });
+  TX.lines.set(l.id, { id: l.id, who: String(l.who || '').slice(0, 26), ...(l.from ? { from: String(l.from).slice(0, 16) } : {}), c: Number.isInteger(l.c) ? l.c : null, ...(Array.isArray(l.to) ? { to: l.to.slice(0, 8).map(String), toLbl: String(l.toLbl || '').slice(0, 80) } : {}), ...(l.typed ? { typed: true } : {}), at: +l.at || Date.now(), dur: +l.dur || 0, text: l.text.slice(0, 2000), pending: !!l.pending });
   if (!l.pending) txSave();
   if (!quiet) txPaint();
 }
@@ -1521,7 +1538,7 @@ function txSet(on, by, at, share = true){
   else if (talking) txClipStart();
   if (share) broadcast({ t: 'tx', on, by: myDn(), at: TX.at });
   txSave();
-  if (!share && TX.by) toast(`${TX.by} turned the transcript ${on ? 'on' : 'off'}`);
+  if (!share && TX.by) toast(`${TX.by} turned voice to text ${on ? 'on' : 'off'}`);
   txSub(); txPaint();
 }
 function txLimit(resetsAt){
@@ -1529,30 +1546,32 @@ function txLimit(resetsAt){
   TX.limit = resetsAt || Date.now() + 3600e3; TX.clip = null;
   const t = new Date(TX.limit).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   $('txWarn').hidden = false;
-  $('txWarn').textContent = `Today’s free transcription limit is used up. It starts again at ${t}. Talkback still works.`;
+  $('txWarn').textContent = `Today’s free transcription limit is used up. It starts again at ${t}. Talkback and typing still work.`;
   toast('Transcription limit reached for today', 'warn'); txPaint();
   setTimeout(() => { TX.limit = 0; $('txWarn').hidden = true; txSend(); txSub(); }, Math.max(60e3, TX.limit - Date.now() + 60e3));
   txSub();
 }
 function txSub(){
-  const el = $('txSub'); let t, warn = false;
-  if (!TX.on) t = 'Off · needs internet when on';
-  else if (TX.limit) { t = 'Paused · daily limit reached'; warn = true; }
-  else if (TX.queue.length && !navigator.onLine) { t = `Waiting for internet · ${TX.queue.length} ${TX.queue.length === 1 ? 'clip' : 'clips'}`; warn = true; }
-  else t = 'On · writing down what’s said';
-  el.textContent = t; el.classList.toggle('warn', warn);
+  let t, c, warn = false;
+  if (!TX.on) { t = 'Off · needs internet when on'; c = 'Type to the room · voice to text is off'; }
+  else if (TX.limit) { t = c = 'Voice to text paused · daily limit reached'; warn = true; }
+  else if (TX.queue.length && !navigator.onLine) { t = c = `Voice to text waiting for internet · ${TX.queue.length} ${TX.queue.length === 1 ? 'clip' : 'clips'}`; warn = true; }
+  else { t = 'On · writing down what’s said'; c = 'Type or talk · voice to text is on'; }
+  $('txSub').textContent = t; $('txSub').classList.toggle('warn', warn);
+  $('chatSub').textContent = c; $('chatSub').classList.toggle('warn', warn);
 }
 const fmtClock = ms => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
 function txPaint(){
   const list = [...TX.lines.values()].sort((a, b) => a.at - b.at);
   const box = $('txList'), atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
-  box.hidden = !TX.on; $('txActs').hidden = !TX.on || !list.some(l => !l.pending);
-  const txv = TX.on && !FEED.mode;                     // the mixer phone keeps its panel; the feed isn't transcribed
+  const big = (TX.on || list.length > 0) && !FEED.mode;  // the chat takes the screen once there's anything in it
+  box.hidden = !big; $('txActs').hidden = !list.some(l => !l.pending);
+  const txv = big;                                      // (the mixer phone keeps its panel)
   if ($('room').classList.contains('txon') !== txv) { $('room').classList.toggle('txon', txv); paint(); }
   // Same person talking again (to the same people) → one block, name shown once until someone else talks.
-  box.innerHTML = list.length ? list.map((l, i) => { const pv = list[i - 1], cont = pv && (pv.from || pv.who) === (l.from || l.who) && pv.who === l.who && (pv.toLbl || '') === (l.toLbl || '');
-    return `<div class="tx-line${l.pending ? ' pending' : ''}${cont ? ' cont' : ''}" style="--pc:${colorOfLine(l) || 'var(--fill)'}"><span class="who">${esc(l.who)}</span><span class="at">${fmtClock(l.at)}</span>${l.to ? `<span class="to">to ${esc(l.toLbl || 'some people')}</span>` : ''}<span class="tx">${l.pending ? (TX.limit ? 'Waiting · daily limit reached' : !navigator.onLine ? 'Waiting for internet' : 'Transcribing…') : esc(l.text)}</span></div>`; }).join('')
-    : '<div class="empty">Talk to see the transcript here.</div>';
+  box.innerHTML = list.length ? list.map((l, i) => { const pv = list[i - 1], cont = pv && (pv.from || pv.who) === (l.from || l.who) && pv.who === l.who && (pv.toLbl || '') === (l.toLbl || '') && !!pv.typed === !!l.typed;
+    return `<div class="tx-line${l.pending ? ' pending' : ''}${cont ? ' cont' : ''}" style="--pc:${colorOfLine(l) || 'var(--fill)'}"><span class="who">${esc(l.who)}</span><span class="at">${fmtClock(l.at)}</span>${l.to ? `<span class="to">to ${esc(l.toLbl || 'some people')}</span>` : ''}${l.typed ? '<span class="to typed">typed</span>' : ''}<span class="tx">${l.pending ? (TX.limit ? 'Waiting · daily limit reached' : !navigator.onLine ? 'Waiting for internet' : 'Transcribing…') : esc(l.text)}</span></div>`; }).join('')
+    : `<div class="empty">${TX.on ? 'Talk or type — it all shows up here.' : 'Type a message below.'}</div>`;
   if (atEnd) box.scrollTop = box.scrollHeight;
 }
 function txExport(kind){
@@ -1561,8 +1580,8 @@ function txExport(kind){
   const t0 = list[0].at, pad = (n, w = 2) => String(n).padStart(w, '0');
   const ts = ms => { ms = Math.max(0, Math.round(ms)); return `${pad(Math.floor(ms / 3600e3))}:${pad(Math.floor(ms / 60e3) % 60)}:${pad(Math.floor(ms / 1e3) % 60)},${pad(ms % 1000, 3)}`; };
   const body = kind === 'srt'
-    ? list.map((l, i) => `${i + 1}\n${ts(l.at - t0)} --> ${ts(l.at - t0 + Math.max(1000, l.dur * 1000))}\n${l.who}${l.to ? ' → ' + (l.toLbl || 'private') : ''}: ${l.text}\n`).join('\n')
-    : list.map(l => `[${fmtClock(l.at)}] ${l.who}${l.to ? ' → ' + (l.toLbl || 'private') : ''}: ${l.text}`).join('\n') + '\n';
+    ? list.map((l, i) => `${i + 1}\n${ts(l.at - t0)} --> ${ts(l.at - t0 + Math.max(1000, l.dur * 1000))}\n${l.who}${l.typed ? ' (typed)' : ''}${l.to ? ' → ' + (l.toLbl || 'private') : ''}: ${l.text}\n`).join('\n')
+    : list.map(l => `[${fmtClock(l.at)}] ${l.who}${l.typed ? ' (typed)' : ''}${l.to ? ' → ' + (l.toLbl || 'private') : ''}: ${l.text}`).join('\n') + '\n';
   const d = new Date(t0), name = `talkback-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}.${kind}`;
   const file = new File([body], name, { type: 'text/plain' });
   if (navigator.canShare?.({ files: [file] })) { navigator.share({ files: [file] }).catch(() => {}); return; }
@@ -1570,10 +1589,26 @@ function txExport(kind){
   document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
 }
 $('txOn').onchange = e => { ensureAudio(); txSet(e.target.checked, me.name, Date.now()); };
+// Typed messages: same as a transcript line (name, color, time), marked "typed". They follow private talk:
+// with people picked, only they get it. Works without internet (it goes straight between phones).
+function sendChat(text){
+  text = String(text || '').trim().slice(0, 500); if (!text || !mic) return false;
+  const to = isPrivate() ? [...peers.values()].filter(p => p.helloed && !p.feed && inTarget(p)).map(p => p.id) : null;
+  const l = { id: me.id + '-' + me.sess + '-c' + (++TX.n), rid: ROOM.rid, who: myDn(), from: me.id, c: me.color, at: Date.now(), dur: 0, text, typed: true,
+              ...(to ? { to: [...to, me.id], toLbl: tgLabel() } : {}) };
+  TX.lines.set(l.id, l); txSave();
+  if (to) to.forEach(id => { const q = peers.get(id); if (q) send(q, { t: 'line', l }); }); else broadcast({ t: 'line', l });
+  txPaint(); const box = $('txList'); box.scrollTop = box.scrollHeight;
+  return true;
+}
+$('chatForm').onsubmit = e => { e.preventDefault(); if (sendChat($('chatIn').value)) { $('chatIn').value = ''; $('chatSend').disabled = true; } };
+$('chatIn').oninput = () => { $('chatSend').disabled = !$('chatIn').value.trim(); };
+$('chatIn').onfocus = () => document.querySelector('.app').classList.add('typing');
+$('chatIn').onblur = () => document.querySelector('.app').classList.remove('typing');
 $('txTxt').onclick = () => txExport('txt');
 $('txSrt').onclick = () => txExport('srt');
 $('txClear').onclick = () => {
-  if (!confirm('Clear the transcript on this phone? Others keep theirs.')) return;
+  if (!confirm('Clear the chat on this phone? Others keep theirs.')) return;
   [...TX.lines.keys()].forEach(k => { if (!TX.lines.get(k).pending) TX.lines.delete(k); });
   ROOM.since = Date.now(); saveRoom();                 // and don't get the old lines sent back on a reconnect
   txSave(); txPaint();
@@ -1652,7 +1687,7 @@ function paintNow(){
   $('addBtn').disabled = list.length >= MAX - 1;
   $('room').classList.toggle('alone', !list.length); $('toolsBtn').hidden = !mic; $('mixBtn').hidden = !mic || FEED.mode || !list.length; if (!$('mixBg').hidden) mixPaint();
   feedPaint(); tgPaint(); if (!talking) pttHint();
-  document.querySelector('.app').classList.toggle('alone-mode', !list.length && !TX.on);   // transcript on: fixed screen so it can fill
+  document.querySelector('.app').classList.toggle('alone-mode', !list.length && !TX.on && !TX.lines.size);   // transcript on: fixed screen so it can fill
   $('aloneHint').hidden = !!list.length || codeWorks();
   $('meName').textContent = me.name;
   const dupd = myDn() !== me.name && !!mic; $('dupNote').hidden = !dupd;
@@ -2070,7 +2105,7 @@ function paintRoom(){
 $('rcGo').onclick = () => joinCode($('rcIn').value);
 $('rcNew').onclick = () => {
   const inRoom = [...peers.values()].some(p => p.helloed);
-  if (!confirm(inRoom ? 'Start a new room? You’ll leave everyone here, and your transcript starts over.' : 'Get a new room code? Your transcript starts over.')) return;
+  if (!confirm(inRoom ? 'Start a new room? You’ll leave everyone here, and your chat starts over.' : 'Get a new room code? Your chat starts over.')) return;
   leaveRoom(); setTimeout(() => { newCode(); toast('New room ' + ROOM.code); }, 200);
 };
 $('qrMore').onclick = () => { ROOM.qrOpen = true; paintRoom(); };
@@ -2090,7 +2125,7 @@ addEventListener('offline', () => { ICE_CFG = TEST_ICE ? ICE_CFG : { iceServers:
    Every tab on this phone/computer shares one identity, so only one may be in the room (like WhatsApp Web).
    A browser lock marks the active tab. "Use here" takes the lock; the old tab hears it right away,
    leaves the room and reloads into the "moved to another tab" screen. */
-const VERSION = '0.11.15-beta';                     // same as the home page (index.html) — bump both together
+const VERSION = '0.12.0-beta';                     // same as the home page (index.html) — bump both together
 const TAB_LOCK = 'ic-talk-active';
 let tabClaim = null;
 function showBusy(moved){
