@@ -805,12 +805,13 @@ function onMsg(p, m){
     case 'role': p.role = ROLES[m.role] ? m.role : 'pa'; prioDuck(); paint(); return;
     case 'feedsub': p.sub = !!m.on; feedRoute(p); feedPaint(); return;
     case 'feedst': p.tone = !!m.tone; p.toneHz = m.hz || 0; if (!p.tone) p.toneHear = false; paint(); return;
-    case 'name': p.name = String(m.name || '').slice(0, 20); applyVol(p); paint(); return;
+    case 'name': p.name = String(m.name || '').slice(0, 20); applyVol(p); dnCalc(); paint(); txPaint(); return;
     case 'bye': return dropPeer(p, 'left');
     case 'full': toast('That room is full (6 people max)', 'warn'); return dropPeer(p, 'full');
     case 'tx': if (m.at > TX.at) txSet(!!m.on, m.by, m.at, false); return;
     case 'line': return txAdd(m.l);
-    case 'lines': (m.list || []).forEach(l => txAdd(l, true)); return txPaint();
+    case 'lines': if (m.names && typeof m.names === 'object') Object.entries(m.names).forEach(([id, n]) => { if (typeof n === 'string' && !TX.names[id]) TX.names[id] = n.slice(0, 26); });
+      (Array.isArray(m.list) ? m.list : []).forEach(l => txAdd(l, true)); return txPaint();
     case 'txlimit': return txLimit(m.resetsAt);
   }
 }
@@ -847,7 +848,8 @@ function fillGap(p){
   if (p.rid !== ROOM.rid || p.filled === ROOM.rid) return;
   p.filled = ROOM.rid;
   const list = [...TX.lines.values()].filter(l => !l.pending && l.at >= p.since - 1000 && (!l.to || l.to.includes(p.id))).map(l => ({ ...l, rid: ROOM.rid }));
-  for (let i = 0; i < list.length; i += 100) send(p, { t: 'lines', list: list.slice(i, i + 100) });
+  const names = {}; list.forEach(l => { if (l.from && TX.names[l.from]) names[l.from] = TX.names[l.from]; });
+  for (let i = 0; i < list.length; i += 100) send(p, { t: 'lines', list: list.slice(i, i + 100), names });
 }
 function meet(ids){
   ids.forEach(id => {
@@ -901,6 +903,10 @@ function dnCalc(){
   const by = {}; all.forEach(x => (by[x.name.trim().toLowerCase()] ||= []).push(x));
   DN = new Map();
   Object.values(by).forEach(g => { g.sort((a, b) => (a.since - b.since) || (a.id < b.id ? -1 : 1)); g.forEach((x, i) => DN.set(x.id, i ? `${x.name} (${i + 1})` : x.name)); });
+  // The chat shows each person's CURRENT name (a rename updates their old lines too); the last name we saw
+  // is kept for people who've left, so their lines keep it.
+  let changed = false; DN.forEach((n, id) => { if (TX.names[id] !== n) { TX.names[id] = n; changed = true; } });
+  if (changed) { txSaveSoon(); if (TX.lines.size) txPaintSoon(); }
 }
 const dn = p => { if (!DN.has(p.id)) dnCalc(); return DN.get(p.id) || p.name || 'Someone'; };
 const myDn = () => { if (!DN.has(me.id)) dnCalc(); return DN.get(me.id) || me.name; };
@@ -1450,14 +1456,14 @@ $('feedTone').onclick = () => { peers.forEach(p => { if (p.feed && p.tone) p.ton
    (Whisper on Cloudflare), and the text is shared with the room over the links. No internet →
    clips wait and go out when it's back. The Worker stops at the free daily allowance. */
 const STT_URL = 'https://intercom-turn.imsk8erboi.workers.dev/stt';
-const TX = { on: false, at: 0, by: '', lines: new Map(), queue: [], sending: false, limit: 0, clip: null, n: 0, node: null };
+const TX = { names: {}, on: false, at: 0, by: '', lines: new Map(), queue: [], sending: false, limit: 0, clip: null, n: 0, node: null };
 // The transcript belongs to the room (its id), not the phone: switch rooms and it starts over.
 function txLoad(){
   TX.lines.clear();
-  try { const t = JSON.parse(store.get('ic-talk-tx') || 'null'); if (t && t.rid === ROOM.rid) { (t.lines || []).forEach(l => TX.lines.set(l.id, l)); if (t.on != null && (t.at || 0) > TX.at) { TX.on = !!t.on; TX.at = t.at; TX.by = t.by || ''; } } } catch {}
+  try { const t = JSON.parse(store.get('ic-talk-tx') || 'null'); if (t && t.rid === ROOM.rid) { (t.lines || []).forEach(l => TX.lines.set(l.id, l)); if (t.names && typeof t.names === 'object') TX.names = { ...t.names }; if (t.on != null && (t.at || 0) > TX.at) { TX.on = !!t.on; TX.at = t.at; TX.by = t.by || ''; } } } catch {}
   $('txOn').checked = TX.on;
 }
-function txReset(){ TX.lines.clear(); TX.queue = []; TX.clip = null; TX.on = false; TX.at = 0; TX.by = ''; txSave(); $('txOn').checked = false; txSub(); txPaint(); }
+function txReset(){ TX.names = {}; TX.lines.clear(); TX.queue = []; TX.clip = null; TX.on = false; TX.at = 0; TX.by = ''; txSave(); $('txOn').checked = false; txSub(); txPaint(); }
 function txTap(src){
   // Hand mic samples (after voice isolation) to the main thread — kept only while a clip is recording.
   {
@@ -1530,7 +1536,7 @@ function txAdd(l, quiet){
   if (!l.pending) txSave();
   if (!quiet) txPaint();
 }
-function txSave(){ try { store.set('ic-talk-tx', JSON.stringify({ rid: ROOM.rid, on: TX.on, at: TX.at, by: TX.by, lines: [...TX.lines.values()].filter(l => !l.pending).sort((a, b) => a.at - b.at).slice(-800) })); } catch {} }
+function txSave(){ try { store.set('ic-talk-tx', JSON.stringify({ rid: ROOM.rid, names: TX.names, on: TX.on, at: TX.at, by: TX.by, lines: [...TX.lines.values()].filter(l => !l.pending).sort((a, b) => a.at - b.at).slice(-800) })); } catch {} }
 function txSet(on, by, at, share = true){
   TX.on = on; TX.by = by || ''; TX.at = at || Date.now();
   $('txOn').checked = on;
@@ -1561,6 +1567,15 @@ function txSub(){
   $('chatSub').textContent = c; $('chatSub').classList.toggle('warn', warn);
 }
 const fmtClock = ms => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+function lineName(l){
+  if (!l.from) return l.who;
+  if (l.from === me.id) return myDn();
+  const p = peers.get(l.from);
+  return p?.helloed ? dn(p) : TX.names[l.from] || l.who;
+}
+let txSaveT = 0, txPaintT = 0;
+const txSaveSoon = () => { clearTimeout(txSaveT); txSaveT = setTimeout(txSave, 500); };
+const txPaintSoon = () => { clearTimeout(txPaintT); txPaintT = setTimeout(txPaint, 50); };
 function txPaint(){
   const list = [...TX.lines.values()].sort((a, b) => a.at - b.at);
   const box = $('txList'), atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
@@ -1569,8 +1584,8 @@ function txPaint(){
   const txv = big;                                      // (the mixer phone keeps its panel)
   if ($('room').classList.contains('txon') !== txv) { $('room').classList.toggle('txon', txv); paint(); }
   // Same person talking again (to the same people) → one block, name shown once until someone else talks.
-  box.innerHTML = list.length ? list.map((l, i) => { const pv = list[i - 1], cont = pv && (pv.from || pv.who) === (l.from || l.who) && pv.who === l.who && (pv.toLbl || '') === (l.toLbl || '') && !!pv.typed === !!l.typed;
-    return `<div class="tx-line${l.pending ? ' pending' : ''}${cont ? ' cont' : ''}" style="--pc:${colorOfLine(l) || 'var(--fill)'}"><span class="who">${esc(l.who)}</span><span class="at">${fmtClock(l.at)}</span>${l.to ? `<span class="to">to ${esc(l.toLbl || 'some people')}</span>` : ''}${l.typed ? '<span class="to typed">typed</span>' : ''}<span class="tx">${l.pending ? (TX.limit ? 'Waiting · daily limit reached' : !navigator.onLine ? 'Waiting for internet' : 'Transcribing…') : esc(l.text)}</span></div>`; }).join('')
+  box.innerHTML = list.length ? list.map((l, i) => { const pv = list[i - 1], cont = pv && (pv.from || pv.who) === (l.from || l.who) && lineName(pv) === lineName(l) && (pv.toLbl || '') === (l.toLbl || '') && !!pv.typed === !!l.typed;
+    return `<div class="tx-line${l.pending ? ' pending' : ''}${cont ? ' cont' : ''}" style="--pc:${colorOfLine(l) || 'var(--fill)'}"><span class="who">${esc(lineName(l))}</span><span class="at">${fmtClock(l.at)}</span>${l.to ? `<span class="to">to ${esc(l.toLbl || 'some people')}</span>` : ''}${l.typed ? '<span class="to typed">typed</span>' : ''}<span class="tx">${l.pending ? (TX.limit ? 'Waiting · daily limit reached' : !navigator.onLine ? 'Waiting for internet' : 'Transcribing…') : esc(l.text)}</span></div>`; }).join('')
     : `<div class="empty">${TX.on ? 'Talk or type — it all shows up here.' : 'Type a message below.'}</div>`;
   if (atEnd) box.scrollTop = box.scrollHeight;
 }
@@ -1580,8 +1595,8 @@ function txExport(kind){
   const t0 = list[0].at, pad = (n, w = 2) => String(n).padStart(w, '0');
   const ts = ms => { ms = Math.max(0, Math.round(ms)); return `${pad(Math.floor(ms / 3600e3))}:${pad(Math.floor(ms / 60e3) % 60)}:${pad(Math.floor(ms / 1e3) % 60)},${pad(ms % 1000, 3)}`; };
   const body = kind === 'srt'
-    ? list.map((l, i) => `${i + 1}\n${ts(l.at - t0)} --> ${ts(l.at - t0 + Math.max(1000, l.dur * 1000))}\n${l.who}${l.typed ? ' (typed)' : ''}${l.to ? ' → ' + (l.toLbl || 'private') : ''}: ${l.text}\n`).join('\n')
-    : list.map(l => `[${fmtClock(l.at)}] ${l.who}${l.typed ? ' (typed)' : ''}${l.to ? ' → ' + (l.toLbl || 'private') : ''}: ${l.text}`).join('\n') + '\n';
+    ? list.map((l, i) => `${i + 1}\n${ts(l.at - t0)} --> ${ts(l.at - t0 + Math.max(1000, l.dur * 1000))}\n${lineName(l)}${l.typed ? ' (typed)' : ''}${l.to ? ' → ' + (l.toLbl || 'private') : ''}: ${l.text}\n`).join('\n')
+    : list.map(l => `[${fmtClock(l.at)}] ${lineName(l)}${l.typed ? ' (typed)' : ''}${l.to ? ' → ' + (l.toLbl || 'private') : ''}: ${l.text}`).join('\n') + '\n';
   const d = new Date(t0), name = `talkback-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}.${kind}`;
   const file = new File([body], name, { type: 'text/plain' });
   if (navigator.canShare?.({ files: [file] })) { navigator.share({ files: [file] }).catch(() => {}); return; }
@@ -1888,10 +1903,16 @@ keepVid.setAttribute('playsinline', ''); keepVid.setAttribute('muted', '');
 keepVid.style.cssText = 'position:fixed;width:1px;height:1px;opacity:0.01;pointer-events:none;left:0;top:0';
 keepVid.addEventListener('timeupdate', () => { if (keepVid.currentTime > 0.5) keepVid.currentTime = Math.random() * 0.4; });
 document.body.appendChild(keepVid);
+// Keep the screen on (same as Send): Wake Lock, asked for again whenever the phone takes it back, plus the tiny
+// silent video for phones/home-screen apps that ignore Wake Lock. Re-armed on every tap (some phones only allow
+// it after a tap) and checked every 10 s.
 async function keepAwake(){
-  try { if (!wake || wake.released) wake = await navigator.wakeLock?.request('screen'); } catch {}
-  try { await keepVid.play(); } catch {}
+  try { if (!wake || wake.released) { wake = await navigator.wakeLock?.request('screen');
+    wake?.addEventListener?.('release', () => setTimeout(() => { if (mic && document.visibilityState === 'visible') keepAwake(); }, 1000)); } } catch {}
+  try { if (keepVid.paused) await keepVid.play(); } catch {}
 }
+document.addEventListener('pointerdown', () => { if (mic) keepAwake(); }, { passive: true });
+setInterval(() => { if (mic && document.visibilityState === 'visible' && (keepVid.paused || !wake || wake.released)) keepAwake(); }, 10000);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && mic) { keepAwake(); ensureAudio(); onResume('visible'); } });
 /* Back from a locked screen / another app: while the page was asleep the others may have dropped us (or we them),
    but our links can still look "connected" for a while. Ping everyone; anyone who doesn't answer within a few
@@ -2125,7 +2146,7 @@ addEventListener('offline', () => { ICE_CFG = TEST_ICE ? ICE_CFG : { iceServers:
    Every tab on this phone/computer shares one identity, so only one may be in the room (like WhatsApp Web).
    A browser lock marks the active tab. "Use here" takes the lock; the old tab hears it right away,
    leaves the room and reloads into the "moved to another tab" screen. */
-const VERSION = '0.12.0-beta';                     // same as the home page (index.html) — bump both together
+const VERSION = '0.12.1-beta';                     // same as the home page (index.html) — bump both together
 const TAB_LOCK = 'ic-talk-active';
 let tabClaim = null;
 function showBusy(moved){
@@ -2189,7 +2210,7 @@ $('nameBtn').onclick = () => {
   const n = (prompt('Your name', me.name) || '').trim().slice(0, 20);
   if (!n || n === me.name) return;
   me.name = n; store.set('ic-talk-name', n); $('nameIn').value = n; try { localStorage.removeItem('ic-talk-name-auto'); } catch {}
-  broadcast({ t: 'name', name: n }); paint();
+  broadcast({ t: 'name', name: n }); dnCalc(); paint(); txPaint();
 };
 async function startTalk(){
   if (!(await claimTab())) return;
