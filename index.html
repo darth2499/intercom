@@ -442,6 +442,8 @@ button.stat:active{opacity:.7}
 .console .note{margin:-4px 4px 0;color:var(--label3)}
 .console .note.warn{color:var(--orange)}
 .diag-row{align-items:flex-start}
+.fmt-row{cursor:pointer}
+.fmt-row:active{opacity:.7}
 .diag-row small{font-family:var(--mono);font-size:11px;line-height:15px;word-break:break-word;color:var(--label3)}
 .diag-row .linkbtn{margin-top:12px;white-space:nowrap}
 .console .linkbtn{color:var(--acc)}
@@ -736,8 +738,8 @@ button.stat:active{opacity:.7}
         <p class="sect">Stream</p>
         <div class="group">
           <div class="row"><span>Bitrate</span><span class="v" id="stRate">–</span></div>
-          <div class="row"><span>Format</span><span class="v" id="stFmt">–</span></div>
-          <div class="row diag-row"><span class="rl">Reliable Stable<small id="dlDiag">–</small></span><button class="linkbtn sm" id="dlRetry">Try again</button></div>
+          <div class="row fmt-row" id="fmtRow" role="button" tabindex="0" aria-expanded="false" aria-controls="diagRow"><span>Format</span><span class="v" id="stFmt">–</span></div>
+          <div class="row diag-row" id="diagRow" hidden><span class="rl">Reliable Stable<small id="dlDiag">–</small></span><button class="linkbtn sm" id="dlRetry">Try again</button></div>
         </div>
         <p class="note" id="boostNote">Boost makes the feed louder on this phone; a limiter keeps peaks from distorting. Duck lowers the volume while the mixer sends line-up tone. Auto-sync trims delay if it builds up — tap Delay to skip to live.</p>
 
@@ -2853,6 +2855,10 @@ function paintDlDiag(){
   $('dlRetry').hidden = !(bad || L.dlBackoff.until > performance.now()) || L.dl;
 }
 setInterval(() => { if (L.active) paintDlDiag(); }, 1000);
+// Diagnostics stay out of the way: tap the Format row to show / hide them.
+const toggleDiag = () => { const r = $('diagRow'); r.hidden = !r.hidden; $('fmtRow').setAttribute('aria-expanded', String(!r.hidden)); if (!r.hidden) paintDlDiag(); };
+$('fmtRow').addEventListener('click', toggleDiag);
+$('fmtRow').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleDiag(); } });
 $('dlRetry').addEventListener('click', () => {
   store.set('ic-dlbad', ''); store.set('ic-dldiag', ''); L.dlBackoff.until = 0; L.dlBackoff.mins = 5;
   if (L.active && L.stable) sendPrefs(); paintFmt(); paintDlDiag();
