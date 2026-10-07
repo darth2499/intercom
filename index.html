@@ -325,6 +325,7 @@ html:has(.console.active), html:has(.console.active) body{background:#0c0d0f}
 #pwCopy.ok::after{content:"Copied";position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:600;letter-spacing:.04em;color:var(--label2);white-space:nowrap}
 .wave{display:block;width:100%;height:72px;margin:0 0 12px}
 .tiles.one{grid-template-columns:1fr}
+#liveView .tiles{grid-template-columns:repeat(2,1fr)}
 .ctile.wide{flex-direction:row;align-items:center;min-height:64px;padding:0 18px}
 .ctile.wide small{-webkit-line-clamp:1}
 .chip,.console .pill{display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 11px;border-radius:8px;
@@ -475,8 +476,7 @@ button.stat:active{opacity:.7}
   .ctile b{font-size:15px}
 }
 @media (min-width:860px){
-  .iconbtn,.sheet-head,.ctile[data-sheet]{display:none}
-  .console .tiles:has(.ctile[data-sheet]){grid-template-columns:repeat(2,1fr)}
+  .iconbtn,.sheet-head{display:none}
   #send.active,#listen.is-live.active{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);column-gap:36px;align-items:start}
   .console .pane{display:flex;flex-direction:column;gap:16px}
   .console > .navbar{grid-column:1/-1}
@@ -720,7 +720,6 @@ button.stat:active{opacity:.7}
         <div class="tiles">
           <label class="ctile" id="duckRow"><input type="checkbox" id="duckSw" aria-label="Lower volume on tone"><small>On tone</small><b>Duck</b></label>
           <label class="ctile"><input type="checkbox" id="autoResync" aria-label="Auto-resync"><small>Auto-trim delay</small><b>Resync</b></label>
-          <button class="ctile" data-sheet="listenSheet"><small>Sender</small><b>Settings</b></button>
         </div>
 
         <div class="spacer"></div>
@@ -1700,6 +1699,7 @@ function onListener(conn){
       dlSync();
     }
     if (d?.type === 'auth') handleAuth(entry, d.pw);
+    if (d?.type === 'unauth' && entry.authed) { entry.authed = false; paintCtl(); }
     if (d?.type === 'ctl' && entry.authed && S.ctlOn) applyCtl(d.key, d.value);
   });
   const gone = () => entry && dropListener(entry);
@@ -2529,7 +2529,7 @@ $('cxScreen').addEventListener('change', e => ctl('lock', e.target.checked));
 $('cxMode').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { paintSeg(b.dataset.mode, $('cxMode'), 'mode'); ctl('mode', b.dataset.mode); } });
 $('pwGo').addEventListener('click', unlock);
 $('pwIn').addEventListener('keydown', e => { if (e.key === 'Enter') unlock(); });
-$('cxLock').addEventListener('click', () => { L.authed = false; store.set('ic-pw-' + L.code, ''); paintLock(); });
+$('cxLock').addEventListener('click', () => { L.authed = false; store.set('ic-pw-' + L.code, ''); try { L.conn?.send({ type:'unauth' }) } catch {} paintLock(); });
 
 function onHostData(d){
   if (d?.t === 'a') return rxPacket(d);
@@ -2543,7 +2543,7 @@ function onHostData(d){
   paintFmt();
   if (changed) {
     tuneReceiver();
-    if (L.dl && RX.node) startMeter('listenMeter', 'listenDb', RX.node, 2, onListenLevel);
+    if (L.dl && RX.node) startMeter('listenMeter', 'listenDb', RX.node, L.channels, onListenLevel);
     else if (audioEl.srcObject && L.call) startMeter('listenMeter', 'listenDb', audioEl.srcObject, L.channels, onListenLevel);
   }
   if ('muted' in d && !!d.muted !== !!L.senderMuted) {
@@ -2676,6 +2676,13 @@ function onRemoteStream(stream, call, old){
 // link is dead. ICE alone takes 5–10 s to notice on phones.
 async function stallCheck(){
   if (L.dl) {                                          // data-link: the buffer covers short stalls — wait 5 s
+    // Safety net: the data link is up but nothing has come out of the decoder for 5 s (packets not getting
+    // through on this route, or this phone can't decode them) → classic Stable, which uses the call like Low delay.
+    const now = performance.now();
+    if (L.conn?.open && !L.retry && !L.issue && now - L.dlAt > 6000 && now - (RX.outAt || 0) > 5000) {
+      console.warn('listen: reliable Stable has no audio', { cfg: !!RX.cfg, dec: RX.dec?.state, lastPkt: Math.round(now - RX.last) });
+      return dlFallback('noaudio');
+    }
     // A re-link costs nothing audible here (the sender replays what we missed), so act after 1.5 s.
     if (L.everLive && !L.repairing && !L.retry && !L.issue && RX.cfg && performance.now() - RX.last > 1500) { RX.last = performance.now() + 4000; repair('no data'); }
     if (L.repairing && !RX.playing && $('liveTitle').textContent === 'Live') showDrop();   // the buffer ran dry
@@ -2708,20 +2715,21 @@ function dlDry(dt){                                   // called while the buffer
   b.dry = (b.dry || []).filter(x => now - x[0] < 60000).concat([[now, dt]]);
   if (b.dry.reduce((t, x) => t + x[1], 0) > 8) dlFallback();
 }
-function dlFallback(){
+function dlFallback(why){
   const b = L.dlBackoff, now = performance.now();
   if (!L.dl || now < b.until) return;
+  if (why === 'noaudio') b.mins = Math.max(b.mins, 30);       // it'll likely fail again on this route — don't retry soon
   b.unders = []; b.dry = []; b.until = now + b.mins * 60000;
   clearTimeout(b.t); b.t = setTimeout(() => { if (L.active && L.stable) sendPrefs(); paintFmt(); }, b.mins * 60000 + 500);
   b.mins = Math.min(b.mins * 2, 30);
   sendPrefs();
-  notice('Weak signal — switched to classic Stable', 'info', 4000);
+  notice(why === 'noaudio' ? 'Reliable mode isn’t getting audio here — switched to classic Stable' : 'Weak signal — switched to classic Stable', 'info', 4000);
 }
 const RX = { dec: null, cfg: null, node: null, last: 0, bytes: 0, buffered: 0, under: 0, pending: null, lastSeq: -1 };
 function setDl(on){
   if (on === !!L.dl) return;
   L.dl = on;
-  if (on) { rxStart(); }
+  if (on) { L.dlAt = performance.now(); RX.outAt = 0; rxStart(); }
   else {
     rxStop();
     if (LB.stream) playStream(LB.stream, null);        // back to the call's audio
@@ -2740,7 +2748,7 @@ async function rxStart(){
     pbRemove(LB.cur); LB.cur = null;                   // stop playing the call's audio
     audioEl.muted = true;
     RX.last = performance.now();
-    startMeter('listenMeter', 'listenDb', RX.node, 2, onListenLevel);
+    startMeter('listenMeter', 'listenDb', RX.node, L.channels, onListenLevel);
     if (RX.pending) { const c = RX.pending; RX.pending = null; rxConfig(c); }
   } catch { L.dl = false; }
 }
@@ -2757,7 +2765,7 @@ function rxConfig(c){
     output: ad => {
       const n = ad.numberOfFrames, pcm = [];
       for (let i = 0; i < ad.numberOfChannels; i++) { const a = new Float32Array(n); ad.copyTo(a, { planeIndex: i, format: 'f32-planar' }); pcm.push(a); }
-      RX.node?.port.postMessage({ pcm, sr: ad.sampleRate }, pcm.map(a => a.buffer));
+      RX.node?.port.postMessage({ pcm, sr: ad.sampleRate }, pcm.map(a => a.buffer)); RX.outAt = performance.now();
       ad.close();
     },
     error: () => { RX.cfg = null; },
