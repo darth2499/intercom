@@ -441,6 +441,9 @@ button.stat:active{opacity:.7}
 .console .sect{font-size:11px;font-weight:600;letter-spacing:.14em;color:var(--label3);margin:14px 4px -6px}
 .console .note{margin:-4px 4px 0;color:var(--label3)}
 .console .note.warn{color:var(--orange)}
+.diag-row{align-items:flex-start}
+.diag-row small{font-family:var(--mono);font-size:11px;line-height:15px;word-break:break-word;color:var(--label3)}
+.diag-row .linkbtn{margin-top:12px;white-space:nowrap}
 .console .linkbtn{color:var(--acc)}
 .rowbtn{width:100%;text-align:left;padding:14px 0;font-size:16px;color:var(--acc)}
 #lockBtn{color:var(--label)}
@@ -734,6 +737,7 @@ button.stat:active{opacity:.7}
         <div class="group">
           <div class="row"><span>Bitrate</span><span class="v" id="stRate">–</span></div>
           <div class="row"><span>Format</span><span class="v" id="stFmt">–</span></div>
+          <div class="row diag-row"><span class="rl">Reliable Stable<small id="dlDiag">–</small></span><button class="linkbtn sm" id="dlRetry">Try again</button></div>
         </div>
         <p class="note" id="boostNote">Boost makes the feed louder on this phone; a limiter keeps peaks from distorting. Duck lowers the volume while the mixer sends line-up tone. Auto-sync trims delay if it builds up — tap Delay to skip to live.</p>
 
@@ -2327,7 +2331,7 @@ function openLink(){
   conn.on('data', d => ok() && onHostData(d));
   try {                                              // reliable-Stable audio arrives on its own channel (see openAudioChannel)
     const ach = conn.peerConnection.createDataChannel('audio', { negotiated: true, id: ACH_ID, ordered: true });
-    ach.binaryType = 'arraybuffer';
+    ach.binaryType = 'arraybuffer'; L.ach = ach;
     ach.onmessage = ev => { if (ok()) try { onHostData(unpackDl(ev.data)) } catch {} };
   } catch {}
   conn.on('close', () => mine() && repair('link closed'));
@@ -2679,8 +2683,9 @@ async function stallCheck(){
     // Safety net: the data link is up but nothing has come out of the decoder for 5 s (packets not getting
     // through on this route, or this phone can't decode them) → classic Stable, which uses the call like Low delay.
     const now = performance.now();
-    if (L.conn?.open && !L.retry && !L.issue && now - L.dlAt > 6000 && now - (RX.outAt || 0) > 5000) {
-      console.warn('listen: reliable Stable has no audio', { cfg: !!RX.cfg, dec: RX.dec?.state, lastPkt: Math.round(now - RX.last) });
+    // packets are arriving but nothing comes out of this decoder setup → try the next one
+    if (RX.dec && RX.cfg && (RX.pk || 0) - (RX.tryPk || 0) > 40 && now - RX.tryAt > 1500 && (RX.outAt || 0) < RX.tryAt) rxNextDecoder('no output');
+    if (L.conn?.open && !L.retry && !L.issue && now - L.dlAt > 9000 && now - (RX.outAt || 0) > 6000) {
       return dlFallback('noaudio');
     }
     // A re-link costs nothing audible here (the sender replays what we missed), so act after 1.5 s.
@@ -2704,7 +2709,7 @@ async function stallCheck(){
 // behind. If its buffer keeps running dry, use classic Stable (resends + redundancy over the call) for a
 // while, then try the data link again.
 L.dlBackoff = { until: 0, mins: 5, unders: [] };
-const dlWant = () => !!dlCan.dec && performance.now() > L.dlBackoff.until;
+const dlWant = () => !!dlCan.dec && performance.now() > L.dlBackoff.until && !(Date.now() - (+store.get('ic-dlbad') || 0) < 12 * 3600e3);
 function dlUnderrun(){
   const b = L.dlBackoff, now = performance.now();
   b.unders = b.unders.filter(t => now - t < 60000).concat(now);
@@ -2718,6 +2723,9 @@ function dlDry(dt){                                   // called while the buffer
 function dlFallback(why){
   const b = L.dlBackoff, now = performance.now();
   if (!L.dl || now < b.until) return;
+  const d = dlDiag(); console.warn('listen: leaving reliable Stable (' + (why || 'weak signal') + ') —', d);
+  store.set('ic-dldiag', new Date().toLocaleTimeString() + ' · ' + d);
+  if (!RX.outN) { why = 'noaudio'; store.set('ic-dlbad', String(Date.now())); }   // never produced sound here: skip it for 12 h
   if (why === 'noaudio') b.mins = Math.max(b.mins, 30);       // it'll likely fail again on this route — don't retry soon
   b.unders = []; b.dry = []; b.until = now + b.mins * 60000;
   clearTimeout(b.t); b.t = setTimeout(() => { if (L.active && L.stable) sendPrefs(); paintFmt(); }, b.mins * 60000 + 500);
@@ -2729,7 +2737,7 @@ const RX = { dec: null, cfg: null, node: null, last: 0, bytes: 0, buffered: 0, u
 function setDl(on){
   if (on === !!L.dl) return;
   L.dl = on;
-  if (on) { L.dlAt = performance.now(); RX.outAt = 0; rxStart(); }
+  if (on) { L.dlAt = performance.now(); Object.assign(RX, { outAt: 0, pk: 0, outN: 0, err: '' }); rxStart(); }
   else {
     rxStop();
     if (LB.stream) playStream(LB.stream, null);        // back to the call's audio
@@ -2757,23 +2765,69 @@ function rxStop(){
   try { RX.node.port.onmessage = null; RX.node.port.postMessage({ stop: true }); RX.node.disconnect(); } catch {}
   RX.dec = RX.node = null; RX.cfg = null; RX.buffered = 0; RX.under = 0;
 }
+/* Decoder for reliable Stable. Browsers differ (iPhone Safari especially), so:
+   · decoded audio is read in whatever sample format the browser hands back (not only f32-planar);
+   · if a decoder setup errors or takes packets without producing sound, the next setup is tried;
+   · counters feed the diagnostics line in Settings. */
+const opusHead = (ch, sr) => { const h = new Uint8Array(19), v = new DataView(h.buffer);
+  h.set([79,112,117,115,72,101,97,100]); v.setUint8(8, 1); v.setUint8(9, ch); v.setUint16(10, 312, true); v.setUint32(12, sr, true); return h; };
+const DEC_TRIES = c => [
+  { codec:'opus', sampleRate: c.sr, numberOfChannels: c.ch },
+  { codec:'opus', sampleRate: 48000, numberOfChannels: c.ch },
+  { codec:'opus', sampleRate: 48000, numberOfChannels: c.ch, description: opusHead(c.ch, c.sr) },
+];
+function pcmOf(ad){
+  const n = ad.numberOfFrames, ch = ad.numberOfChannels, out = [];
+  try {                                               // the standard way: ask for float planes
+    for (let i = 0; i < ch; i++) { const a = new Float32Array(n); ad.copyTo(a, { planeIndex: i, format: 'f32-planar' }); out.push(a); }
+    return out;
+  } catch {}
+  const f = ad.format || '', planar = f.endsWith('-planar'), base = f.replace('-planar', '');
+  const T = base === 's16' ? Int16Array : base === 's32' ? Int32Array : base === 'u8' ? Uint8Array : Float32Array;
+  const sc = base === 's16' ? 1 / 32768 : base === 's32' ? 1 / 2147483648 : 1, u8 = base === 'u8';
+  const conv = x => u8 ? (x - 128) / 128 : x * sc;
+  if (planar) {
+    for (let i = 0; i < ch; i++) { const raw = new T(n); ad.copyTo(raw, { planeIndex: i }); const a = new Float32Array(n); for (let k = 0; k < n; k++) a[k] = conv(raw[k]); out.push(a); }
+  } else {
+    const raw = new T(n * ch); ad.copyTo(raw, { planeIndex: 0 });
+    for (let i = 0; i < ch; i++) { const a = new Float32Array(n); for (let k = 0; k < n; k++) a[k] = conv(raw[k * ch + i]); out.push(a); }
+  }
+  return out;
+}
 function rxConfig(c){
   if (!RX.node) { RX.pending = c; return; }
   if (RX.cfg?.id === c.id && RX.dec?.state === 'configured') return;
+  RX.cfg = c; RX.lastSeq = -1; RX.try = 0; RX.err = '';
+  rxDecoder();
+}
+function rxDecoder(){
+  const c = RX.cfg; if (!c) return;
   try { RX.dec?.state !== 'closed' && RX.dec?.close(); } catch {}
-  RX.dec = new AudioDecoder({
+  const tries = DEC_TRIES(c), k = RX.try;
+  if (k >= tries.length) { RX.dec = null; return; }
+  RX.tryAt = performance.now(); RX.tryPk = RX.pk || 0;
+  const dec = new AudioDecoder({
     output: ad => {
-      const n = ad.numberOfFrames, pcm = [];
-      for (let i = 0; i < ad.numberOfChannels; i++) { const a = new Float32Array(n); ad.copyTo(a, { planeIndex: i, format: 'f32-planar' }); pcm.push(a); }
-      RX.node?.port.postMessage({ pcm, sr: ad.sampleRate }, pcm.map(a => a.buffer)); RX.outAt = performance.now();
-      ad.close();
+      RX.outN = (RX.outN || 0) + 1;
+      try {
+        const pcm = pcmOf(ad);
+        RX.node?.port.postMessage({ pcm, sr: ad.sampleRate }, pcm.map(a => a.buffer)); RX.outAt = performance.now();
+      } catch (e) { RX.err = 'read ' + (ad.format || '?') + ': ' + (e.message || e.name); }
+      try { ad.close(); } catch {}
     },
-    error: () => { RX.cfg = null; },
+    error: e => { if (RX.dec !== dec) return; RX.err = 'dec ' + (e.message || e.name || e); RX.try++; rxDecoder(); },
   });
-  RX.dec.configure({ codec:'opus', sampleRate: c.sr, numberOfChannels: c.ch });
-  RX.cfg = c; RX.lastSeq = -1;
+  RX.dec = dec;
+  try { dec.configure(tries[k]); } catch (e) { RX.err = 'cfg ' + (e.message || e.name); RX.try++; return rxDecoder(); }
+}
+function rxNextDecoder(why){ RX.err = RX.err || why; RX.try++; rxDecoder(); }
+function dlDiag(){
+  const now = performance.now(), age = t => t ? Math.round((now - t) / 100) / 10 + ' s ago' : 'never';
+  return `pkts ${RX.pk || 0} (last ${age(RX.last)}) · decoded ${RX.outN || 0} · sound ${age(RX.outAt)} · `
+    + `setup ${Math.min((RX.try || 0) + 1, 3)}/3 ${RX.dec?.state || 'none'} · fmt ${RX.cfg ? RX.cfg.sr + '/' + RX.cfg.ch : '–'} · link ${L.ach?.readyState || '–'}${RX.err ? ' · ' + RX.err : ''}`;
 }
 function rxPacket(p){
+  RX.pk = (RX.pk || 0) + 1;
   if (!L.dl || !RX.dec || RX.dec.state !== 'configured' || p.c !== RX.cfg?.id) return;
   RX.last = performance.now(); RX.bytes += p.d.byteLength; L.repairing = false;
   if (p.s <= RX.lastSeq && !p.gap) return;            // already have it (old and new link both delivered)
@@ -2790,6 +2844,19 @@ L.net = store.get('ic-net') || (store.get('ic-stable') === '1' ? 'stable' : 'low
 Object.defineProperty(L, 'stable', { get: () => L.net === 'stable' });
 const isDirect = () => L.net === 'direct';
 L.autoResync = store.get('ic-autoresync') !== '0';
+function paintDlDiag(){
+  const el = $('dlDiag'); if (!el) return;
+  const bad = Date.now() - (+store.get('ic-dlbad') || 0) < 12 * 3600e3;
+  el.textContent = L.dl ? 'On · ' + dlDiag()
+    : !dlCan.dec ? 'Not available on this phone (classic Stable is used)'
+    : (bad ? 'Paused on this phone — classic Stable is used. ' : '') + (store.get('ic-dldiag') ? 'Last problem: ' + store.get('ic-dldiag') : 'No problems so far');
+  $('dlRetry').hidden = !(bad || L.dlBackoff.until > performance.now()) || L.dl;
+}
+setInterval(() => { if (L.active) paintDlDiag(); }, 1000);
+$('dlRetry').addEventListener('click', () => {
+  store.set('ic-dlbad', ''); store.set('ic-dldiag', ''); L.dlBackoff.until = 0; L.dlBackoff.mins = 5;
+  if (L.active && L.stable) sendPrefs(); paintFmt(); paintDlDiag();
+});
 async function pollStats(){
   if (L.dl) return pollDlStats();
   const pc = L.call?.peerConnection; if (!pc) return;
