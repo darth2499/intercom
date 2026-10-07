@@ -815,7 +815,7 @@ button.stat:active{opacity:.7}
               sender watchdog re-acquires a lost input, listener auto-resyncs a bloated buffer. */
 
 /* ============ Config ============ */
-const VERSION = '0.13.0-beta';                     // shown on the home screen — go to 1.0.0 when ready
+const VERSION = '0.14.0-beta';                     // shown on the home screen — go to 1.0.0 when ready
 const PREFIX = 'asahina-intercom-';            // namespace for room ids on the PeerJS server
 const ICE = [
   { urls: 'stun:stun.l.google.com:19302' },
@@ -2772,8 +2772,8 @@ function rxStop(){
 const opusHead = (ch, sr) => { const h = new Uint8Array(19), v = new DataView(h.buffer);
   h.set([79,112,117,115,72,101,97,100]); v.setUint8(8, 1); v.setUint8(9, ch); v.setUint16(10, 312, true); v.setUint32(12, sr, true); return h; };
 const DEC_TRIES = c => [
+  { codec:'opus', sampleRate: 48000, numberOfChannels: c.ch },          // Opus is always 48 kHz inside; iPhone Safari fails on 44.1 kHz
   { codec:'opus', sampleRate: c.sr, numberOfChannels: c.ch },
-  { codec:'opus', sampleRate: 48000, numberOfChannels: c.ch },
   { codec:'opus', sampleRate: 48000, numberOfChannels: c.ch, description: opusHead(c.ch, c.sr) },
 ];
 function pcmOf(ad){
