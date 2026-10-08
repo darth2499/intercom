@@ -523,6 +523,134 @@ button.stat:active{opacity:.7}
   #send .strip-card{background:var(--card);padding:16px 16px 14px;border-radius:18px}
   .join{max-width:440px;width:100%;align-self:center}
 }
+
+/* ================= v4: less on screen, nothing moves =================
+   Main screens keep only what's used mid-shoot. Every message has a reserved slot, so pressing things never shifts the layout. */
+.console .navbar{display:flex;justify-content:space-between;align-items:center}
+.navr{display:flex;gap:8px;margin-right:4px}
+.nb{display:flex;align-items:center;gap:6px;height:38px;padding:0 13px;border-radius:12px;background:var(--s2);border:1px solid var(--line);color:var(--label);font-size:15px;font-weight:600;white-space:nowrap}
+.nb svg{width:17px;height:17px;color:var(--label2)}
+.nb:active{opacity:.7}
+.nb.stop{color:var(--red);border-color:rgba(255,69,58,.45);background:rgba(255,69,58,.08)}
+.nb.stop i{width:11px;height:11px;border-radius:2px;background:var(--red)}
+.vh{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.console .live-lbl b{color:var(--label);font-family:var(--mono);font-weight:700;letter-spacing:.08em}
+
+/* Send: status line (was the listener chip) */
+#sendPill.pill{height:auto;padding:0;background:none;border:0;border-radius:0;font-size:12px;font-weight:600;color:var(--label2);gap:9px;max-width:100%}
+#sendPill .txt{max-width:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#sendPill.live{color:var(--label)}
+#sendPill.muted,#sendPill.err{color:#ff8a82}
+#send .hero:has(.pill.muted) .tally{background:var(--red);box-shadow:0 0 0 4px rgba(255,69,58,.18)}
+.console .hero-row{align-items:center;margin-top:4px}
+.console .hero-row .code{margin:0}
+.inv{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;width:84px;height:84px;border-radius:20px;background:var(--s2);border:1px solid var(--line);color:var(--label);font-size:13px;font-weight:700}
+.inv svg{width:28px;height:28px}
+.inv:active{opacity:.7}
+.console .hmeter.m2{height:34px}
+.console .hmeter.m1{height:16px}
+#send:has(#muteSw:checked) .strip-card{opacity:.35;transition:opacity .2s}
+/* tone card floats over the top of the panel instead of pushing the meter down */
+.strip-card{position:relative}
+#toneWrap{position:absolute;left:10px;right:10px;top:10px;z-index:3;display:block;opacity:0;transform:translateY(-6px);pointer-events:none;transition:opacity .22s,transform .22s}
+#toneWrap.show{opacity:1;transform:none;pointer-events:auto}
+#toneWrap .slide-in{overflow:visible}
+.console #toneWrap .tone{margin:0;background:#12261a;border-color:rgba(50,215,75,.45);box-shadow:0 8px 24px rgba(0,0,0,.55)}
+.console #toneWrap .tone.warn{background:#2a2112;border-color:rgba(255,176,32,.5)}
+.console #toneWrap .tone button{color:var(--acc)}
+
+/* Mute: the big bottom button */
+.mutebtn{position:relative;height:88px;border-radius:22px;border:1.5px solid var(--line2);background:var(--card);display:flex;align-items:center;justify-content:center;gap:14px;cursor:pointer;user-select:none;-webkit-user-select:none;transition:background .15s,border-color .15s,transform .1s}
+.mutebtn:active{transform:scale(.985)}
+.mutebtn input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.mutebtn .mi svg{width:30px;height:30px;display:block}
+.mutebtn b{font-size:24px;font-weight:800;letter-spacing:.05em}
+.mutebtn .on-on{display:none}
+.mutebtn:has(input:checked){border-color:var(--red);background:linear-gradient(180deg,rgba(255,69,58,.32),rgba(255,69,58,.12));box-shadow:0 0 0 4px rgba(255,69,58,.12);color:#fff}
+.mutebtn:has(input:checked) .on-on{display:block}
+.mutebtn:has(input:checked) .on-off{display:none}
+.mutebtn:has(input:focus-visible){outline:2px solid var(--acc);outline-offset:3px}
+
+/* Settings pieces */
+.console .seg.big{display:flex;padding:3px;border-radius:12px}
+.console .seg.big button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;height:58px;padding:0 4px;min-width:0;flex:1}
+.console .seg.big button svg{width:17px;height:17px}
+.console .seg.big button b{font-size:14px;font-weight:700}
+.console .seg.big button small{font-size:10.5px;color:var(--label3);font-weight:500}
+.tiles.two{grid-template-columns:1fr 1fr}
+.ctile.auto{justify-content:flex-start;gap:6px;min-height:0;padding:12px}
+.ctile.auto .ti{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:var(--s2);color:var(--label2);margin-bottom:6px}
+.ctile.auto .ti svg{width:17px;height:17px}
+.ctile.auto b{font-size:15px;white-space:normal}
+.ctile.auto small{-webkit-line-clamp:1}
+.ctile.auto:has(input:checked) .ti{background:rgba(255,176,32,.18);color:var(--acc)}
+.ctile.auto:has(input:checked) small{color:var(--acc)}
+.ctile.auto small.st::before{content:"Off"}
+.ctile.auto:has(input:checked) small.st::before{content:"On"}
+.bigbtn{display:flex;align-items:center;gap:12px;height:56px;padding:0 14px;border-radius:16px;background:var(--card);border:1px solid var(--line);color:var(--label);font-size:16px;font-weight:700;text-align:left;width:100%}
+.bigbtn .ti{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;background:var(--s2)}
+.bigbtn .ti svg{width:17px;height:17px}
+.bigbtn small{margin-left:auto;font-size:12px;color:var(--label3);font-weight:500}
+.bigbtn:active{opacity:.7}
+.console .note:empty{display:none}
+.console .sect span{color:var(--label2);letter-spacing:.02em;text-transform:none;font-weight:500}
+
+/* Invite */
+.qr-in{gap:16px}
+.qr-head{display:flex;align-items:center;justify-content:space-between;width:100%}
+.qr-head b{font-size:20px;font-weight:800}
+.qr-head .done{color:#ffb020;font-size:16px;font-weight:600;padding:6px 2px}
+.qr-url{margin:-8px 0 0}
+.qr-ov .acts2{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%}
+.abtn{height:50px;border-radius:14px;background:#1b1c20;border:1px solid #26282d;color:#f2f2f3;display:flex;align-items:center;justify-content:center;gap:8px;font-size:15px;font-weight:700}
+.abtn svg{width:18px;height:18px;color:#9a9ca3}
+.abtn:active{opacity:.7}
+.qr-ov .pwbox{flex-direction:row;align-items:center;justify-content:space-between;width:100%;height:56px;margin:0;padding:0 6px 0 14px;border-radius:16px;background:#141518;border:1px solid #26282d;--mono:ui-monospace,"SF Mono",Menlo,monospace}
+.qr-ov .pwbox .lbl{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#5f626a}
+.qr-ov .pwbox .pwline{margin-right:0}
+.qr-ov .pwbox b{font-family:var(--mono);font-size:17px;font-weight:700;color:#ffb020}
+.qr-ov .pwbox.off b{color:#5f626a}
+.qr-ov .pwbtn{color:#9a9ca3}
+.qr-ov #pwCopy.ok::after{bottom:auto;top:-13px}
+
+/* Listen: status line + one big "am I hearing it" panel */
+#listen .hero{margin-top:2px}
+#listen .hero.wait .live-lbl{color:var(--acc)}
+#listen .hero.wait .live-lbl b{color:var(--acc)}
+.wavebox{position:relative}
+.wavebox .wave{height:120px;margin:4px 0 14px}
+.sline{position:relative;height:36px;margin-top:12px}
+.sline > *{position:absolute;inset:0;transition:opacity .2s}
+.stl{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--label2);white-space:nowrap;overflow:hidden;height:20px}
+.sl-delay{color:var(--label2);font-size:14px;display:flex;align-items:center;gap:6px;padding:0;min-width:96px}
+.sl-delay b{font-family:var(--mono);color:var(--label);font-weight:600}
+.sl-delay b.warn{color:var(--acc)}
+.sdot{width:4px;height:4px;border-radius:50%;background:var(--label3);flex:none}
+#stRoute{overflow:hidden;text-overflow:ellipsis}
+#listen .live-sub{margin:0;text-align:left;font-size:13px;line-height:17px;color:var(--orange);opacity:0}
+#listen .live-sub:empty{display:block}
+.sline:has(#liveSub:not(:empty)) .stl{opacity:0}
+.sline:has(#liveSub:not(:empty)) #liveSub{opacity:1}
+#listen .sline .notice-wrap{display:block;margin:0;opacity:0;pointer-events:none}
+#listen .sline .notice-wrap.show{opacity:1;pointer-events:auto}
+.sline:has(.notice-wrap.show) .stl,.sline:has(.notice-wrap.show) #liveSub{opacity:0!important}
+#listen .sline .notice-in{display:block;padding:0}
+#listen .sline .notice{display:flex;align-items:flex-start;gap:8px;padding:0;margin:0;border-radius:0;background:none;font-size:13px;line-height:17px;font-weight:600}
+#listen .sline .notice .ndot{margin-top:5px;flex:none}
+#listen .sline #lnoticeTxt{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#listen .sline .notice.info{color:var(--label)}
+#listen .sline .notice.warn{color:var(--acc)}
+#listen .sline .notice.err{color:#ff8a82}
+#listen .sline .notice.ok{color:var(--green)}
+#tapAudio{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:auto;padding:0 22px;z-index:2;background:#2a2112;border:1px solid rgba(255,176,32,.5)}
+.boost{transition:opacity .25s}
+.boost .lbl{margin:6px 2px 8px}
+.boost .seg{display:flex}
+.boost.off{opacity:.35;pointer-events:none}
+@media (min-width:860px){
+  .nb[data-sheet]{display:none}
+  .console .wavebox .wave{height:160px}
+}
 </style>
 </head>
 <body>
@@ -606,41 +734,26 @@ button.stat:active{opacity:.7}
   <section class="screen console" id="send">
     <nav class="navbar">
       <button class="back" data-back><svg viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2 2 10l8 8"/></svg>Intercom</button>
-      <span class="nav-title">Send</span>
-      <button class="iconbtn" data-sheet="sendSheet" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg></button>
+      <span class="navr"><button class="nb" data-sheet="sendSheet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16"/><rect x="3.5" y="13" width="5" height="3" rx="1" fill="currentColor"/><rect x="9.5" y="7" width="5" height="3" rx="1" fill="currentColor"/><rect x="15.5" y="11" width="5" height="3" rx="1" fill="currentColor"/></svg>Settings</button><button class="nb stop" id="stopSend"><i></i>Stop</button></span>
     </nav>
 
     <div class="pane pane-a">
       <div class="hero code-card">
-        <p class="live-lbl"><span class="tally"></span>Sending · Room</p>
+        <p class="pill live-lbl" id="sendPill" data-base="pill live-lbl"><span class="tally"></span><span class="txt">Starting…</span></p>
         <div class="hero-row">
           <div class="code" id="codeOut" role="button" tabindex="0" aria-label="Show QR code"><span>–</span><span>–</span><span>–</span><span>–</span></div>
-          <div class="ro" id="pwBox">
-            <span class="lbl">Password</span>
-            <div class="pwline">
-              <b id="pwOut">–</b><b class="mask" id="pwMask" aria-hidden="true"></b>
-              <button class="pwbtn" id="pwCopy" aria-label="Copy password" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15H4.5A1.5 1.5 0 0 1 3 13.5v-9A1.5 1.5 0 0 1 4.5 3h9A1.5 1.5 0 0 1 15 4.5V5"/></svg></button>
-              <button class="pwbtn" id="pwEye" aria-label="Show password" aria-pressed="false"><span class="e-on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></span><span class="e-off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6C3.8 8.4 2 12 2 12s3.6 7 10 7c1.8 0 3.4-.5 4.8-1.3"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg></span></button>
-            </div>
-          </div>
-        </div>
-        <div class="chips">
-          <div class="pill" id="sendPill"><span class="dot"></span><span class="txt">Starting…</span></div>
-          <span class="chip" id="qChip">Voice</span>
-          <span class="chip off" data-awake="chip" hidden>Screen may sleep</span>
-          <button class="chip" id="qrBtn" aria-label="Show QR code"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/></svg>QR</button>
-          <button class="chip" id="shareBtn">Share ↗</button>
+          <button class="inv" id="qrBtn" aria-label="Invite: QR code, link and password"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/></svg><span>Invite</span></button>
         </div>
       </div>
 
       <div class="panel strip-card">
-        <div class="ph"><span class="lbl">Input</span><span class="clip" id="clipNote"></span><span class="pk">Peak <b id="sendDb">−∞</b></span></div>
+        <div class="ph"><span class="lbl">Mixer input</span><span class="clip" id="clipNote"></span><span class="pk"><b id="sendDb">−∞</b></span></div>
         <div class="slide" id="toneWrap"><div class="slide-in"><div class="tone" id="toneBanner">
           <span class="tone-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M2 12c2.5-7 5-7 7.5 0s5 7 7.5 0 3.5-5 5-3"/></svg></span>
           <div class="tone-txt"><b id="toneTitle">Tone detected</b><span id="toneSub"></span></div>
           <button id="toneUndo">Undo</button>
         </div></div></div>
-        <canvas id="sendMeter" class="hmeter tall" aria-label="Input level meter"></canvas>
+        <canvas id="sendMeter" class="hmeter m2" aria-label="Input level meter — tap to reset peaks"></canvas>
         <div class="gain-row">
           <div class="ph gh"><span class="lbl">Gain</span><button class="gv" id="gainVal">0.0 dB</button></div>
           <div class="fader" id="fader" role="slider" tabindex="0" aria-label="Input gain">
@@ -649,16 +762,11 @@ button.stat:active{opacity:.7}
             <div class="fcap" id="fcap"></div>
           </div>
         </div>
-        <p class="meter-tip">Double-tap fader: 0 dB · tap meter: reset peaks</p>
-      </div>
-
-      <div class="tiles one">
-        <label class="ctile mute wide" id="muteRow"><input type="checkbox" id="muteSw" aria-label="Mute"><b>Mute</b><small id="muteHint">Listeners hear mixer</small></label>
       </div>
 
       <div class="spacer"></div>
       <div class="dock">
-        <button class="btn stop" id="stopSend"><i></i>Stop sending</button>
+        <label class="mutebtn" id="muteRow"><input type="checkbox" id="muteSw" aria-label="Mute"><span class="mi on-off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg></span><span class="mi on-on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="m16 9 6 6M22 9l-6 6"/></svg></span><b class="on-off">MUTE</b><b class="on-on">MUTED</b><small id="muteHint" class="vh"></small></label>
       </div>
     </div>
 
@@ -670,35 +778,27 @@ button.stat:active{opacity:.7}
         <div class="row"><span>Channels</span><span class="selwrap"><select id="routeSel">
           <option value="auto">Auto</option><option value="stereo">Stereo</option><option value="sum">Mono (L+R)</option>
           <option value="left">Left only</option><option value="right">Right only</option></select></span></div>
-        <div class="row"><span>Quality</span>
-          <div class="seg" id="qualitySeg"><span class="knob"></span><button data-mode="voice">Voice</button><button data-mode="studio">Studio</button></div>
-        </div>
       </div>
+      <div class="seg big" id="qualitySeg"><span class="knob"></span><button data-mode="voice"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4"/></svg><b>Voice</b><small>mono · lowest delay</small></button><button data-mode="studio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg><b>Studio</b><small>stereo · full quality</small></button></div>
       <p class="note" id="modeNote"></p>
 
-      <p class="sect">Tone</p>
+      <p class="sect">Automatic</p>
+      <div class="tiles two">
+        <label class="ctile auto"><input type="checkbox" id="toneSw" aria-label="Gain from tone"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12c2.5-7 5-7 7.5 0s5 7 7.5 0 3.5-5 5-3"/></svg></span><b>Gain from tone</b><small id="toneState">Off</small></label>
+        <label class="ctile auto"><input type="checkbox" id="ctlSw" aria-label="Remote control"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="m10.8 12.2 9.2-9.2M17 6l3 3M14 9l2 2"/></svg></span><b>Remote control</b><small id="ctlState">Off</small></label>
+      </div>
       <div class="group">
-        <div class="row"><span class="rl">Auto-gain from tone<small id="toneState">Off</small></span>
-          <label class="switch"><input type="checkbox" id="toneSw" aria-label="Auto-gain from tone"><span></span></label></div>
         <div class="row"><span>Tone reads</span><span class="selwrap"><select id="toneRef">
           <option value="-20">−20 dBFS</option><option value="-18">−18 dBFS</option>
           <option value="-14">−14 dBFS</option><option value="-12">−12 dBFS</option></select></span></div>
+        <div class="row" id="pwRow"><span>Remote password</span><button class="linkbtn sm" id="pwNew">New password</button></div>
       </div>
-      <p class="note" id="toneNote"></p>
+      <p class="note" id="toneNote" hidden></p>
+      <p class="note" id="ctlNote" hidden></p>
 
-      <p class="sect">Remote control</p>
-      <div class="group">
-        <div class="row"><span class="rl">Remote control<small id="ctlState">Off</small></span>
-          <label class="switch"><input type="checkbox" id="ctlSw" aria-label="Remote control"><span></span></label></div>
-        <div class="row" id="pwRow"><span>Password</span><button class="linkbtn sm" id="pwNew">New password</button></div>
-      </div>
-      <p class="note" id="ctlNote">Give the password to anyone who should see and adjust these settings from the Listen page.</p>
-
-      <p class="sect">Room</p>
-      <div class="group">
-        <div class="row"><button class="rowbtn" id="newCode">New room code</button></div>
-        <div class="row"><button class="rowbtn" id="lockBtn">Lock screen</button></div>
-      </div>
+      <p class="sect">This phone</p>
+      <button class="bigbtn" id="lockBtn"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>Lock screen<small>for the bag</small></button>
+      <button class="bigbtn" id="newCode"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></span>New room code</button>
       <p class="note" data-awake>Keep this screen on while sending.</p>
       <p class="note relay-note" id="relayNote">Relay backup: Checking…</p>
     </div>
@@ -708,8 +808,7 @@ button.stat:active{opacity:.7}
   <section class="screen console" id="listen">
     <nav class="navbar">
       <button class="back" data-back><svg viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2 2 10l8 8"/></svg>Intercom</button>
-      <span class="nav-title">Listen</span>
-      <button class="iconbtn live-only" data-sheet="listenSheet" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg></button>
+      <span class="navr"><button class="nb live-only" data-sheet="listenSheet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16"/><rect x="3.5" y="13" width="5" height="3" rx="1" fill="currentColor"/><rect x="9.5" y="7" width="5" height="3" rx="1" fill="currentColor"/><rect x="15.5" y="11" width="5" height="3" rx="1" fill="currentColor"/></svg>Settings</button></span>
     </nav>
 
     <div id="joinView" class="join">
@@ -727,32 +826,23 @@ button.stat:active{opacity:.7}
     <div id="liveView" style="display:contents" hidden>
       <div class="pane pane-a">
         <div class="hero wait" id="orbWrap">
-          <p class="live-lbl"><span class="tally"></span><span id="liveTitle">Connecting…</span> · Room</p>
-          <div class="code" id="liveCode">––––</div>
-          <p class="live-sub" id="liveSub"></p>
-          <div class="stats">
-            <button class="stat" id="delayRow" aria-label="Delay — tap to skip to live"><span class="lbl">Delay</span><b id="stDelay">–</b></button>
-            <div class="stat"><span class="lbl">Link</span><b id="stRoute">–</b></div>
+          <p class="live-lbl"><span class="tally"></span><span id="liveTitle">Connecting…</span> · Room <b id="liveCode">––––</b></p>
+        </div>
+
+        <div class="panel wavebox">
+          <div class="ph"><span class="lbl">Hearing</span><span class="pk"><b id="listenDb">−∞ dB</b></span></div>
+          <canvas id="wave" class="wave" aria-hidden="true"></canvas>
+          <canvas id="listenMeter" class="hmeter m1" aria-label="Level meter"></canvas>
+          <div class="sline">
+            <div class="stl"><button class="sl-delay" id="delayRow" aria-label="Delay — tap to skip to live"><b id="stDelay">–</b> delay</button><span class="sdot"></span><span id="stRoute">–</span></div>
+            <p class="live-sub" id="liveSub"></p>
+            <div class="notice-wrap" id="lnoticeWrap"><div class="notice-in"><div class="notice" id="lnotice"><span class="ndot"></span><span id="lnoticeTxt"></span></div></div></div>
           </div>
-          <div class="notice-wrap" id="lnoticeWrap"><div class="notice-in"><div class="notice" id="lnotice"><span class="ndot"></span><span id="lnoticeTxt"></span></div></div></div>
           <button class="btn tinted" id="tapAudio" hidden>Tap to hear audio</button>
         </div>
 
-        <div class="panel">
-          <div class="ph"><span class="lbl">Level</span><span class="pk"><b id="listenDb">−∞ dB</b></span></div>
-          <canvas id="wave" class="wave" aria-hidden="true"></canvas>
-          <canvas id="listenMeter" class="hmeter" aria-label="Level meter"></canvas>
-          <div class="prow" id="boostRow"><span class="lbl">Boost</span>
-            <div class="seg" id="boostSeg"><span class="knob"></span><button data-boost="0">Off</button><button data-boost="6">+6</button><button data-boost="12">+12</button><button data-boost="18">+18</button></div>
-          </div>
-          <div class="prow net-row"><span class="lbl">Connection <small id="netHint">Low delay</small></span>
-            <div class="seg" id="netSeg"><span class="knob"></span><button data-net="direct">Direct</button><button data-net="low">Low delay</button><button data-net="stable">Stable</button></div>
-          </div>
-        </div>
-
-        <div class="tiles">
-          <label class="ctile" id="duckRow"><input type="checkbox" id="duckSw" aria-label="Lower volume on tone"><small>On tone</small><b>Duck</b></label>
-          <label class="ctile"><input type="checkbox" id="autoResync" aria-label="Auto-resync"><small>Auto-trim delay</small><b>Resync</b></label>
+        <div class="boost" id="boostRow"><p class="lbl">Volume boost</p>
+          <div class="seg" id="boostSeg"><span class="knob"></span><button data-boost="0">Off</button><button data-boost="6">+6</button><button data-boost="12">+12</button><button data-boost="18">+18</button></div>
         </div>
 
         <div class="spacer"></div>
@@ -763,13 +853,20 @@ button.stat:active{opacity:.7}
 
       <div class="pane pane-b sheet" id="listenSheet">
         <div class="sheet-head"><span>Settings</span><button class="done" data-close>Done</button></div>
+        <p class="sect">Connection · <span id="netHint">Low delay</span></p>
+        <div class="seg big" id="netSeg"><span class="knob"></span><button data-net="direct"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg><b>Direct</b><small>fastest</small></button><button data-net="low"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12h3l3-7 4 14 3-9 2 2h5"/></svg><b>Low delay</b><small>balanced</small></button><button data-net="stable"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.5 9.5 8 11 4.5-1.5 8-6 8-11V5z"/><path d="m9 12 2 2 4-4"/></svg><b>Stable</b><small>never drops</small></button></div>
+        <p class="note" id="boostNote"></p>
+        <p class="sect">Automatic</p>
+        <div class="tiles two">
+          <label class="ctile auto" id="duckRow"><input type="checkbox" id="duckSw" aria-label="Lower volume on tone"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M16 10l3 3 3-3"/></svg></span><b>Duck tone</b><small class="st"></small></label>
+          <label class="ctile auto"><input type="checkbox" id="autoResync" aria-label="Auto-sync"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7v5l3 2"/><circle cx="12" cy="12" r="9"/></svg></span><b>Auto‑sync</b><small class="st"></small></label>
+        </div>
         <p class="sect">Stream</p>
         <div class="group">
           <div class="row"><span>Bitrate</span><span class="v" id="stRate">–</span></div>
           <div class="row fmt-row" id="fmtRow" role="button" tabindex="0" aria-expanded="false" aria-controls="diagRow"><span>Format</span><span class="v" id="stFmt">–</span></div>
           <div class="row diag-row" id="diagRow" hidden><span class="rl">Reliable Stable<small id="dlDiag">–</small></span><button class="linkbtn sm" id="dlRetry">Try again</button></div>
         </div>
-        <p class="note" id="boostNote">Boost makes the feed louder on this phone; a limiter keeps peaks from distorting. Duck lowers the volume while the mixer sends line-up tone. Auto-sync trims delay if it builds up — tap Delay to skip to live.</p>
 
         <div id="senderInfo" class="sx" hidden>
           <button class="sect disclose" id="sxToggle" aria-expanded="false" aria-controls="sxGroup">
@@ -807,13 +904,21 @@ button.stat:active{opacity:.7}
   </section>
 </div>
 <div class="scrim" id="scrim" hidden></div>
-<div class="qr-ov" id="qrOv" hidden role="dialog" aria-label="Scan to listen">
+<div class="qr-ov" id="qrOv" hidden role="dialog" aria-label="Invite">
   <div class="qr-in">
-    <p class="live-lbl"><span class="tally"></span>Scan to listen</p>
-    <div class="qr-card"><canvas id="qrCv" aria-label="QR code"></canvas></div>
+    <div class="qr-head"><b>Invite</b><button class="done" id="qrDone">Done</button></div>
+    <div class="qr-card"><canvas id="qrCv" aria-label="QR code — scan with a phone camera to listen"></canvas></div>
     <div class="qr-code" id="qrCode">––––</div>
     <p class="qr-url" id="qrUrl"></p>
-    <button class="btn qr-done" id="qrDone">Done</button>
+    <div class="acts2"><button class="abtn" id="shareBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg><span class="t">Share link</span></button><button class="abtn" id="copyLink"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15H4.5A1.5 1.5 0 0 1 3 13.5v-9A1.5 1.5 0 0 1 4.5 3h9A1.5 1.5 0 0 1 15 4.5V5"/></svg><span class="t">Copy link</span></button></div>
+    <div class="ro pwbox" id="pwBox">
+            <span class="lbl">Remote password</span>
+            <div class="pwline">
+              <b id="pwOut">–</b><b class="mask" id="pwMask" aria-hidden="true"></b>
+              <button class="pwbtn" id="pwCopy" aria-label="Copy password" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15H4.5A1.5 1.5 0 0 1 3 13.5v-9A1.5 1.5 0 0 1 4.5 3h9A1.5 1.5 0 0 1 15 4.5V5"/></svg></button>
+              <button class="pwbtn" id="pwEye" aria-label="Show password" aria-pressed="false"><span class="e-on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></span><span class="e-off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6C3.8 8.4 2 12 2 12s3.6 7 10 7c1.8 0 3.4-.5 4.8-1.3"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg></span></button>
+            </div>
+          </div>
   </div>
 </div>
 
@@ -845,7 +950,7 @@ button.stat:active{opacity:.7}
               sender watchdog re-acquires a lost input, listener auto-resyncs a bloated buffer. */
 
 /* ============ Config ============ */
-const VERSION = '0.14.0-beta';                     // shown on the home screen — go to 1.0.0 when ready
+const VERSION = '0.15.0-beta';                     // shown on the home screen — go to 1.0.0 when ready
 const PREFIX = 'asahina-intercom-';            // namespace for room ids on the PeerJS server
 const ICE = [
   { urls: 'stun:stun.l.google.com:19302' },
@@ -952,7 +1057,7 @@ document.addEventListener('click', e => {
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
 function setPill(el, text, kind){
-  el.className = 'pill' + (kind ? ' ' + kind : '');
+  el.className = (el.dataset.base || 'pill') + (kind ? ' ' + kind : '');
   el.querySelector('.txt').textContent = text;
 }
 /* Keep the screen on: Wake Lock API, plus a tiny silent looping video as a fallback
@@ -1202,9 +1307,9 @@ function startMeter(elId, dbId, input, channels, onLevel){
   const draw = () => {
     g.clearRect(0, 0, W, H);
     const mono = 'ui-monospace, "SF Mono", Menlo, monospace';
-    const tagW = 16, valW = 48, clipW = 6, scaleH = 15, gap = 6;
+    const tagW = 16, valW = 0, clipW = 6, scaleH = 0, gap = 6;
     const x0 = tagW, mw = W - tagW - valW - clipW - 4, bars = H - scaleH;
-    const barH = Math.max(4, Math.min(14, (bars - (n - 1) * gap) / n)), y0 = Math.max(0, (bars - (n * barH + (n - 1) * gap)) / 2);
+    const barH = Math.max(4, Math.min(16, (bars - (n - 1) * gap) / n)), y0 = Math.max(0, (bars - (n * barH + (n - 1) * gap)) / 2);
     const step = 4, count = Math.floor(mw / step);
     g.textBaseline = 'middle';
     for (let ch = 0; ch < n; ch++){
@@ -1219,14 +1324,7 @@ function startMeter(elId, dbId, input, channels, onLevel){
       g.globalAlpha = 1;
       if (st.hold[ch] > -60){ g.fillStyle = segColor(st.hold[ch]); g.fillRect(x0 + mw * dbPos(st.hold[ch]) - 1, y, 2, barH); }
       g.globalAlpha = st.clip[ch] ? 1 : .2; g.fillStyle = PAL.red; rr(g, x0 + mw + 3, y, clipW, barH, 1.5); g.globalAlpha = 1;
-      g.fillStyle = st.hold[ch] > -0.1 ? PAL.red : PAL.text; g.font = `500 13px ${mono}`; g.textAlign = 'right';
-      g.fillText(fmtDb(st.hold[ch]), W, y + barH / 2);
     }
-    g.fillStyle = PAL.dim; g.font = `10px ${mono}`; g.textBaseline = 'bottom';
-    H_LABELS.forEach((d, k) => {
-      g.textAlign = k === 0 ? 'left' : k === H_LABELS.length - 1 ? 'right' : 'center';
-      g.fillText(String(d), x0 + mw * dbPos(d), H);
-    });
   };
 
   const m = { src, own, split, sink, ro, raf:0, last:performance.now(), frame:0, draw, st };
@@ -1411,7 +1509,7 @@ function paintCtl(){
   $('pwOut').textContent = S.ctlOn ? S.pw : 'Off';
   $('pwRow').style.opacity = S.ctlOn ? 1 : .4;
   const n = [...S.listeners.values()].filter(e => e.authed).length;
-  $('ctlState').textContent = !S.ctlOn ? 'Off' : n ? `${n} ${n === 1 ? 'person has' : 'people have'} control` : 'Listeners with the password can change settings';
+  $('ctlState').textContent = !S.ctlOn ? 'Off' : n ? `On · ${n} in control` : 'On';
   paintPwBox();
   $('ctlState').classList.toggle('on', S.ctlOn && n > 0);
 }
@@ -1542,11 +1640,10 @@ function paintFader(){
 })();
 
 function paintModeNote(){
-  $('qChip').textContent = `${MODES[S.mode].label} · ${MODES[S.mode].bitrate / 1000}k`;
-  let n = MODES[S.mode].note;
+  let n = '';                                          // Voice/Studio explain themselves; only the routing surprise needs words
   const r = effRoute();
-  if (S.routeSel === 'auto' && r === 'left')  n += ' Right input is silent, so Left is sent to both sides.';
-  if (S.routeSel === 'auto' && r === 'right') n += ' Left input is silent, so Right is sent to both sides.';
+  if (S.routeSel === 'auto' && r === 'left')  n += 'Right input is silent, so Left is sent to both sides.';
+  if (S.routeSel === 'auto' && r === 'right') n += 'Left input is silent, so Right is sent to both sides.';
   $('modeNote').textContent = n;
 }
 
@@ -1701,10 +1798,10 @@ function paintSendStatus(){
   if (!S.peer || (S.peer.disconnected && !S.listeners.size)) return;
   if (S.issue) { setPill($('sendPill'), S.issue, 'err'); return; }
   const live = [...S.listeners.values()].filter(x => x.live).length;
-  if (S.muted) setPill($('sendPill'), live ? `Muted · ${live} ${live === 1 ? 'listener' : 'listeners'}` : 'Muted', 'err');
-  else if (live) setPill($('sendPill'), live === 1 ? '1 listener' : `${live} listeners`, 'live');
-  else if (S.listeners.size) setPill($('sendPill'), 'Connecting listener…', 'wait');
-  else setPill($('sendPill'), 'Waiting for listener', 'wait');
+  if (S.muted) setPill($('sendPill'), live ? `Muted · ${live} hear${live === 1 ? 's' : ''} nothing` : 'Muted', 'muted');
+  else if (live) setPill($('sendPill'), `On air · ${live} listening`, 'live');
+  else if (S.listeners.size) setPill($('sendPill'), 'On air · connecting listener…', 'wait');
+  else setPill($('sendPill'), 'On air · waiting for listeners', 'wait');
 }
 
 function onListener(conn){
@@ -2070,7 +2167,7 @@ function applyTone({ db, hz }){
 function paintToneState(){
   const el = $('toneState');
   $('toneSw').checked = Tone.on;
-  el.textContent = !Tone.on ? (Tone.autoDone ? 'Off · gain set from tone — turn on to redo' : 'Off') : Tone.state === 'locked' ? 'Tone locked' : 'Listening for tone';
+  el.textContent = !Tone.on ? (Tone.autoDone ? 'Off · set from tone' : 'Off') : Tone.state === 'locked' ? 'Tone locked' : 'Listening for tone';
   el.classList.toggle('on', (Tone.on && Tone.state === 'locked') || !!Tone.autoDone);
 }
 // 10×/s while auto-gain is armed; 4×/s otherwise (enough to lower listeners' volume on tone).
@@ -2130,7 +2227,7 @@ function setLock(on){
     const buf = new Float32Array(1024);
     lockTick = setInterval(() => {
       const t = $('sendPill').querySelector('.txt').textContent, cls = $('sendPill').className;
-      $('lockStatus').textContent = t; $('lockStatus').className = 'lock-status' + (/err/.test(cls) ? ' err' : /wait/.test(cls) ? ' warn' : '');
+      $('lockStatus').textContent = t; $('lockStatus').className = 'lock-status' + (/err|muted/.test(cls) ? ' err' : /wait/.test(cls) ? ' warn' : '');
       const a = S.stream?._lvl?.[0]; if (!a) return;
       a.getFloatTimeDomainData(buf); let p = 0; for (const v of buf) p = Math.max(p, Math.abs(v));
       $('lockLevel').style.width = (dbPos(p > 0 ? 20 * Math.log10(p * dbToGain(S.gainDb)) : -100) * 100) + '%';
@@ -2160,7 +2257,7 @@ function showQr(){
   if (!S.code) return;
   const url = roomUrl(S.code), q = qrcode(0, 'M'); q.addData(url); q.make();
   const n = q.getModuleCount(), quiet = 4, cells = n + quiet * 2, cv = $('qrCv');
-  const css = Math.min(300, window.innerWidth - 96), px = Math.max(1, Math.floor(css * (devicePixelRatio || 1) / cells));
+  const css = Math.min(240, window.innerWidth - 120), px = Math.max(1, Math.floor(css * (devicePixelRatio || 1) / cells));
   cv.width = cv.height = px * cells; cv.style.width = cv.style.height = css + 'px';
   const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
   g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height); g.fillStyle = '#000';
@@ -2175,12 +2272,14 @@ $('codeOut').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key =
 $('qrDone').addEventListener('click', hideQr);
 $('qrOv').addEventListener('click', e => { if (e.target.id === 'qrOv') hideQr(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') hideQr(); });
+function flashBtn(b, text){ const t = b.querySelector('.t'); if (!t) return; t.dataset.o ??= t.textContent; t.textContent = text; clearTimeout(b._ft); b._ft = setTimeout(() => t.textContent = t.dataset.o, 1500); }
+$('copyLink').addEventListener('click', async () => { if (!S.code) return; try { await navigator.clipboard.writeText(roomUrl(S.code)); flashBtn($('copyLink'), 'Copied'); } catch {} });
 $('shareBtn').addEventListener('click', async () => {
   if (!S.code) return;
   const url = roomUrl(S.code);
   // URL only: with text + url, iOS "Copy" copies just the text. The room code is in the link anyway.
   try { if (navigator.share) { await navigator.share({ title:`Intercom · room ${S.code}`, url }); return; } } catch { return; }
-  try { await navigator.clipboard.writeText(url); $('shareBtn').textContent = 'Link copied'; setTimeout(() => $('shareBtn').textContent = 'Share ↗', 1600); } catch {}
+  try { await navigator.clipboard.writeText(url); flashBtn($('shareBtn'), 'Link copied'); } catch {}
 });
 
 /* ============ LISTEN (remote phone) ============ */
@@ -2480,7 +2579,7 @@ function paintFmt(){
   $('boostRow').classList.toggle('off', isDirect()); $('duckRow').classList.toggle('off', isDirect());
   $('boostNote').textContent = isDirect()
     ? 'Direct plays the feed straight to the speaker for the least delay, so Boost and the tone volume drop are off. Use the phone’s volume buttons.'
-    : 'Boost makes the feed louder on this phone; a limiter keeps peaks from distorting.';
+    : '';
 }
 function sendPrefs(){ try { L.conn.send({ type:'prefs', stable: L.stable, direct: isDirect(), dl: dlWant() }); } catch {} }
 function setNet(net){
