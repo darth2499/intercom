@@ -651,6 +651,18 @@ button.stat:active{opacity:.7}
   .nb[data-sheet]{display:none}
   .console .wavebox .wave{height:160px}
 }
+
+/* iPhone: a solid strip behind the status bar. iOS blurs whatever scrolls under the clock/battery;
+   with only the page colour there, the blur has nothing to show. */
+@media (max-width: 859px){
+  body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top);background:#0c0d0f;z-index:44;pointer-events:none}
+}
+/* Home Screen app: iOS also softly blurs the top edge of the page while scrolling. A solid band there
+   (with matching space above the content) means only plain page colour is ever under that blur. */
+@media (display-mode: standalone) and (max-width: 859px){
+  body::before{height:calc(env(safe-area-inset-top) + 28px)}
+  .app{padding-top:calc(env(safe-area-inset-top) + 36px)}
+}
 </style>
 </head>
 <body>
@@ -950,7 +962,7 @@ button.stat:active{opacity:.7}
               sender watchdog re-acquires a lost input, listener auto-resyncs a bloated buffer. */
 
 /* ============ Config ============ */
-const VERSION = '0.15.0-beta';                     // shown on the home screen — go to 1.0.0 when ready
+const VERSION = '0.15.1-beta';                     // shown on the home screen — go to 1.0.0 when ready
 const PREFIX = 'asahina-intercom-';            // namespace for room ids on the PeerJS server
 const ICE = [
   { urls: 'stun:stun.l.google.com:19302' },
@@ -1805,6 +1817,7 @@ function paintSendStatus(){
 }
 
 function onListener(conn){
+  if (conn.metadata?.probe) { conn.on('open', () => setTimeout(() => { try { conn.close() } catch {} }, 300)); return; }   // a Listen page checking the room exists
   let entry = null;
   conn.on('open', () => {
     if (!S.stream) return conn.close();
@@ -2350,15 +2363,43 @@ function openListen(){
   setTimeout(() => $('codeIn').focus(), 350);
 }
 
-function join(){
+/* Is someone sending on this code? Asked from the code page, so a wrong code never opens the room.
+   Found = a quick test link to the sender opens. Not found = the pairing server says nobody has that code (it takes ~5 s to decide).
+   true = room found · false = no room · null = couldn't check (no signal) → go in and let the room page keep trying. */
+function roomExists(code){
+  return new Promise(async res => {
+    let done = false, peer = null, t = 0;
+    const end = v => { if (done) return; done = true; clearTimeout(t); try { peer?.destroy() } catch {} res(v); };
+    t = setTimeout(() => end(null), 9000);
+    let cfg; try { cfg = await iceConfig(); } catch {}
+    if (done) return;
+    try { peer = new Peer({ config: cfg, debug: 0 }); } catch { return end(null); }
+    peer.on('error', e => end(e.type === 'peer-unavailable' ? false : null));
+    peer.on('open', () => {
+      try {
+        const c = peer.connect(PREFIX + code, { reliable: true, metadata: { probe: 1 } });
+        c.on('open', () => end(true));
+      } catch { return end(null); }
+    });
+  });
+}
+let joinCheck = 0;
+async function join(){
   const code = $('codeIn').value;
-  if (code.length !== 4 || L.active) return;
+  if (code.length !== 4 || L.active || joinCheck) return;
   $('codeIn').blur();
   store.set('ic-last', code);
   try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch {}
   ensureCtx();
   // Unlock playback inside this tap so iOS lets the stream play later.
   try { audioEl.srcObject = ctx.createMediaStreamDestination().stream; audioEl.play().catch(()=>{}); } catch {}
+  const my = ++joinCheck, btn = $('joinBtn');
+  $('joinErr').textContent = ''; btn.disabled = true; btn.textContent = 'Checking…';
+  const found = await roomExists(code);
+  const stale = my !== joinCheck || !$('listen').classList.contains('active') || $('codeIn').value !== code;
+  joinCheck = 0; btn.textContent = 'Listen'; paintEntry();
+  if (stale || L.active) return;
+  if (found === false) { $('joinErr').textContent = `No room ${code} — check the code on the sending phone.`; return; }
   Object.assign(L, { active:true, code, everLive:false });
   $('joinView').hidden = true; $('liveView').hidden = false; $('listen').classList.add('is-live');
   $('liveCode').textContent = code; $('liveSub').textContent = '';

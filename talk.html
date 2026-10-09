@@ -330,6 +330,18 @@ b.sm{font-size:15px}
 .toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 56px);transform:translateX(-50%);background:var(--card);box-shadow:0 6px 24px rgba(0,0,0,.18);
   padding:10px 16px;border-radius:14px;font-size:15px;font-weight:500;z-index:20;animation:up .3s;max-width:90vw;text-align:center}
 .toast.warn{color:var(--orange)}
+
+/* iPhone: a solid strip behind the status bar. iOS blurs whatever scrolls under the clock/battery;
+   with only the page colour there, the blur has nothing to show. */
+@media (max-width: 859px){
+  body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top);background:var(--bg);z-index:44;pointer-events:none}
+}
+/* Home Screen app: iOS also softly blurs the top edge of the page while scrolling. A solid band there
+   (with matching space above the content) means only plain page colour is ever under that blur. */
+@media (display-mode: standalone) and (max-width: 859px){
+  body::before{height:calc(env(safe-area-inset-top) + 28px)}
+  .app{padding-top:calc(env(safe-area-inset-top) + 36px)}
+}
 </style>
 </head>
 <body>
@@ -2146,7 +2158,7 @@ addEventListener('offline', () => { ICE_CFG = TEST_ICE ? ICE_CFG : { iceServers:
    Every tab on this phone/computer shares one identity, so only one may be in the room (like WhatsApp Web).
    A browser lock marks the active tab. "Use here" takes the lock; the old tab hears it right away,
    leaves the room and reloads into the "moved to another tab" screen. */
-const VERSION = '0.15.0-beta';                     // same as the home page (index.html) — bump both together
+const VERSION = '0.15.1-beta';                     // same as the home page (index.html) — bump both together
 const TAB_LOCK = 'ic-talk-active';
 let tabClaim = null;
 function showBusy(moved){
