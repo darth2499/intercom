@@ -981,7 +981,7 @@ button.stat:active{opacity:.7}
               sender watchdog re-acquires a lost input, listener auto-resyncs a bloated buffer. */
 
 /* ============ Config ============ */
-const VERSION = '0.15.2-beta';                     // shown on the home screen — go to 1.0.0 when ready
+const VERSION = '0.15.3-beta';                     // shown on the home screen — go to 1.0.0 when ready
 const PREFIX = 'asahina-intercom-';            // namespace for room ids on the PeerJS server
 const ICE = [
   { urls: 'stun:stun.l.google.com:19302' },
@@ -2054,16 +2054,33 @@ function applyBitrate(pc, tries = 0, stable = false){
 /* ---- Listen on the sending phone: hear exactly what listeners get (after gain and mute) ---- */
 // Played through an <audio> element (the outgoing stream itself) rather than Web Audio's output: that is what
 // browsers reliably send to the current output device (headphones), even while the mic/interface is open.
-const MON = { on:false, el:null };
+// If that player doesn't actually run within a second (some browsers won't play a page-made stream), the same
+// signal goes out through Web Audio instead — never both at once.
+const MON = { on:false, el:null, node:null, via:'' };
+function monWebAudio(on){
+  const c = ensureCtx();
+  if (on && !MON.node) { MON.node = c.createGain(); MON.node.connect(c.destination); }
+  if (!MON.node) return;
+  try { S.stream?._mute.disconnect(MON.node); } catch {}
+  if (on && S.stream) S.stream._mute.connect(MON.node);
+}
 function setMonitor(on){
   MON.on = !!on && !!S.stream;
-  if (!MON.el) { MON.el = document.createElement('audio'); MON.el.setAttribute('playsinline', ''); MON.el.autoplay = true; document.body.appendChild(MON.el); }
-  const el = MON.el;
+  if (!MON.el) { MON.el = document.createElement('audio'); MON.el.setAttribute('playsinline', ''); document.body.appendChild(MON.el); }
+  const el = MON.el, my = MON.gen = (MON.gen || 0) + 1;
+  monWebAudio(false); MON.via = '';
   if (MON.on) {
     ensureCtx();
-    if (el.srcObject !== S.stream) el.srcObject = S.stream;
-    el.muted = false; el.volume = 1;
-    el.play().then(() => paintMonitor()).catch(() => { MON.on = false; paintMonitor('Blocked'); });
+    el.srcObject = S.stream; el.muted = false; el.volume = 1;
+    const t0 = el.currentTime;
+    el.play().catch(() => {});
+    setTimeout(() => {
+      if (my !== MON.gen || !MON.on) return;
+      if (!el.paused && el.currentTime > t0) { MON.via = 'player'; return; }
+      try { el.pause(); } catch {} el.srcObject = null;    // player didn't start → Web Audio
+      monWebAudio(true); MON.via = 'webaudio';
+      console.info('listen: using Web Audio output');
+    }, 1000);
   } else { try { el.pause(); } catch {} el.srcObject = null; }
   paintMonitor();
 }
@@ -2081,7 +2098,10 @@ async function swapStream(ns){
   }
   const old = S.stream; S.stream = ns;
   if (DL.node) { try { old?._mute.disconnect(DL.node) } catch {} ns._mute.connect(DL.node); }
-  if (MON.on && MON.el) { MON.el.srcObject = ns; MON.el.play().catch(() => {}); }
+  if (MON.on) {
+    if (MON.via === 'webaudio') { try { old?._mute.disconnect(MON.node) } catch {} ns._mute.connect(MON.node); }
+    else { MON.el.srcObject = ns; MON.el.play().catch(() => {}); }
+  }
   stopStream(old);
   if (DL.cfg && (DL.cfg.ch !== chans())) dlRestart();
   startMeter('sendMeter', 'sendDb', S.stream._tap, chans()); attachTone(S.stream._pre, chans());
