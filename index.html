@@ -962,7 +962,7 @@ button.stat:active{opacity:.7}
               sender watchdog re-acquires a lost input, listener auto-resyncs a bloated buffer. */
 
 /* ============ Config ============ */
-const VERSION = '0.15.1-beta';                     // shown on the home screen — go to 1.0.0 when ready
+const VERSION = '0.15.2-beta';                     // shown on the home screen — go to 1.0.0 when ready
 const PREFIX = 'asahina-intercom-';            // namespace for room ids on the PeerJS server
 const ICE = [
   { urls: 'stun:stun.l.google.com:19302' },
@@ -976,21 +976,22 @@ const ICE = [
    Add ?relay to the page address to force the relay (for testing). */
 const RELAY_URL = 'https://intercom-turn.imsk8erboi.workers.dev/';
 const FORCE_RELAY = new URLSearchParams(location.search).has('relay');
-const Relay = { servers: null, exp: 0, status: 'checking', reason: '' };
+const Relay = { servers: null, exp: 0, status: 'checking', reason: '', share: (() => { try { return localStorage.getItem('ic-share') === '1'; } catch { return false; } })() };
 async function getRelay(){
   if (Date.now() < Relay.exp) return;
   // A relay pass lasts hours: keep it on the phone so reloads and the other page reuse it
   // (each new pass counts toward the Worker's per-network hourly limit).
-  try { const c = JSON.parse(localStorage.getItem('ic-relay') || 'null'); if (c && c.exp > Date.now() + 60e3 && c.servers?.length) { Object.assign(Relay, { servers: c.servers, status: 'ready', reason: '', exp: c.exp }); setTimeout(paintRelay, 0); return; } } catch {}
+  try { const c = JSON.parse(localStorage.getItem('ic-relay') || 'null'); if (c && c.v === 2 && c.exp > Date.now() + 60e3 && c.servers?.length) { Object.assign(Relay, { servers: c.servers, status: 'ready', reason: '', exp: c.exp }); setTimeout(paintRelay, 0); return; } } catch {}
   try {
     const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 4000);
     const r = await fetch(RELAY_URL, { signal: ctl.signal, cache: 'no-store' });
     clearTimeout(t);
     const j = await r.json();
+    if (j.share) { Relay.share = true; try { localStorage.setItem('ic-share', '1'); } catch {} }   // this Worker makes share links with a picture of the room code
     const turn = (j.iceServers || []).filter(x => [].concat(x.urls).some(u => /^turns?:/.test(u)));
     if (j.relay && turn.length) {
       Object.assign(Relay, { servers: turn, status: 'ready', reason: '', exp: Date.now() + ((j.ttl || 21600) - 900) * 1000 });
-      try { localStorage.setItem('ic-relay', JSON.stringify({ servers: turn, exp: Relay.exp })); } catch {}
+      try { localStorage.setItem('ic-relay', JSON.stringify({ v: 2, servers: turn, exp: Relay.exp })); } catch {}
     } else {
       Object.assign(Relay, { servers: null, status: 'off', reason: j.reason || j.error || 'unavailable', exp: Date.now() + 5 * 60e3 });
     }
@@ -2264,7 +2265,10 @@ $('newCode').addEventListener('click', () => {
   const old = S.peer; S.peer = null; try { old?.destroy() } catch {}
   S.idRetries = 0; setPill($('sendPill'), 'Starting…'); openHostPeer();
 });
-const roomUrl = code => location.origin + location.pathname + '?code=' + code;   // opens Listen and joins this room
+const roomUrl = code => location.origin + location.pathname + '?code=' + code;   // opens Listen and joins this room (used by the QR code)
+// Link for Share / Copy: goes through the Worker so messages show a preview picture with the room code,
+// then forwards to roomUrl. Falls back to the plain link until the Worker has said it can do this.
+const shareUrl = code => Relay.share ? RELAY_URL + 'r/' + code : roomUrl(code);
 /* QR code: point any phone's camera at it to open the Listen page straight into this room. */
 function showQr(){
   if (!S.code) return;
@@ -2286,10 +2290,10 @@ $('qrDone').addEventListener('click', hideQr);
 $('qrOv').addEventListener('click', e => { if (e.target.id === 'qrOv') hideQr(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') hideQr(); });
 function flashBtn(b, text){ const t = b.querySelector('.t'); if (!t) return; t.dataset.o ??= t.textContent; t.textContent = text; clearTimeout(b._ft); b._ft = setTimeout(() => t.textContent = t.dataset.o, 1500); }
-$('copyLink').addEventListener('click', async () => { if (!S.code) return; try { await navigator.clipboard.writeText(roomUrl(S.code)); flashBtn($('copyLink'), 'Copied'); } catch {} });
+$('copyLink').addEventListener('click', async () => { if (!S.code) return; try { await navigator.clipboard.writeText(shareUrl(S.code)); flashBtn($('copyLink'), 'Copied'); } catch {} });
 $('shareBtn').addEventListener('click', async () => {
   if (!S.code) return;
-  const url = roomUrl(S.code);
+  const url = shareUrl(S.code);
   // URL only: with text + url, iOS "Copy" copies just the text. The room code is in the link anyway.
   try { if (navigator.share) { await navigator.share({ title:`Intercom · room ${S.code}`, url }); return; } } catch { return; }
   try { await navigator.clipboard.writeText(url); flashBtn($('shareBtn'), 'Link copied'); } catch {}
