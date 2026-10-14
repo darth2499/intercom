@@ -574,7 +574,7 @@ button.stat:active{opacity:.7}
 /* Mute: the big bottom button */
 .monbtn{width:100%;height:56px;margin-bottom:10px;border-radius:18px;border:1.5px solid var(--line2);background:var(--card);color:var(--label);display:flex;align-items:center;justify-content:center;gap:10px;font-size:17px;font-weight:700;letter-spacing:.04em;transition:background .15s,border-color .15s}
 .monbtn svg{width:22px;height:22px;color:var(--label2)}
-.monbtn small{font-size:12px;font-weight:600;color:var(--label3);letter-spacing:.08em;text-transform:uppercase;min-width:26px;text-align:left}
+.monbtn small{font-size:12px;font-weight:600;color:var(--label3);letter-spacing:.08em;text-transform:uppercase;width:84px;text-align:left;white-space:nowrap;font-variant-numeric:tabular-nums}
 .monbtn:active{transform:scale(.985)}
 .monbtn[aria-pressed="true"]{border-color:rgba(255,176,32,.75);background:linear-gradient(180deg,rgba(255,176,32,.16),rgba(255,176,32,.05))}
 .monbtn[aria-pressed="true"] svg,.monbtn[aria-pressed="true"] small{color:var(--acc)}
@@ -2095,28 +2095,40 @@ async function autoSink(){
   const pick = outs.find(d => /headphone|external|built-?in|macbook|speaker/i.test(d.label)) || outs[0];
   return pick?.deviceId || '';
 }
+/* Lowest delay: Chrome and Safari play Listen straight out of the audio engine the feed is already running in
+   (no player, no extra buffer); Chrome can still send it to the chosen output. Firefox — and a chosen output the
+   engine can't use — go through a player instead, which is what Firefox needs to reach the headphones. */
+const ctxSink = () => typeof AudioContext !== 'undefined' && 'setSinkId' in AudioContext.prototype;
 async function setMonitor(on){
   MON.on = !!on && !!S.stream; if (MON.on) MON.tried = true;
   if (!MON.el) { MON.el = document.createElement('audio'); MON.el.setAttribute('playsinline', ''); document.body.appendChild(MON.el); }
   const el = MON.el, my = MON.gen = (MON.gen || 0) + 1;
   monWebAudio(false); MON.via = '';
+  try { el.pause(); } catch {} el.srcObject = null;
   paintMonitor();
-  if (!MON.on) { try { el.pause(); } catch {} el.srcObject = null; return; }
-  ensureCtx();
-  el.srcObject = S.stream; el.muted = false; el.volume = 1;
+  if (!MON.on) return;
+  const c = ensureCtx();
   MON.err = '';
-  const playing = el.play().catch(e => { MON.err = e.name || String(e); });   // start inside the tap
-  if (canSink) {
-    try { const id = await autoSink(); if (my !== MON.gen) return; MON.sink = id; await el.setSinkId(id); }
-    catch (e) { MON.err = 'output ' + (e.name || e); }
+  let playing = null;
+  if (isFirefox) { el.srcObject = S.stream; el.muted = false; el.volume = 1; playing = el.play().catch(e => { MON.err = e.name || String(e); }); }   // start inside the tap
+  const id = (canSink || ctxSink()) ? await autoSink().catch(() => '') : '';
+  if (my !== MON.gen) return;
+  MON.sink = id;
+  if (!isFirefox && (!id || ctxSink())) {
+    try { if (ctxSink() && (c.sinkId || '') !== id) await c.setSinkId(id); } catch (e) { MON.err = 'output ' + (e.name || e); }
+    if (my !== MON.gen) return;
+    monWebAudio(true); MON.via = 'direct';
+    return paintMonitor();
   }
+  if (!playing) { el.srcObject = S.stream; el.muted = false; el.volume = 1; playing = el.play().catch(e => { MON.err = e.name || String(e); }); }
+  if (canSink) { try { await el.setSinkId(id); } catch (e) { MON.err = 'output ' + (e.name || e); } }
   await playing;
   const t0 = el.currentTime;
   setTimeout(() => {
     if (my !== MON.gen || !MON.on) return;
-    if (!el.paused && el.currentTime > t0) { MON.via = 'player'; return; }
-    try { el.pause(); } catch {} el.srcObject = null;    // player didn't start → Web Audio
-    monWebAudio(true); MON.via = 'webaudio';
+    if (!el.paused && el.currentTime > t0) { MON.via = 'player'; return paintMonitor(); }
+    try { el.pause(); } catch {} el.srcObject = null;    // player didn't start → audio engine
+    monWebAudio(true); MON.via = 'direct'; paintMonitor();
   }, 1000);
 }
 $('monOut').addEventListener('change', async e => {
@@ -2130,7 +2142,13 @@ $('monOut').addEventListener('change', async e => {
 document.addEventListener('click', e => { if (e.target.closest('[data-sheet="sendSheet"]')) fillOutputs(); });
 function paintMonitor(note){
   $('monBtn').setAttribute('aria-pressed', String(MON.on));
-  $('monState').textContent = note || (MON.on ? 'On' : 'Off');
+  let txt = MON.on ? 'On' : 'Off';
+  if (MON.on && MON.via === 'direct' && ctx) {           // how long the sound takes in this device: input + engine + output
+    let inLat = 0; try { inLat = S.stream?._raw?.getAudioTracks()[0]?.getSettings?.().latency || 0; } catch {}
+    const ms = Math.round(((ctx.baseLatency || 0) + (ctx.outputLatency || 0) + inLat) * 1000);
+    if (ms > 0) txt = `On · ${ms} ms`;
+  }
+  $('monState').textContent = note || txt;
 }
 $('monBtn').addEventListener('click', () => setMonitor(!MON.on));
 async function swapStream(ns){
@@ -2143,7 +2161,7 @@ async function swapStream(ns){
   const old = S.stream; S.stream = ns;
   if (DL.node) { try { old?._mute.disconnect(DL.node) } catch {} ns._mute.connect(DL.node); }
   if (MON.on) {
-    if (MON.via === 'webaudio') { try { old?._mute.disconnect(MON.node) } catch {} ns._mute.connect(MON.node); }
+    if (MON.via === 'direct') { try { old?._mute.disconnect(MON.node) } catch {} ns._mute.connect(MON.node); }
     else { MON.el.srcObject = ns; MON.el.play().catch(() => {}); }
   }
   stopStream(old);
