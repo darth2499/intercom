@@ -482,6 +482,7 @@ button.stat:active{opacity:.7}
 .console .note{margin:-4px 4px 0;color:var(--label3)}
 .console .note.warn{color:var(--orange)}
 .diag-row{align-items:flex-start}
+.mon-diag{font-family:var(--mono);font-size:11px!important;word-break:break-word}
 .fmt-row{cursor:pointer}
 .fmt-row:active{opacity:.7}
 .diag-row small{font-family:var(--mono);font-size:11px;line-height:15px;word-break:break-word;color:var(--label3)}
@@ -832,6 +833,7 @@ button.stat:active{opacity:.7}
       <button class="bigbtn" id="newCode"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></span>New room code</button>
       <p class="note" data-awake>Keep this screen on while sending.</p>
       <p class="note relay-note" id="relayNote">Relay backup: Checking…</p>
+      <p class="note mon-diag" id="monDiag"></p>
     </div>
   </section>
 
@@ -2065,15 +2067,17 @@ function monWebAudio(on){
   if (on && S.stream) S.stream._mute.connect(MON.node);
 }
 function setMonitor(on){
-  MON.on = !!on && !!S.stream;
+  MON.on = !!on && !!S.stream; if (MON.on) MON.tried = true;
   if (!MON.el) { MON.el = document.createElement('audio'); MON.el.setAttribute('playsinline', ''); document.body.appendChild(MON.el); }
   const el = MON.el, my = MON.gen = (MON.gen || 0) + 1;
   monWebAudio(false); MON.via = '';
-  if (MON.on) {
+  if (MON.on && /Firefox\//.test(navigator.userAgent)) {   // Firefox plays the page's stream silently in a player: use Web Audio
+    ensureCtx(); monWebAudio(true); MON.via = 'webaudio';
+  } else if (MON.on) {
     ensureCtx();
     el.srcObject = S.stream; el.muted = false; el.volume = 1;
     const t0 = el.currentTime;
-    el.play().catch(() => {});
+    MON.err = ''; el.play().catch(e => { MON.err = e.name || String(e); });
     setTimeout(() => {
       if (my !== MON.gen || !MON.on) return;
       if (!el.paused && el.currentTime > t0) { MON.via = 'player'; return; }
@@ -2084,6 +2088,16 @@ function setMonitor(on){
   } else { try { el.pause(); } catch {} el.srcObject = null; }
   paintMonitor();
 }
+// Diagnostics for browsers where Listen stays silent (shown at the bottom of Send settings while Listen is on)
+function monDiag(){
+  if (!MON.on && !MON.tried) return '';
+  const el = MON.el, t = S.stream?.getAudioTracks()[0], raw = S.stream?._raw?.getAudioTracks()[0];
+  let rs = ''; try { rs = raw?.getSettings?.().sampleRate || ''; } catch {}
+  return `Listen check · ${MON.on ? 'on' : 'off'} via ${MON.via || '…'} · player ${el ? (el.paused ? 'paused' : 'playing') + ' t=' + el.currentTime.toFixed(1) + (el.mozHasAudio !== undefined ? ' hasAudio=' + el.mozHasAudio : '') : '–'}`
+    + `${MON.err ? ' · play error ' + MON.err : ''} · audio ${ctx?.state || '–'} ${ctx?.sampleRate || ''} Hz · out ch ${ctx?.destination.maxChannelCount ?? '–'}`
+    + ` · feed ${t ? t.readyState + (t.enabled ? '' : ' disabled') + (t.muted ? ' muted' : '') : '–'} · input ${rs || '?'} Hz · ${(navigator.userAgent.match(/(Firefox|Chrome|Safari)\/[\d.]+/) || [''])[0]}`;
+}
+setInterval(() => { const d = $('monDiag'); if (d) d.textContent = monDiag(); }, 1000);
 function paintMonitor(note){
   $('monBtn').setAttribute('aria-pressed', String(MON.on));
   $('monState').textContent = note || (MON.on ? 'On' : 'Off');
