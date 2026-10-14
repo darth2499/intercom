@@ -13,6 +13,18 @@
 <meta name="theme-color" content="#0c0d0f" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0c0d0f" media="(prefers-color-scheme: dark)">
 <title>Intercom</title>
+<meta name="description" content="Listen to the mixer live on your phone.">
+<!-- Link previews (iMessage etc.): one banner for every link to this page. Share / Copy link use the Worker's
+     /r/1234 link instead, whose banner also shows the room code. -->
+<meta property="og:title" content="Join room · Intercom">
+<meta property="og:site_name" content="Intercom">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://ifb.asahina.me/og.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Intercom">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://ifb.asahina.me/og.png">
 <style>
 :root{
   --bg:#f2f2f7; --card:#fff; --label:#000; --label2:rgba(60,60,67,.6); --label3:rgba(60,60,67,.3);
@@ -2269,9 +2281,18 @@ const roomUrl = code => location.origin + location.pathname + '?code=' + code;  
 // Link for Share / Copy: goes through the Worker so messages show a preview picture with the room code,
 // then forwards to roomUrl. Falls back to the plain link until the Worker has said it can do this.
 const shareUrl = code => Relay.share ? RELAY_URL + 'r/' + code : roomUrl(code);
+async function checkShare(){                         // cheap check (no relay pass): can this Worker make share links?
+  if (Relay.share) return;
+  try {
+    const r = await fetch(RELAY_URL + 'share', { cache: 'no-store' });
+    if ((await r.json()).share) { Relay.share = true; try { localStorage.setItem('ic-share', '1'); } catch {} }
+  } catch {}
+}
+checkShare();
 /* QR code: point any phone's camera at it to open the Listen page straight into this room. */
 function showQr(){
   if (!S.code) return;
+  checkShare();
   const url = roomUrl(S.code), q = qrcode(0, 'M'); q.addData(url); q.make();
   const n = q.getModuleCount(), quiet = 4, cells = n + quiet * 2, cv = $('qrCv');
   const css = Math.min(240, window.innerWidth - 120), px = Math.max(1, Math.floor(css * (devicePixelRatio || 1) / cells));
