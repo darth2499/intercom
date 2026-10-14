@@ -269,7 +269,7 @@ a.tile{text-decoration:none;color:inherit}
    Dark, precise, like a digital mixer: graphite surfaces, hairline borders, monospaced numbers,
    one amber "tally" accent; red only for on-air, mute and clipping. Always dark. */
 .console{
-  --bg:#0c0d0f; --card:#141518; --s2:#1b1c20; --line:#26282d;
+  --bg:#0c0d0f; --card:#141518; --s2:#1b1c20; --line:#26282d; --line2:#34363c;
   --label:#f2f2f3; --label2:#9a9ca3; --label3:#5f626a;
   --sep:#26282d; --fill:#0c0d0f; --track:#2a2c31; --seg-on:#26282d;
   --acc:#ffb020; --blue:#ffb020; --green:#32d74b; --orange:#ff9f0a; --red:#ff453a; --yellow:#ffd60a;
@@ -572,6 +572,12 @@ button.stat:active{opacity:.7}
 .console #toneWrap .tone button{color:var(--acc)}
 
 /* Mute: the big bottom button */
+.monbtn{width:100%;height:56px;margin-bottom:10px;border-radius:18px;border:1.5px solid var(--line2);background:var(--card);color:var(--label);display:flex;align-items:center;justify-content:center;gap:10px;font-size:17px;font-weight:700;letter-spacing:.04em;transition:background .15s,border-color .15s}
+.monbtn svg{width:22px;height:22px;color:var(--label2)}
+.monbtn small{font-size:12px;font-weight:600;color:var(--label3);letter-spacing:.08em;text-transform:uppercase;min-width:26px;text-align:left}
+.monbtn:active{transform:scale(.985)}
+.monbtn[aria-pressed="true"]{border-color:rgba(255,176,32,.75);background:linear-gradient(180deg,rgba(255,176,32,.16),rgba(255,176,32,.05))}
+.monbtn[aria-pressed="true"] svg,.monbtn[aria-pressed="true"] small{color:var(--acc)}
 .mutebtn{position:relative;height:88px;border-radius:22px;border:1.5px solid var(--line2);background:var(--card);display:flex;align-items:center;justify-content:center;gap:14px;cursor:pointer;user-select:none;-webkit-user-select:none;transition:background .15s,border-color .15s,transform .1s}
 .mutebtn:active{transform:scale(.985)}
 .mutebtn input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
@@ -790,6 +796,7 @@ button.stat:active{opacity:.7}
 
       <div class="spacer"></div>
       <div class="dock">
+        <button class="monbtn" id="monBtn" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 14v-2a9 9 0 0 1 18 0v2"/><path d="M21 15a2 2 0 0 1-2 2h-1v-6h1a2 2 0 0 1 2 2zM3 15a2 2 0 0 0 2 2h1v-6H5a2 2 0 0 0-2 2z"/></svg><b>Listen</b><small id="monState">Off</small></button>
         <label class="mutebtn" id="muteRow"><input type="checkbox" id="muteSw" aria-label="Mute"><span class="mi on-off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg></span><span class="mi on-on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="m16 9 6 6M22 9l-6 6"/></svg></span><b class="on-off">MUTE</b><b class="on-on">MUTED</b><small id="muteHint" class="vh"></small></label>
       </div>
     </div>
@@ -988,7 +995,7 @@ const ICE = [
    Add ?relay to the page address to force the relay (for testing). */
 const RELAY_URL = 'https://intercom-turn.imsk8erboi.workers.dev/';
 const FORCE_RELAY = new URLSearchParams(location.search).has('relay');
-const Relay = { servers: null, exp: 0, status: 'checking', reason: '', share: (() => { try { return localStorage.getItem('ic-share') === '1'; } catch { return false; } })() };
+const Relay = { servers: null, exp: 0, status: 'checking', reason: '' };
 async function getRelay(){
   if (Date.now() < Relay.exp) return;
   // A relay pass lasts hours: keep it on the phone so reloads and the other page reuse it
@@ -999,7 +1006,6 @@ async function getRelay(){
     const r = await fetch(RELAY_URL, { signal: ctl.signal, cache: 'no-store' });
     clearTimeout(t);
     const j = await r.json();
-    if (j.share) { Relay.share = true; try { localStorage.setItem('ic-share', '1'); } catch {} }   // this Worker makes share links with a picture of the room code
     const turn = (j.iceServers || []).filter(x => [].concat(x.urls).some(u => /^turns?:/.test(u)));
     if (j.relay && turn.length) {
       Object.assign(Relay, { servers: turn, status: 'ready', reason: '', exp: Date.now() + ((j.ttl || 21600) - 900) * 1000 });
@@ -2045,6 +2051,18 @@ function applyBitrate(pc, tries = 0, stable = false){
   if (pending && tries < 10 && pc.connectionState !== 'closed') setTimeout(() => applyBitrate(pc, tries + 1, stable), 500);
 }
 
+/* ---- Listen on the sending phone: hear exactly what listeners get (after gain and mute) ---- */
+const MON = { on:false, node:null };
+function setMonitor(on){
+  MON.on = !!on && !!S.stream;
+  const c = ensureCtx();
+  if (!MON.node) { MON.node = c.createGain(); MON.node.connect(c.destination); }
+  try { S.stream?._mute.disconnect(MON.node); } catch {}
+  if (MON.on) S.stream._mute.connect(MON.node);
+  $('monBtn').setAttribute('aria-pressed', String(MON.on));
+  $('monState').textContent = MON.on ? 'On' : 'Off';
+}
+$('monBtn').addEventListener('click', () => setMonitor(!MON.on));
 async function swapStream(ns){
   const nt = ns.getAudioTracks()[0];
   for (const e of S.listeners.values()){
@@ -2054,6 +2072,7 @@ async function swapStream(ns){
   }
   const old = S.stream; S.stream = ns;
   if (DL.node) { try { old?._mute.disconnect(DL.node) } catch {} ns._mute.connect(DL.node); }
+  if (MON.node) { try { old?._mute.disconnect(MON.node) } catch {} if (MON.on) ns._mute.connect(MON.node); }
   stopStream(old);
   if (DL.cfg && (DL.cfg.ch !== chans())) dlRestart();
   startMeter('sendMeter', 'sendDb', S.stream._tap, chans()); attachTone(S.stream._pre, chans());
@@ -2147,7 +2166,7 @@ function toneTick(){
       if (toneShown()) {
         $('toneTitle').textContent = 'Level set';
         $('toneSub').textContent = `Tone ended · gain ${gainText(S.gainDb)}`;
-        clearTimeout(Tone.hideT); Tone.hideT = setTimeout(() => showToneBanner(false), 8000);
+        clearTimeout(Tone.hideT); Tone.hideT = setTimeout(() => showToneBanner(false), 4000);
       }
     }
     return;
@@ -2185,6 +2204,7 @@ function applyTone({ db, hz }){
                              : 'Tone detected';
   $('toneSub').textContent = `${fmtHz(hz)} · gain set to ${gainText(S.gainDb)}`;
   try { navigator.vibrate?.(40) } catch {}
+  Tone.hideT = setTimeout(() => showToneBanner(false), want > 12 || want < -80 ? 10000 : 6000);   // it covers the meter: don't stay
   // Calibrated → auto-gain switches itself off, so later tones (or a sustained note) can't move the gain.
   // (Only for this session — your saved preference stays on, so the next shoot is armed again.)
   if (want <= 12 && want >= -80) { Tone.on = false; Tone.autoDone = true; setToneRate(); broadcastState(); }
@@ -2217,7 +2237,8 @@ function setToneRef(v){
 $('toneSw').addEventListener('change', e => setAutoTone(e.target.checked));
 $('toneRef').addEventListener('change', e => setToneRef(Number(e.target.value)));
 paintToneRef();
-$('toneUndo').addEventListener('click', () => { setGain(Tone.prevGain); showToneBanner(false); });
+$('toneUndo').addEventListener('click', e => { e.stopPropagation(); setGain(Tone.prevGain); showToneBanner(false); });
+$('toneBanner').addEventListener('click', () => { clearTimeout(Tone.hideT); showToneBanner(false); });   // tap to dismiss
 paintToneState();
 paintCtl();
 
@@ -2230,6 +2251,7 @@ function stopSend(){
   [...S.listeners.values()].forEach(dropListener);
   dlStop();
   try { S.peer?.destroy() } catch {} S.peer = null;
+  setMonitor(false);
   stopStream(S.stream); S.stream = null;
   stopMeter('sendMeter'); detachTone(); clearInterval(RM.timer); RM.timer = null; releaseAwake(); show('home'); paintResume();
 }
@@ -2278,21 +2300,10 @@ $('newCode').addEventListener('click', () => {
   S.idRetries = 0; setPill($('sendPill'), 'Starting…'); openHostPeer();
 });
 const roomUrl = code => location.origin + location.pathname + '?code=' + code;   // opens Listen and joins this room (used by the QR code)
-// Link for Share / Copy: goes through the Worker so messages show a preview picture with the room code,
-// then forwards to roomUrl. Falls back to the plain link until the Worker has said it can do this.
-const shareUrl = code => Relay.share ? RELAY_URL + 'r/' + code : roomUrl(code);
-async function checkShare(){                         // cheap check (no relay pass): can this Worker make share links?
-  if (Relay.share) return;
-  try {
-    const r = await fetch(RELAY_URL + 'share', { cache: 'no-store' });
-    if ((await r.json()).share) { Relay.share = true; try { localStorage.setItem('ic-share', '1'); } catch {} }
-  } catch {}
-}
-checkShare();
+const shareUrl = roomUrl;                            // Share / Copy link: the plain room link (shows the og.png banner in messages)
 /* QR code: point any phone's camera at it to open the Listen page straight into this room. */
 function showQr(){
   if (!S.code) return;
-  checkShare();
   const url = roomUrl(S.code), q = qrcode(0, 'M'); q.addData(url); q.make();
   const n = q.getModuleCount(), quiet = 4, cells = n + quiet * 2, cv = $('qrCv');
   const css = Math.min(240, window.innerWidth - 120), px = Math.max(1, Math.floor(css * (devicePixelRatio || 1) / cells));
