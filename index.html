@@ -2052,15 +2052,24 @@ function applyBitrate(pc, tries = 0, stable = false){
 }
 
 /* ---- Listen on the sending phone: hear exactly what listeners get (after gain and mute) ---- */
-const MON = { on:false, node:null };
+// Played through an <audio> element (the outgoing stream itself) rather than Web Audio's output: that is what
+// browsers reliably send to the current output device (headphones), even while the mic/interface is open.
+const MON = { on:false, el:null };
 function setMonitor(on){
   MON.on = !!on && !!S.stream;
-  const c = ensureCtx();
-  if (!MON.node) { MON.node = c.createGain(); MON.node.connect(c.destination); }
-  try { S.stream?._mute.disconnect(MON.node); } catch {}
-  if (MON.on) S.stream._mute.connect(MON.node);
+  if (!MON.el) { MON.el = document.createElement('audio'); MON.el.setAttribute('playsinline', ''); MON.el.autoplay = true; document.body.appendChild(MON.el); }
+  const el = MON.el;
+  if (MON.on) {
+    ensureCtx();
+    if (el.srcObject !== S.stream) el.srcObject = S.stream;
+    el.muted = false; el.volume = 1;
+    el.play().then(() => paintMonitor()).catch(() => { MON.on = false; paintMonitor('Blocked'); });
+  } else { try { el.pause(); } catch {} el.srcObject = null; }
+  paintMonitor();
+}
+function paintMonitor(note){
   $('monBtn').setAttribute('aria-pressed', String(MON.on));
-  $('monState').textContent = MON.on ? 'On' : 'Off';
+  $('monState').textContent = note || (MON.on ? 'On' : 'Off');
 }
 $('monBtn').addEventListener('click', () => setMonitor(!MON.on));
 async function swapStream(ns){
@@ -2072,7 +2081,7 @@ async function swapStream(ns){
   }
   const old = S.stream; S.stream = ns;
   if (DL.node) { try { old?._mute.disconnect(DL.node) } catch {} ns._mute.connect(DL.node); }
-  if (MON.node) { try { old?._mute.disconnect(MON.node) } catch {} if (MON.on) ns._mute.connect(MON.node); }
+  if (MON.on && MON.el) { MON.el.srcObject = ns; MON.el.play().catch(() => {}); }
   stopStream(old);
   if (DL.cfg && (DL.cfg.ch !== chans())) dlRestart();
   startMeter('sendMeter', 'sendDb', S.stream._tap, chans()); attachTone(S.stream._pre, chans());
