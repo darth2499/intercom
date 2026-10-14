@@ -1742,7 +1742,7 @@ async function startSend(){
   try { S.stream = await getStream(S.mode, S.deviceId); }
   catch (e) { setPill($('sendPill'), micError(e), 'err'); return; }
   if (!S.active) { stopStream(S.stream); S.stream = null; return; }
-  paintModeNote(); fillInputs(); checkSource();
+  paintModeNote(); fillInputs(); fillOutputs(); checkSource();
   startMeter('sendMeter', 'sendDb', S.stream._tap, chans()); attachTone(S.stream._pre, chans());
   S.code = store.get('ic-code') || String(1000 + Math.floor(Math.random() * 9000));
   S.idRetries = 0;
@@ -2336,7 +2336,7 @@ $('inputSel').addEventListener('change', async e => {
   S.deviceId = e.target.value; store.set('ic-device', S.deviceId);
   try { await swapStream(await getStream(S.mode, S.deviceId)); checkSource(); } catch (err) { setPill($('sendPill'), micError(err), 'err'); }
 });
-navigator.mediaDevices?.addEventListener?.('devicechange', () => { if (S.active && S.stream) { fillInputs(); S.recovering = false; senderWatchdog(); } });
+navigator.mediaDevices?.addEventListener?.('devicechange', () => { if (S.active && S.stream) { fillInputs(); fillOutputs(); S.recovering = false; senderWatchdog(); } });
 /* ---- Lock screen: in a bag, stray touches can't change or stop anything ---- */
 let lockT = 0, lockTick = 0;
 function setLock(on){
