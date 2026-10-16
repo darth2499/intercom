@@ -4,7 +4,7 @@
    copy as a fallback after 3 s or when offline. Talkback (talk.html) is saved too, so it opens
    with no internet at all. */
 const CACHE = 'mixremote-v5';            // bump only if you change this file's caching rules
-const SHELL = ['./', 'index.html', 'talk.html', 'peerjs.min.js', 'manifest.webmanifest'];
+const SHELL = ['./', 'index.html', 'talk.html', 'peerjs.min.js', 'jsqr.min.js', 'rnnoise.wasm', 'manifest.webmanifest'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
