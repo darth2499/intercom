@@ -3,8 +3,8 @@
    The pages are fetched fresh when online (so updates arrive on their own), with the saved
    copy as a fallback after 3 s or when offline. Talkback (talk.html) is saved too, so it opens
    with no internet at all. */
-const CACHE = 'mixremote-v2';            // bump only if you change this file's caching rules
-const SHELL = ['./', 'index.html', 'talk.html', 'peerjs.min.js', 'manifest.webmanifest', 'icon-180.png?v=2', 'icon-192.png?v=2', 'icon-512.png?v=2'];
+const CACHE = 'mixremote-v3';            // bump only if you change this file's caching rules
+const SHELL = ['./', 'index.html', 'talk.html', 'peerjs.min.js', 'manifest.webmanifest', 'apple-touch-icon.png', 'mr-192.png', 'mr-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
