@@ -49,11 +49,11 @@ button,select,input{font:inherit;color:inherit}
 button{border:0;background:none;padding:0;cursor:pointer}
 [hidden]{display:none!important}
 
-.app{max-width:480px;margin:0 auto;
+html,body{overscroll-behavior:none}
+.app{max-width:480px;margin:0 auto;box-sizing:border-box;min-height:100dvh;display:flex;flex-direction:column;
   padding:calc(env(safe-area-inset-top) + 8px) 20px calc(env(safe-area-inset-bottom) + 20px)}
-.screen{display:none;flex-direction:column;gap:14px;
-  min-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 28px)}
-.screen.active{display:flex;animation:in .38s cubic-bezier(.2,.8,.2,1)}
+.screen{display:none;flex-direction:column;gap:14px;min-height:0}
+.screen.active{display:flex;flex:1 0 auto;animation:in .38s cubic-bezier(.2,.8,.2,1)}
 @keyframes in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 .spacer{flex:1}
 
@@ -223,7 +223,7 @@ a.tile{text-decoration:none;color:inherit}
 
 @media (min-width: 860px){
   .app{max-width:1060px;padding-left:40px;padding-right:40px}
-  .screen{min-height:0;gap:18px}
+  .screen,.screen.active{min-height:0;gap:18px;flex:none}
   .spacer{display:none}
   .navbar{margin:8px 0 6px}
   .nav-title{font-size:20px}
@@ -986,7 +986,7 @@ button.stat:active{opacity:.7}
               sender watchdog re-acquires a lost input, listener auto-resyncs a bloated buffer. */
 
 /* ============ Config ============ */
-const VERSION = '0.17.5-beta';                     // shown on the home screen — go to 1.0.0 when ready
+const VERSION = '0.17.6-beta';                     // shown on the home screen — go to 1.0.0 when ready
 const PREFIX = 'asahina-intercom-';            // namespace for room ids on the PeerJS server
 const ICE = [
   { urls: 'stun:stun.l.google.com:19302' },
