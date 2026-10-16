@@ -1,0 +1,18 @@
+/
+  Cache-Control: no-cache
+/*.html
+  Cache-Control: no-cache
+/sw.js
+  Cache-Control: no-cache
+/*.png
+  Cache-Control: public, max-age=86400
+/*.wasm
+  Cache-Control: public, max-age=86400
+/*.svg
+  Cache-Control: public, max-age=86400
+/peerjs.min.js
+  Cache-Control: public, max-age=86400
+/jsqr.min.js
+  Cache-Control: public, max-age=86400
+/manifest.webmanifest
+  Content-Type: application/manifest+json
