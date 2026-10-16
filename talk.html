@@ -2128,7 +2128,7 @@ function txPaint(){
   const txv = big;                                      // (the mixer phone keeps its panel)
   if ($('room').classList.contains('txon') !== txv) { $('room').classList.toggle('txon', txv); paint(); }
   // Same person talking again (to the same people) → one block, name shown once until someone else talks.
-  box.innerHTML = list.length ? list.map((l, i) => { const pv = list[i - 1], cont = pv && l.at - pv.at < 60000 && (pv.from || pv.who) === (l.from || l.who) && lineName(pv) === lineName(l) && (pv.toLbl || '') === (l.toLbl || '') && !!pv.typed === !!l.typed && !!pv.mix === !!l.mix;
+  box.innerHTML = list.length ? list.map((l, i) => { const pv = list[i - 1], cont = pv && l.at - pv.at < 60000 && (pv.from || pv.who) === (l.from || l.who) && lineName(pv) === lineName(l) && (pv.toLbl || '') === (l.toLbl || '') && !!pv.typed === !!l.typed && !l.mix && !pv.mix;
     return `<div class="tx-line${l.pending ? ' pending' : ''}${cont ? ' cont' : ''}" style="--pc:${colorOfLine(l) || 'var(--fill)'}"><span class="who">${esc(lineName(l))}</span><span class="at">${fmtClock(l.at)}</span>${l.to ? `<span class="to">to ${esc(l.toLbl || 'some people')}</span>` : ''}${l.typed ? '<span class="to typed">typed</span>' : ''}${l.mix ? '<span class="to mix">mixer</span>' : ''}<span class="tx">${l.pending ? (TX.limit ? 'Waiting · daily limit reached' : !navigator.onLine ? 'Waiting for internet' : 'Transcribing…') : esc(l.text)}</span></div>`; }).join('')
     : `<div class="empty">${TX.on ? 'Talk or type — it all shows up here.' : 'Type a message below.'}</div>`;
   if (atEnd) box.scrollTop = box.scrollHeight;
@@ -2498,6 +2498,7 @@ setInterval(() => { const now = Date.now(); if (now - tickAt > 6000) onResume('w
    left or lost signal), whoever grabs it first takes over. */
 const TALK_PREFIX = 'asahina-talk-';
 const RELAY_URL = 'https://intercom-turn.imsk8erboi.workers.dev/';
+const JOIN_URL = 'https://join.mixremote.app/';   // not live yet
 const ROOM = { code: '', rid: '', since: 0, est: false, server: null, beacon: null, claiming: false, joining: null, relay: null, relayExp: 0 };
 const TEST_ICE = !!store.get('ic-talk-ice');
 const hasNet = () => navigator.onLine && typeof Peer === 'function';
@@ -2703,7 +2704,7 @@ addEventListener('offline', () => { ICE_CFG = TEST_ICE ? ICE_CFG : { iceServers:
    Every tab on this phone/computer shares one identity, so only one may be in the room (like WhatsApp Web).
    A browser lock marks the active tab. "Use here" takes the lock; the old tab hears it right away,
    leaves the room and reloads into the "moved to another tab" screen. */
-const VERSION = '0.16.1-beta';                     // same as the home page (index.html) — bump both together
+const VERSION = '0.16.2-beta';                     // same as the home page (index.html) — bump both together
 const TAB_LOCK = 'ic-talk-active';
 let tabClaim = null;
 function showBusy(moved){
