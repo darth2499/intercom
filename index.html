@@ -986,7 +986,7 @@ button.stat:active{opacity:.7}
               sender watchdog re-acquires a lost input, listener auto-resyncs a bloated buffer. */
 
 /* ============ Config ============ */
-const VERSION = '0.16.3-beta';                     // shown on the home screen — go to 1.0.0 when ready
+const VERSION = '0.16.4-beta';                     // shown on the home screen — go to 1.0.0 when ready
 const PREFIX = 'asahina-intercom-';            // namespace for room ids on the PeerJS server
 const ICE = [
   { urls: 'stun:stun.l.google.com:19302' },
@@ -999,7 +999,7 @@ const ICE = [
    Phones still connect directly when they can; the relay is only used when that fails.
    Add ?relay to the page address to force the relay (for testing). */
 const RELAY_URL = 'https://intercom-turn.imsk8erboi.workers.dev/';
-const JOIN_URL = 'https://join.mixremote.app/';   // not live yet — shareUrl stays roomUrl
+const JOIN_URL = 'https://join.mixremote.app/';   // Share / Copy link base (Worker page with the room-code banner)
 const FORCE_RELAY = new URLSearchParams(location.search).has('relay');
 const Relay = { servers: null, exp: 0, status: 'checking', reason: '' };
 async function getRelay(){
@@ -2396,7 +2396,7 @@ $('newCode').addEventListener('click', () => {
   S.idRetries = 0; setPill($('sendPill'), 'Starting…'); openHostPeer();
 });
 const roomUrl = code => location.origin + location.pathname + '?code=' + code;   // opens Listen and joins this room (used by the QR code)
-const shareUrl = roomUrl;                            // Share / Copy link: the plain room link (shows the og.png banner in messages)
+const shareUrl = code => JOIN_URL + code;            // Share / Copy link: join.mixremote.app/1234 (link preview shows the code); the QR keeps roomUrl
 /* QR code: point any phone's camera at it to open the Listen page straight into this room. */
 function showQr(){
   if (!S.code) return;
