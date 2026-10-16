@@ -3,11 +3,15 @@
    The pages are fetched fresh when online (so updates arrive on their own), with the saved
    copy as a fallback after 3 s or when offline. Talkback (talk.html) is saved too, so it opens
    with no internet at all. */
-const CACHE = 'mixremote-v5';            // bump only if you change this file's caching rules
+const CACHE = 'mixremote-v6';            // bump only if you change this file's caching rules
 const SHELL = ['./', 'index.html', 'talk.html', 'peerjs.min.js', 'jsqr.min.js', 'rnnoise.wasm', 'manifest.webmanifest'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then(c => Promise.all(SHELL.map(async u => {
+    const r = await fetch(u, { cache: 'reload' });
+    if (!r.ok) throw new Error(u + ' ' + r.status);
+    await c.put(u, await clean(r));
+  }))).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys()
@@ -26,12 +30,15 @@ self.addEventListener('fetch', e => {
   }
 });
 
+// Some hosts redirect /talk.html → /talk. A redirected response can't be handed back for a page load, so keep a plain copy.
+async function clean(r){ return r.redirected ? new Response(await r.blob(), { status: r.status, statusText: r.statusText, headers: r.headers }) : r; }
+
 // A page: newest from the network, saved copy if the network is slow (3 s) or offline.
 async function pageFirstFromNetwork(req){
   const cache = await caches.open(CACHE);
-  const name = /talk\.html$/.test(new URL(req.url).pathname) ? 'talk.html' : 'index.html';   // each page saved under its own name
+  const name = /\/talk(\.html)?$/.test(new URL(req.url).pathname) ? 'talk.html' : 'index.html';   // each page saved under its own name
   const fresh = fetch(req, { cache: 'no-store' }).then(r => {
-    if (r.ok) cache.put(name, r.clone());
+    if (r.ok) clean(r.clone()).then(c => cache.put(name, c));
     return r;
   });
   try {
