@@ -3,7 +3,7 @@
    The pages are fetched fresh when online (so updates arrive on their own), with the saved
    copy as a fallback after 3 s or when offline. Talkback (talk.html) is saved too, so it opens
    with no internet at all. */
-const CACHE = 'intercom-v2';            // bump only if you change this file's caching rules
+const CACHE = 'mixremote-v1';            // bump only if you change this file's caching rules
 const SHELL = ['./', 'index.html', 'talk.html', 'peerjs.min.js', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {

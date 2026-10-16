@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<meta name="apple-mobile-web-app-title" content="Intercom">
+<meta name="apple-mobile-web-app-title" content="MixRemote">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
@@ -640,7 +640,7 @@ b.sm{font-size:15px}
 
 <div class="app">
   <nav class="navbar">
-    <a class="back" href="./"><svg viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2 2 10l8 8"/></svg>Intercom</a>
+    <a class="back" href="./"><svg viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2 2 10l8 8"/></svg>MixRemote</a>
     <span class="nav-title" id="navTitle"></span><span class="navbtns"><button class="navbtn nb" id="mixBtn" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>Mix</button><button class="navbtn nb" id="toolsBtn" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>Room</button></span>
   </nav>
   <div class="tb-status" id="tbStatus" hidden>
@@ -2704,7 +2704,7 @@ addEventListener('offline', () => { ICE_CFG = TEST_ICE ? ICE_CFG : { iceServers:
    Every tab on this phone/computer shares one identity, so only one may be in the room (like WhatsApp Web).
    A browser lock marks the active tab. "Use here" takes the lock; the old tab hears it right away,
    leaves the room and reloads into the "moved to another tab" screen. */
-const VERSION = '0.16.4-beta';                     // same as the home page (index.html) — bump both together
+const VERSION = '0.17.0-beta';                     // same as the home page (index.html) — bump both together
 const TAB_LOCK = 'ic-talk-active';
 let tabClaim = null;
 function showBusy(moved){

@@ -1,6 +1,6 @@
 {
-  "name": "Intercom",
-  "short_name": "Intercom",
+  "name": "MixRemote",
+  "short_name": "MixRemote",
   "description": "Stream your mixer to another phone.",
   "start_url": "./",
   "scope": "./",

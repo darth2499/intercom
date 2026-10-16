@@ -6,23 +6,23 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<meta name="apple-mobile-web-app-title" content="Intercom">
+<meta name="apple-mobile-web-app-title" content="MixRemote">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <meta name="theme-color" content="#0c0d0f" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0c0d0f" media="(prefers-color-scheme: dark)">
-<title>Intercom</title>
+<title>MixRemote</title>
 <meta name="description" content="Listen to the mixer live on your phone.">
 <!-- Link previews (iMessage etc.): one banner for every link to this page. Share / Copy link use the Worker's
      /r/1234 link instead, whose banner also shows the room code. -->
-<meta property="og:title" content="Join room · Intercom">
-<meta property="og:site_name" content="Intercom">
+<meta property="og:title" content="Join room · MixRemote">
+<meta property="og:site_name" content="MixRemote">
 <meta property="og:type" content="website">
 <meta property="og:image" content="https://mixremote.app/og.png">
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Intercom">
+<meta property="og:image:alt" content="MixRemote">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://mixremote.app/og.png">
 <style>
@@ -714,7 +714,7 @@ button.stat:active{opacity:.7}
   <section class="screen active console" id="home">
     <div class="spacer"></div>
     <header class="large-title">
-      <h1>Intercom</h1>
+      <h1>Mix<span style="color:var(--acc)">Remote</span></h1>
       <p>Stream your mixer to another phone.</p>
     </header>
     <div class="send-stack">
@@ -754,7 +754,7 @@ button.stat:active{opacity:.7}
   <!-- SEND: already sending in another tab -->
   <section class="screen console" id="sendBusy">
     <nav class="navbar">
-      <button class="back" data-back><svg viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2 2 10l8 8"/></svg>Intercom</button>
+      <button class="back" data-back><svg viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2 2 10l8 8"/></svg>MixRemote</button>
       <span class="nav-title">Send</span><span></span>
     </nav>
     <header class="large-title">
@@ -767,7 +767,7 @@ button.stat:active{opacity:.7}
   <!-- SEND -->
   <section class="screen console" id="send">
     <nav class="navbar">
-      <button class="back" data-back><svg viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2 2 10l8 8"/></svg>Intercom</button>
+      <button class="back" data-back><svg viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2 2 10l8 8"/></svg>MixRemote</button>
       <span class="navr"><button class="nb" data-sheet="sendSheet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16"/><rect x="3.5" y="13" width="5" height="3" rx="1" fill="currentColor"/><rect x="9.5" y="7" width="5" height="3" rx="1" fill="currentColor"/><rect x="15.5" y="11" width="5" height="3" rx="1" fill="currentColor"/></svg>Settings</button><button class="nb stop" id="stopSend"><i></i>Stop</button></span>
     </nav>
 
@@ -843,7 +843,7 @@ button.stat:active{opacity:.7}
   <!-- LISTEN -->
   <section class="screen console" id="listen">
     <nav class="navbar">
-      <button class="back" data-back><svg viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2 2 10l8 8"/></svg>Intercom</button>
+      <button class="back" data-back><svg viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2 2 10l8 8"/></svg>MixRemote</button>
       <span class="navr"><button class="nb live-only" data-sheet="listenSheet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16M12 4v16M18 4v16"/><rect x="3.5" y="13" width="5" height="3" rx="1" fill="currentColor"/><rect x="9.5" y="7" width="5" height="3" rx="1" fill="currentColor"/><rect x="15.5" y="11" width="5" height="3" rx="1" fill="currentColor"/></svg>Settings</button></span>
     </nav>
 
@@ -986,7 +986,7 @@ button.stat:active{opacity:.7}
               sender watchdog re-acquires a lost input, listener auto-resyncs a bloated buffer. */
 
 /* ============ Config ============ */
-const VERSION = '0.16.4-beta';                     // shown on the home screen — go to 1.0.0 when ready
+const VERSION = '0.17.0-beta';                     // shown on the home screen — go to 1.0.0 when ready
 const PREFIX = 'asahina-intercom-';            // namespace for room ids on the PeerJS server
 const ICE = [
   { urls: 'stun:stun.l.google.com:19302' },
@@ -2423,7 +2423,7 @@ $('shareBtn').addEventListener('click', async () => {
   if (!S.code) return;
   const url = shareUrl(S.code);
   // URL only: with text + url, iOS "Copy" copies just the text. The room code is in the link anyway.
-  try { if (navigator.share) { await navigator.share({ title:`Intercom · room ${S.code}`, url }); return; } } catch { return; }
+  try { if (navigator.share) { await navigator.share({ title:`MixRemote · room ${S.code}`, url }); return; } } catch { return; }
   try { await navigator.clipboard.writeText(url); flashBtn($('shareBtn'), 'Link copied'); } catch {}
 });
 
