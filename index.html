@@ -229,7 +229,9 @@ a.tile{text-decoration:none;color:inherit}
   .nav-title{font-size:20px}
 
   /* Home: hero + two big tiles */
-  #home.active{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;align-content:center;min-height:calc(100dvh - 60px)}
+  #home.active{display:grid;grid-template-columns:1fr repeat(2,minmax(0,368px)) 1fr;gap:24px;align-content:center;min-height:calc(100dvh - 60px)}
+  #home .send-stack{grid-column:2}
+  #home #goListen{grid-column:3}
   #home .large-title{grid-column:1/-1;text-align:center;padding:0 0 18px}
   #home .large-title h1{font-size:60px;line-height:68px;letter-spacing:-.01em}
   #home .large-title p{font-size:22px;margin-top:8px}
@@ -448,7 +450,7 @@ button.stat:active{opacity:.7}
 .console .err-text{text-align:left}
 
 /* Home + "open in another tab": same console look */
-#home .large-title{padding:30px 2px 8px}
+#home .large-title{padding:30px 2px 8px;text-align:center}
 #home .large-title h1{font-size:40px;line-height:46px;font-weight:800;letter-spacing:-.02em}
 #home .large-title p{color:var(--label2);font-size:16px;margin-top:6px}
 .console .tile{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;gap:14px}
@@ -710,6 +712,7 @@ button.stat:active{opacity:.7}
 
   <!-- HOME -->
   <section class="screen active console" id="home">
+    <div class="spacer"></div>
     <header class="large-title">
       <h1>Intercom</h1>
       <p>Stream your mixer to another phone.</p>
@@ -983,7 +986,7 @@ button.stat:active{opacity:.7}
               sender watchdog re-acquires a lost input, listener auto-resyncs a bloated buffer. */
 
 /* ============ Config ============ */
-const VERSION = '0.16.2-beta';                     // shown on the home screen — go to 1.0.0 when ready
+const VERSION = '0.16.3-beta';                     // shown on the home screen — go to 1.0.0 when ready
 const PREFIX = 'asahina-intercom-';            // namespace for room ids on the PeerJS server
 const ICE = [
   { urls: 'stun:stun.l.google.com:19302' },
