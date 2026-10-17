@@ -986,7 +986,7 @@ button.stat:active{opacity:.7}
               sender watchdog re-acquires a lost input, listener auto-resyncs a bloated buffer. */
 
 /* ============ Config ============ */
-const VERSION = '0.17.8-beta';                     // shown on the home screen — go to 1.0.0 when ready
+const VERSION = '0.17.9-beta';                     // shown on the home screen — go to 1.0.0 when ready
 const PREFIX = 'asahina-intercom-';            // namespace for room ids on the PeerJS server
 const ICE = [
   { urls: 'stun:stun.l.google.com:19302' },
@@ -1846,6 +1846,7 @@ function onListener(conn){
   let entry = null;
   conn.on('open', () => {
     if (!S.stream) return conn.close();
+    if (S.listeners.size >= 30 && !S.listeners.has(conn.peer)) return conn.close();       // far more than a real crew; stops a flood of fake listeners
     const prev = S.listeners.get(conn.peer);          // same phone reconnecting after a network change
     entry = { conn, call:null, live:false, stable: !!conn.metadata?.stable, direct: !!conn.metadata?.direct, wantDl: !!conn.metadata?.dl };
     if (conn.metadata?.ach) openAudioChannel(entry);
@@ -1857,12 +1858,14 @@ function onListener(conn){
   });
   conn.on('data', d => {
     if (!entry || S.listeners.get(conn.peer) !== entry || !S.stream) return;
-    const freshCall = () => { const old = entry.call; startCall(entry, () => setTimeout(() => { try { old?.close() } catch {} }, 4000)); };
+    // A new call per request: limit it so one misbehaving (or hostile) listener can't spin up call after call and run the phone out of connections.
+    const freshCall = () => { if (Date.now() - (entry.freshAt || 0) < 3000) return; entry.freshAt = Date.now(); const old = entry.call; startCall(entry, () => setTimeout(() => { try { old?.close() } catch {} }, 4000)); };
     // Listener saw its delay balloon → new call starts with an empty buffer.
     if (d?.type === 'resync') freshCall();
     // Listener switched Low delay ↔ Stable → new call with/without redundant packets.
     if (d?.type === 'prefs') {
       const directChanged = !!d.direct !== entry.direct, leavingDl = entry.dl && !d.stable;
+      if (!directChanged && !!d.stable === entry.stable && !!d.dl === entry.wantDl) return;    // nothing new: ignore repeats
       entry.stable = !!d.stable; entry.direct = !!d.direct; entry.wantDl = !!d.dl;
       if (directChanged || leavingDl || !(entry.stable && entry.wantDl && dlCan.enc)) freshCall();   // packet size / redundancy need a new call
       dlSync();
