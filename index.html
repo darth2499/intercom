@@ -986,7 +986,7 @@ button.stat:active{opacity:.7}
               sender watchdog re-acquires a lost input, listener auto-resyncs a bloated buffer. */
 
 /* ============ Config ============ */
-const VERSION = '0.17.10-beta';                     // shown on the home screen — go to 1.0.0 when ready
+const VERSION = '0.17.11-beta';                     // shown on the home screen — go to 1.0.0 when ready
 const PREFIX = 'asahina-intercom-';            // namespace for room ids on the PeerJS server
 const ICE = [
   { urls: 'stun:stun.l.google.com:19302' },
@@ -1826,7 +1826,7 @@ async function openHostPeer(){
       setTimeout(() => S.active && S.peer === peer && openHostPeer(), Math.min(1500 * S.idRetries, 5000));
     } else if (['network','server-error','socket-error','socket-closed'].includes(e.type)) {
       setPill($('sendPill'), 'Can’t reach pairing server', 'err');
-      setTimeout(() => { if (S.peer === peer && !peer.destroyed) peer.reconnect(); }, 3000);
+      setTimeout(() => { if (S.peer === peer && !peer.destroyed && peer.disconnected) try { peer.reconnect(); } catch {} }, 3000);
     }
   });
 }
