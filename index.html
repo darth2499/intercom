@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
@@ -272,7 +272,7 @@ a.tile{text-decoration:none;color:inherit}
    one amber "tally" accent; red only for on-air, mute and clipping. Always dark. */
 .console{
   --bg:#0c0d0f; --card:#141518; --s2:#1b1c20; --line:#26282d; --line2:#34363c;
-  --label:#f2f2f3; --label2:#9a9ca3; --label3:#5f626a;
+  --label:#f2f2f3; --label2:#9a9ca3; --label3:#80838b;
   --sep:#26282d; --fill:#0c0d0f; --track:#2a2c31; --seg-on:#26282d;
   --acc:#ffb020; --blue:#ffb020; --green:#32d74b; --orange:#ff9f0a; --red:#ff453a; --yellow:#ffd60a;
   --shadow:none;
@@ -708,7 +708,7 @@ button.stat:active{opacity:.7}
 })();
 </script>
 
-<div class="app">
+<div class="app" role="main">
 
   <!-- HOME -->
   <section class="screen active console" id="home">
@@ -986,7 +986,7 @@ button.stat:active{opacity:.7}
               sender watchdog re-acquires a lost input, listener auto-resyncs a bloated buffer. */
 
 /* ============ Config ============ */
-const VERSION = '0.17.9-beta';                     // shown on the home screen — go to 1.0.0 when ready
+const VERSION = '0.17.10-beta';                     // shown on the home screen — go to 1.0.0 when ready
 const PREFIX = 'asahina-intercom-';            // namespace for room ids on the PeerJS server
 const ICE = [
   { urls: 'stun:stun.l.google.com:19302' },
