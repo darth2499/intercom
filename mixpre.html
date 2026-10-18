@@ -54,6 +54,10 @@ main{max-width:1180px;margin:0 auto;padding:16px;padding-bottom:max(24px,env(saf
 .secondary{display:block;border:0;background:var(--btn);color:var(--btnText);font-weight:600;font-size:15px;padding:13px 18px;border-radius:12px;width:100%;cursor:pointer;text-decoration:none;text-align:center}
 a.primary{display:block;text-decoration:none;text-align:center}
 .divider{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px;margin:18px 0;text-transform:uppercase;letter-spacing:.06em}
+#choices{display:flex;flex-direction:column}
+#wifiBox.lead{order:-1}
+#wifiBox.lead .divider{display:none}
+#wifiBox:not(.lead) a.primary{background:var(--panel2);color:var(--text)}
 .divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--line)}
 .codeform{display:flex;gap:8px}
 .codeform input{text-transform:uppercase;letter-spacing:.08em;text-align:center;font-weight:600}
@@ -224,10 +228,7 @@ label.chk{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--mut
       <p id="connectLead">Plug the Pi into the MixPre's USB‑A port and give it ~30 seconds to boot.</p>
       <div class="searching" id="searching" hidden><span class="spin"></span><span id="searchText">Connecting…</span></div>
       <div id="choices">
-        <a class="primary" id="localBtn" href="http://mixpre.local/">Open controls on the MixPre Wi‑Fi</a>
-        <div class="hint" style="margin-top:8px">Join Wi‑Fi <b>MixPre‑Remote‑XXXX</b> first (or the same network as the Pi) · backup <a href="http://192.168.4.1/">192.168.4.1</a></div>
-        <div class="nonet" id="noNetHint" hidden>No internet right now — looks like you're on the MixPre Wi‑Fi. <a href="http://mixpre.local/">Open controls →</a></div>
-        <div class="divider">your MixPre Remotes online</div>
+        <div class="divider" id="listDivider">Ready to connect</div>
         <div class="pilist" id="piList"></div>
         <div class="hint" id="listStatus" style="margin-top:8px">Looking…</div>
         <form class="codeform" id="setupForm" autocomplete="off" style="margin-top:8px;flex-direction:column" hidden>
@@ -235,8 +236,14 @@ label.chk{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--mut
           <input type="password" id="keyInput" placeholder="Access key" autocomplete="off">
           <button class="b" type="submit" style="padding:10px">Show my remotes</button>
         </form>
+        <div id="wifiBox">
+          <div class="divider" id="wifiDivider">or on the MixPre Wi‑Fi</div>
+        <a class="primary" id="localBtn" href="http://mixpre.local/">Open controls on the MixPre Wi‑Fi</a>
+        <div class="hint" style="margin-top:8px">Join Wi‑Fi <b>MixPre‑Remote‑XXXX</b> first (or the same network as the Pi) · backup <a href="http://192.168.4.1/">192.168.4.1</a></div>
+        <div class="nonet" id="noNetHint" hidden>No internet right now — looks like you're on the MixPre Wi‑Fi. <a href="http://mixpre.local/">Open controls →</a></div>
+        </div>
         <div id="bleBox">
-          <div class="divider">or nearby</div>
+          <div class="divider">or Bluetooth</div>
           <button class="secondary" id="findBtn">Find over Bluetooth</button>
           <div class="hint" style="margin-top:8px">Chrome / Edge only · a list of nearby remotes pops up</div>
         </div>
@@ -1637,9 +1644,11 @@ async function refreshList() {
     if (!r.ok) throw new Error(r.status);
     const data = await r.json();
     $("setupForm").hidden = true;
+    $("wifiBox").classList.remove("lead");
     renderList(data.pis || []);
   } catch {
     $("piList").innerHTML = "";
+    $("wifiBox").classList.add("lead");   // relay unreachable (offline / Pi hotspot): lead with the Wi-Fi link
     $("listStatus").textContent = navigator.onLine === false ? "No internet." : "Can't reach your relay right now — retrying…";
   } finally { listBusy = false; }
 }
@@ -1670,7 +1679,7 @@ function renderList(pis) {
       <span class="tx"><div class="nm"></div><div class="sub"></div></span><span class="chev">›</span>`;
     b.querySelector(".nm").textContent = p.name || "MixPre Remote";
     const sub = b.querySelector(".sub");
-    if (p.sameNetwork) { const s = document.createElement("span"); s.className = "badge"; s.textContent = "● On your network"; sub.append(s); }
+    if (p.sameNetwork) { const s = document.createElement("span"); s.className = "badge"; s.textContent = "● Nearby"; sub.append(s); }
     sub.append(document.createTextNode(p.wifi ? `Wi‑Fi: ${p.wifi}` : "Online"));
     b.onclick = () => {
       remote = { code: p.code, relay: relayUrl(), name: p.name || "" };
@@ -1679,7 +1688,7 @@ function renderList(pis) {
     };
     box.append(b);
   });
-  $("listStatus").textContent = pis.length ? "Click one to control it." : "None online right now. A Pi shows up here once it has internet (it can take ~30 s after joining Wi‑Fi).";
+  $("listStatus").textContent = pis.length ? "Tap one to control it." : "None online right now. A Pi shows up here once it has internet (it can take ~30 s after joining Wi‑Fi).";
 }
 function startListPolling() {
   if (PI_SERVED) return;

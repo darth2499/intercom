@@ -229,11 +229,10 @@ a.tile{text-decoration:none;color:inherit}
   .nav-title{font-size:20px}
 
   /* Home: hero + three big tiles */
-  #home.active{display:grid;grid-template-columns:1fr repeat(2,minmax(0,368px)) 1fr;gap:24px;align-content:center;min-height:calc(100dvh - 60px)}
+  #home.active{display:grid;grid-template-columns:1fr repeat(3,minmax(0,320px)) 1fr;gap:24px;align-content:center;min-height:calc(100dvh - 60px)}
   #home .send-stack{grid-column:2}
   #home #goListen{grid-column:3}
   #home #goMixpre{grid-column:4}
-  #home.has-control.active{grid-template-columns:1fr repeat(3,minmax(0,320px)) 1fr}
   #home .large-title{grid-column:1/-1;text-align:center;padding:0 0 18px}
   #home .large-title h1{font-size:60px;line-height:68px;letter-spacing:-.01em}
   #home .large-title p{font-size:22px;margin-top:8px}
@@ -737,7 +736,7 @@ button.stat:active{opacity:.7}
       <span><h2>Listen</h2><p>Hear the mixer feed from anywhere</p></span>
       <svg class="chev" viewBox="0 0 9 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5 7.5 8l-6 6.5"/></svg>
     </button>
-    <a class="tile" id="goMixpre" href="http://mixpre.local/" hidden>
+    <a class="tile" id="goMixpre" href="mixpre.html">
       <span class="ico ico-mixpre">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v18M12 3v18M18 3v18"/><rect x="4" y="13" width="4" height="3.5" rx="1" fill="currentColor"/><rect x="10" y="7" width="4" height="3.5" rx="1" fill="currentColor"/><rect x="16" y="15" width="4" height="3.5" rx="1" fill="currentColor"/></svg>
       </span>
@@ -996,7 +995,7 @@ button.stat:active{opacity:.7}
               sender watchdog re-acquires a lost input, listener auto-resyncs a bloated buffer. */
 
 /* ============ Config ============ */
-const VERSION = '0.17.15-beta';                     // shown on the home screen — go to 1.0.0 when ready
+const VERSION = '0.17.16-beta';                     // shown on the home screen — go to 1.0.0 when ready
 const PREFIX = 'asahina-intercom-';            // namespace for room ids on the PeerJS server
 const ICE = [
   { urls: 'stun:stun.l.google.com:19302' },
@@ -3311,30 +3310,6 @@ function paintResume(){
   if (on) $('resumeBtn').textContent = `Resume sending · room ${store.get('ic-code')}`;
 }
 paintResume();
-/* Control tile: only shown when the relay says a MixPre is on this network (fails open if the relay is unreachable) */
-const NEARBY_URL = 'https://relay.mixremote.app/nearby';
-async function checkNearby(){
-  let show = true, href = 'http://mixpre.local/';
-  try {
-    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 3000);
-    const r = await fetch(NEARBY_URL, { cache:'no-store', signal: ctl.signal }); clearTimeout(t);
-    if (!r.ok) throw 0;
-    const pis = (await r.json()).pis;
-    if (!Array.isArray(pis)) throw 0;
-    if (!pis.length) show = false; else if (pis[0].lan) href = 'http://' + pis[0].lan + '/';
-  } catch {}
-  $('goMixpre').href = href; $('goMixpre').hidden = !show; $('home').classList.toggle('has-control', show);
-}
-let nearbyTimer = null;
-function nearbyLoop(){
-  clearInterval(nearbyTimer); nearbyTimer = null;
-  if (document.hidden || !$('home').classList.contains('active')) return;
-  checkNearby(); nearbyTimer = setInterval(() => { if ($('home').classList.contains('active') && !document.hidden) checkNearby(); }, 30000);
-}
-document.addEventListener('visibilitychange', nearbyLoop);
-let homeWas = true;
-new MutationObserver(() => { const on = $('home').classList.contains('active'); if (on !== homeWas) { homeWas = on; nearbyLoop(); } }).observe($('home'), { attributes:true, attributeFilter:['class'] });
-nearbyLoop();
 $('goListen').addEventListener('click', openListen);
 $('stopSend').addEventListener('click', () => { if (confirmStop(`Stop sending? ${listenerWord()}will lose audio.`)) stopSend(); });
 document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click', () => {
