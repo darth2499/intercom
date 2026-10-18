@@ -996,7 +996,7 @@ button.stat:active{opacity:.7}
               sender watchdog re-acquires a lost input, listener auto-resyncs a bloated buffer. */
 
 /* ============ Config ============ */
-const VERSION = '0.17.14-beta';                     // shown on the home screen — go to 1.0.0 when ready
+const VERSION = '0.17.15-beta';                     // shown on the home screen — go to 1.0.0 when ready
 const PREFIX = 'asahina-intercom-';            // namespace for room ids on the PeerJS server
 const ICE = [
   { urls: 'stun:stun.l.google.com:19302' },
@@ -3312,7 +3312,7 @@ function paintResume(){
 }
 paintResume();
 /* Control tile: only shown when the relay says a MixPre is on this network (fails open if the relay is unreachable) */
-const NEARBY_URL = 'https://mixpre-relay.imsk8erboi.workers.dev/nearby';
+const NEARBY_URL = 'https://relay.mixremote.app/nearby';
 async function checkNearby(){
   let show = true, href = 'http://mixpre.local/';
   try {
