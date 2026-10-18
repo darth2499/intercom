@@ -228,10 +228,11 @@ a.tile{text-decoration:none;color:inherit}
   .navbar{margin:8px 0 6px}
   .nav-title{font-size:20px}
 
-  /* Home: hero + two big tiles */
-  #home.active{display:grid;grid-template-columns:1fr repeat(2,minmax(0,368px)) 1fr;gap:24px;align-content:center;min-height:calc(100dvh - 60px)}
+  /* Home: hero + three big tiles */
+  #home.active{display:grid;grid-template-columns:1fr repeat(3,minmax(0,320px)) 1fr;gap:24px;align-content:center;min-height:calc(100dvh - 60px)}
   #home .send-stack{grid-column:2}
   #home #goListen{grid-column:3}
+  #home #goMixpre{grid-column:4}
   #home .large-title{grid-column:1/-1;text-align:center;padding:0 0 18px}
   #home .large-title h1{font-size:60px;line-height:68px;letter-spacing:-.01em}
   #home .large-title p{font-size:22px;margin-top:8px}
@@ -462,6 +463,7 @@ button.stat:active{opacity:.7}
 .console .tile .ico svg{width:24px;height:24px}
 .console .tile .ico-send{color:var(--red);background:rgba(255,69,58,.12);border-color:rgba(255,69,58,.3)!important}
 .console .tile .ico-listen{color:var(--green);background:rgba(50,215,75,.12);border-color:rgba(50,215,75,.3)!important}
+.console .tile .ico-mixpre{color:var(--blue);background:rgba(10,132,255,.12);border-color:rgba(10,132,255,.3)!important}
 .console .tile .ico-talk{color:var(--acc);background:rgba(255,176,32,.12);border-color:rgba(255,176,32,.3)!important}
 .console .send-stack .resume{border-radius:0 0 18px 18px;height:52px;font-size:16px}
 .console .send-stack.resumable .tile{border-bottom:0}
@@ -715,7 +717,7 @@ button.stat:active{opacity:.7}
     <div class="spacer"></div>
     <header class="large-title">
       <h1>Mix<span style="color:var(--acc)">Remote</span></h1>
-      <p>Stream your mixer to another phone.</p>
+      <p>Stream your mixer and control your recorder.</p>
     </header>
     <div class="send-stack">
     <button class="tile" id="goSend">
@@ -734,6 +736,13 @@ button.stat:active{opacity:.7}
       <span><h2>Listen</h2><p>Hear the mixer feed from anywhere</p></span>
       <svg class="chev" viewBox="0 0 9 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5 7.5 8l-6 6.5"/></svg>
     </button>
+    <a class="tile" id="goMixpre" href="mixpre.html">
+      <span class="ico ico-mixpre">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v18M12 3v18M18 3v18"/><rect x="4" y="13" width="4" height="3.5" rx="1" fill="currentColor"/><rect x="10" y="7" width="4" height="3.5" rx="1" fill="currentColor"/><rect x="16" y="15" width="4" height="3.5" rx="1" fill="currentColor"/></svg>
+      </span>
+      <span><h2>MixPre</h2><p>Control the recorder from your phone</p></span>
+      <svg class="chev" viewBox="0 0 9 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5 7.5 8l-6 6.5"/></svg>
+    </a>
     <!-- WIP: Talkback hidden -->
     <a class="tile" id="goTalk" href="talk.html" hidden>
       <span class="ico ico-talk">
@@ -986,7 +995,7 @@ button.stat:active{opacity:.7}
               sender watchdog re-acquires a lost input, listener auto-resyncs a bloated buffer. */
 
 /* ============ Config ============ */
-const VERSION = '0.17.11-beta';                     // shown on the home screen — go to 1.0.0 when ready
+const VERSION = '0.17.12-beta';                     // shown on the home screen — go to 1.0.0 when ready
 const PREFIX = 'asahina-intercom-';            // namespace for room ids on the PeerJS server
 const ICE = [
   { urls: 'stun:stun.l.google.com:19302' },
