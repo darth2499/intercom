@@ -225,7 +225,7 @@ body.recording .recglow{opacity:1;animation:recpulse 2.4s ease-in-out infinite}
 .typer{display:flex;gap:var(--s2);margin-top:var(--s2)}
 input[type=text],input[type=password],input[type=number],textarea,select{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line2);border-radius:var(--r1);padding:10px var(--s3);width:100%;min-height:44px}
 textarea{font-family:var(--mono);font-size:var(--t2)}
-@media (max-width:899px){input[type=text],input[type=password],input[type=number],textarea,select{font-size:16px}}   /* iOS zooms the page on focus below 16px */
+@media (max-width:899px), (orientation:landscape) and (max-height:500px){input[type=text],input[type=password],input[type=number],textarea,select{font-size:16px}}   /* iOS zooms the page on focus below 16px */
 label.chk{display:flex;align-items:center;gap:6px;font-size:var(--t2);color:var(--muted);margin-top:var(--s2)}
 .typer input[type=number]{width:70px;text-align:center}
 
@@ -274,7 +274,7 @@ details.sys > summary .sech{margin:0}
 .toast{position:fixed;left:50%;bottom:max(var(--s5),env(safe-area-inset-bottom));transform:translateX(-50%);background:rgba(36,39,43,.97);color:#fff;padding:10px var(--s4);border-radius:var(--r1);font-size:var(--t3);z-index:30;max-width:calc(100% - 32px);text-align:center;transition:opacity .25s;pointer-events:none}
 
 /* phone and tablet: one screen per tab, bottom tab bar */
-@media (max-width:899px){
+@media (max-width:899px), (orientation:landscape) and (max-height:500px){
   body.ctl{height:100vh;height:100dvh;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;overflow:hidden}
   body.ctl main{width:100%;max-width:592px;overflow-y:auto;padding:0 var(--s4)}
   body.ctl .barrow{max-width:592px}
@@ -351,8 +351,59 @@ details.sys > summary .sech{margin:0}
   .hp{height:44px}
   .note{font-size:var(--t1)}
 }
+/* phone landscape: side rail instead of the bottom tabs, two panes, side panels */
+.tabbar .rail-only,.lname{display:none}
+@media (orientation:landscape) and (max-height:500px){
+  body.ctl{grid-template-columns:calc(72px + env(safe-area-inset-left)) minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
+  body.ctl .bar{display:none}
+  body.ctl main{grid-column:2;grid-row:1;max-width:none;padding:10px max(12px,env(safe-area-inset-right)) 10px 12px}
+  body.ctl .toast{bottom:12px}
+  body.ctl .tabbar{grid-column:1;grid-row:1;display:block;border-top:0;border-right:1px solid var(--line);padding:0 0 0 env(safe-area-inset-left);min-height:0}
+  .tabbar > div{max-width:none;height:100%;margin:0;flex-direction:column;justify-content:flex-start;gap:2px;padding:6px 0}
+  .tabbar button{min-width:0;width:64px;min-height:46px;flex:none;gap:2px;font-size:10px}
+  .tabbar svg{width:22px;height:22px}
+  .tabbar .rail-only{display:flex;align-items:center;justify-content:center;width:44px;height:40px;min-height:40px;border-radius:50%;flex:none}
+  #railStatus{margin-top:auto}
+  #railStatus .dot{width:12px;height:12px}
+  #railBack{background:var(--panel)}
+  #railGear{color:var(--text)}
+  #railGear svg{width:20px;height:20px}
+  .lname{display:block;max-width:100%;font-size:var(--t3);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
+  /* Record: recorder card | inputs */
+  #tabRec.active{display:grid;grid-template-columns:42% minmax(0,1fr);gap:12px;height:100%}
+  #tabRec .rcard{height:100%;justify-content:space-evenly;padding:8px var(--s3)}
+  #tabRec .inputs{min-height:0;min-width:0}
+  /* Menu: recorder bar on top, d-pad | key grid */
+  .menu-body{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:center;align-content:center;gap:var(--s2)}
+  .menu-body .note{flex-basis:100%}
+  #menuKeys{flex-direction:row;align-items:center;justify-content:space-evenly;gap:var(--s5);width:100%}
+  #menuKeys .keys{width:min(320px,52%)}
+  /* Shortcuts: recorder bar on top, U1-U5 | screen buttons + headphones */
+  #tabSc > .tabbody{flex-direction:row;align-items:flex-start;gap:var(--s4)}
+  #tabSc > .tabbody > *{flex:1;min-width:0}
+  #kbShortcuts{flex-direction:column;gap:var(--s2)}
+  #tabSc .scnote{flex-basis:100%}
+  .sect,.hp,.ulist,.keys{min-width:0}
+  .keys .b{padding:0 6px;font-size:var(--t2)}
+  .hp span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ulist{display:flex;flex-direction:column}
+  .ulist .b{border-radius:0!important}
+  .ulist .b + .b{border-top:1px solid var(--line)}
+  .ulist .b:nth-child(even){border-left:0}
+  .ulist .b:first-child{border-radius:var(--r3) var(--r3) 0 0!important} .ulist .b:last-child{border-radius:0 0 var(--r3) var(--r3)!important}
+  /* settings + status: centred panels; channel sheet: right-hand panel */
+  .sheet{top:50%;left:50%;right:auto;bottom:auto;transform:translate(-50%,-50%);width:min(520px,calc(100% - 24px));max-height:calc(100dvh - 24px);border-radius:var(--r3)}
+  .pop{top:50%;left:50%;transform:translate(-50%,-50%)}
+  .chsheet{left:auto;right:0;top:0;bottom:0;width:min(360px,100%);max-width:none;margin:0;border-radius:var(--r3) 0 0 var(--r3);overflow-y:auto;padding:12px max(16px,env(safe-area-inset-right)) 12px 16px;gap:12px;animation-name:sheetleft}
+  @keyframes sheetleft{from{transform:translateX(100%)}}
+  .grab{display:none}
+  .chhead{margin-top:0}
+  #chSliders{gap:6px}
+  .chsmr .b{height:44px}
+  .chopen{height:44px}
+}
 /* wide: three columns that fit the window height, no tab bar */
-@media (min-width:900px){
+@media (min-width:900px) and (min-height:501px){
   body.ctl{height:100vh;height:100dvh;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);overflow:hidden}
   body.ctl main{width:100%;overflow:hidden;padding-bottom:var(--s4)}
   #control{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s5);align-items:stretch}
@@ -435,6 +486,7 @@ html,body{overflow-x:clip}
     <div class="tab active" id="tabRec" data-tab="rec">
       <h2 class="th">Record</h2>
       <section class="rcard" aria-label="Recorder">
+        <div class="lname" id="lname"></div>
         <div class="rstate"><span class="rdot"></span><span class="rstext">STOPPED</span></div>
         <div class="rtime">--:--:--</div>
         <div class="rctl">
@@ -518,16 +570,19 @@ html,body{overflow-x:clip}
             <button class="b" data-hold="UP" aria-label="Headphones louder">+</button>
           </section>
         </div>
-        <p class="note" id="scNote" hidden></p>
+        <p class="note scnote" id="scNote" hidden></p>
       </div>
     </div>
   </section>
 </main>
 
 <nav class="tabbar" id="tabbar" aria-label="Sections"><div>
+  <button class="rail-only" id="railBack" aria-label="All remotes" hidden><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
   <button data-tab="rec" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>Record</button>
   <button data-tab="menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>Menu</button>
   <button data-tab="sc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z"/></svg>Shortcuts</button>
+  <button class="rail-only" id="railStatus" aria-label="Status"><span class="dot"></span></button>
+  <button class="rail-only" id="railGear" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
 </div></nav>
 
 <div class="recglow" aria-hidden="true"></div>
@@ -1739,6 +1794,7 @@ function statusInfo() {
 }
 function renderStatus() {
   const st = statusInfo();
+  $("railStatus").className = "rail-only " + st.cls;
   $("statusPill").className = "stat " + st.cls; $("statusText").textContent = st.short;
   $("statusHead").className = "headline " + st.cls; $("statusHeadText").textContent = st.long;
   $("devInfo").innerHTML = [
@@ -1751,6 +1807,7 @@ function showControl(on) {
   $("connect").hidden = on; $("control").hidden = !on; $("statusPill").hidden = !on;
   document.body.classList.toggle("ctl", on);
   $("backBtn").hidden = !(on && !PI_SERVED && transport && transport.kind === "Cloud");
+  $("railBack").hidden = $("backBtn").hidden;
   $("homeLink").hidden = on || !HOME_HOST;   // one back control at a time
   if (on) { requestAnimationFrame(redrawSliders); firstRunTip(); }
   else closeChannel();
@@ -1764,7 +1821,7 @@ const TABS = ["rec", "menu", "sc"];
 function setTab(t) {
   if (!TABS.includes(t)) t = "rec";
   document.querySelectorAll(".tab").forEach(e => e.classList.toggle("active", e.dataset.tab === t));
-  document.querySelectorAll("#tabbar button").forEach(b => { b.classList.toggle("on", b.dataset.tab === t); b.setAttribute("aria-current", b.dataset.tab === t ? "page" : "false"); });
+  document.querySelectorAll("#tabbar button[data-tab]").forEach(b => { b.classList.toggle("on", b.dataset.tab === t); b.setAttribute("aria-current", b.dataset.tab === t ? "page" : "false"); });
   store.set("tab", t);
   if (t === "rec") requestAnimationFrame(redrawSliders);
 }
@@ -1795,7 +1852,7 @@ function renderRecorder() {
 }
 function render() {
   renderRecorder();
-  $("brand").textContent = S.name || "MixPre Remote";
+  $("brand").textContent = $("lname").textContent = S.name || "MixPre Remote";
   rows.forEach((r, i) => {
     const stale = viaMidi(i) && S.mode === "both" && S.role === "keyboard";   // MIDI is off while the Pi acts as a keyboard
     for (const k of ["s", "m", "r"]) { r.btns[k].classList.toggle("on", isLit(i, k)); r.btns[k].classList.toggle("stale", stale); }
@@ -1868,9 +1925,12 @@ function wire() {
   const openSheet = on => { $("sheet").hidden = !on; $("statusSheet").hidden = true; $("scrim").classList.remove("clear"); $("scrim").hidden = !on; };
   const openStatus = on => { $("statusSheet").hidden = !on; $("sheet").hidden = true; $("scrim").classList.toggle("clear", on); $("scrim").hidden = !on; };
   $("settingsBtn").onclick = () => openSheet(true);
+  $("railGear").onclick = () => $("settingsBtn").click();
+  $("railStatus").onclick = () => openStatus($("statusSheet").hidden);
+  $("railBack").onclick = () => $("backBtn").click();
   $("statusPill").onclick = () => openStatus($("statusSheet").hidden);
   $("closeSheet").onclick = $("scrim").onclick = () => { openSheet(false); openStatus(false); };
-  document.querySelectorAll("#tabbar button").forEach(b => b.onclick = () => setTab(b.dataset.tab));
+  document.querySelectorAll("#tabbar button[data-tab]").forEach(b => b.onclick = () => setTab(b.dataset.tab));
   if (window.ResizeObserver) new ResizeObserver(redrawSliders).observe($("inputs"));
   $("disconnectBtn").onclick = () => { Aud.reset(); setSearching(false); if (transport) transport.disconnect(); transport = null; S.name = ""; setConn("", "Offline"); showControl(false); openSheet(false); render(); };
   document.querySelectorAll("#modelSeg button").forEach(b => b.onclick = () => { model = +b.dataset.v; store.set("model", model); buildInputs(); });
