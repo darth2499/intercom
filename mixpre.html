@@ -351,6 +351,95 @@ details.sys > summary .sech{margin:0}
   .hp{height:44px}
   .note{font-size:var(--t1)}
 }
+/* Simple view: a copy of the MixPre-6 II touchscreen (sizes in --u = 1% of the screen width) */
+#simple{display:flex;flex-direction:column;gap:var(--s3);height:100%;min-height:0}
+.sscreen-wrap{position:relative;flex:none;width:min(100%,calc((100dvh - 330px) * 4 / 3));margin:0 auto}
+.sscreen{--u:3.5px;position:relative;aspect-ratio:4/3;width:100%;background:#06090b;border-radius:calc(var(--u)*3);padding:calc(var(--u)*1.2);overflow:hidden;color:#4b565f;font-family:"Helvetica Neue",Arial,system-ui,sans-serif;display:flex;flex-direction:column;gap:calc(var(--u)*1.2);user-select:none;-webkit-user-select:none}
+.sscreen button{font-family:inherit;color:inherit;border:0;cursor:pointer;touch-action:manipulation}
+.sscreen .ltile{background:linear-gradient(#f3fbfd,#b9dde8);border-radius:calc(var(--u)*.8);color:#56616a;font-size:calc(var(--u)*4.6);line-height:1.15;padding:calc(var(--u)*1);text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:inset 0 0 0 1px rgba(255,255,255,.7)}
+.sscreen .ltile:active{filter:brightness(.9)}
+.sscreen .ltile em{display:block;font-style:normal;font-size:calc(var(--u)*2.6);color:#7b8891;margin-top:calc(var(--u)*.4)}
+.sscreen .ltile.unm{opacity:.45}
+.lhead{display:flex;align-items:stretch;gap:calc(var(--u)*1.2);height:calc(var(--u)*15);flex:none;background:linear-gradient(#f3fbfd,#b9dde8);border-radius:calc(var(--u)*.8);padding:calc(var(--u)*.6)}
+.lhead.dim{opacity:.5}
+.lhead .ltitle{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;padding:0 calc(var(--u)*1)}
+.lhead .ltitle b{font-size:calc(var(--u)*6.2);font-weight:600;color:#444f57;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;line-height:1.1}
+.lsub{display:flex;align-items:center;justify-content:space-between}
+.lback{background:none;color:#58636c;font-size:calc(var(--u)*3.6);padding:calc(var(--u)*.6) calc(var(--u)*.2);min-height:calc(var(--u)*5)}
+.ldots{display:flex;gap:calc(var(--u)*1.2)}
+.ldot{width:calc(var(--u)*2.6);height:calc(var(--u)*2.6);border-radius:50%;background:transparent;box-shadow:inset 0 0 0 1px #58636c;padding:0}
+.ldot{position:relative}
+.ldot::after{content:"";position:absolute;inset:-12px -7px}
+.ldot.on{background:#3f4a52}
+.ldots::before{content:"";width:0}
+.lhead .ltile{flex:none;width:calc(var(--u)*17);padding:0}
+.lhead .ltile svg{width:calc(var(--u)*8);height:calc(var(--u)*8)}
+.lhead .lhp small{font-size:calc(var(--u)*2.8)}
+.lhead .lhp svg{width:calc(var(--u)*6.5);height:calc(var(--u)*6.5)}
+.lgrid{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:calc(var(--u)*1)}
+.lgrid.six{grid-template-columns:repeat(3,1fr)}
+.lgrid.six .ltile{font-size:calc(var(--u)*4)}
+.lnote{margin:0;text-align:center;font-size:calc(var(--u)*3);color:#9bb0b8}
+.llist,.ledit,.lkbw{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;gap:calc(var(--u)*1.6);background:#0d1316;border-radius:calc(var(--u)*.8);padding:calc(var(--u)*2)}
+.lhint{margin:0;text-align:center;color:#f39a2b;font-weight:600;font-size:calc(var(--u)*3.8)}
+.lrow{display:flex;gap:calc(var(--u)*1.2)}
+.lrow .ltile{flex:1;height:calc(var(--u)*11)}
+.lrow .lsel,.ledit .lsel{background:linear-gradient(#ffb24f,#f08a24);color:#fff}
+.ledit .lsel{height:calc(var(--u)*11)}
+.lvh{display:flex;align-items:center;gap:calc(var(--u)*1.2);color:#b9dde8;font-size:calc(var(--u)*5);justify-content:center}
+.lvh .ltile{width:calc(var(--u)*14);height:calc(var(--u)*11)}
+.lkb{font:inherit;font-size:calc(var(--u)*5.5);width:100%;background:#e9f6fa;color:#33404a;border:0;border-radius:calc(var(--u)*.8);padding:calc(var(--u)*1.4) calc(var(--u)*2);min-height:calc(var(--u)*11)}
+.lchips{flex:1;min-height:0;display:flex;flex-wrap:wrap;align-content:center;gap:calc(var(--u)*1);background:#0d1316;border-radius:calc(var(--u)*.8);padding:calc(var(--u)*1.6)}
+.lchip{background:linear-gradient(#f3fbfd,#b9dde8);color:#56616a;border-radius:calc(var(--u)*.6);padding:calc(var(--u)*.9) calc(var(--u)*2);font-size:calc(var(--u)*3.4)}
+.lpop{position:absolute;left:12%;right:12%;top:30%;background:#8da5a8;border-radius:calc(var(--u)*1.4);padding:calc(var(--u)*3);display:flex;flex-direction:column;gap:calc(var(--u)*2.4);color:#fff;box-shadow:0 calc(var(--u)*1) calc(var(--u)*4) rgba(0,0,0,.45)}
+.lpop p{margin:0;text-align:center;font-size:calc(var(--u)*4.4)}
+.lpbtn{flex:1;min-height:calc(var(--u)*10);border-radius:calc(var(--u)*.8);background:linear-gradient(#f3fbfd,#b9dde8);color:#56616a;font-size:calc(var(--u)*4)}
+.lpbtn.lok{background:#f08a24;color:#fff}
+.lpbtn.lok.conf{background:#e0382d}
+.lhome-s{flex:1;min-height:0;display:flex;flex-direction:column;gap:calc(var(--u)*1.2)}
+.ltop{display:flex;justify-content:space-between;align-items:center;background:linear-gradient(#f3fbfd,#b9dde8);border-radius:calc(var(--u)*.8);padding:calc(var(--u)*1) calc(var(--u)*2);font-size:calc(var(--u)*4.6);font-weight:600;color:#444f57}
+.lwav{color:#444f57}.lwav{white-space:nowrap}
+.lbatt{width:calc(var(--u)*9);height:calc(var(--u)*3.4);background:#33c24d;border-radius:calc(var(--u)*.5)}
+.ltc{display:flex;gap:calc(var(--u)*1.2);align-items:stretch;height:calc(var(--u)*13)}
+.lbig{flex:1;display:flex;align-items:center;justify-content:center;background:linear-gradient(#f3fbfd,#b9dde8);border-radius:calc(var(--u)*.8);font-size:calc(var(--u)*7);font-weight:600;color:#444f57;font-family:var(--mono)}
+.lmenu{flex:none;width:calc(var(--u)*17);font-size:calc(var(--u)*9)!important;padding:0!important}
+.lmeters{flex:1;min-height:0;display:flex;gap:calc(var(--u)*1.2)}
+.ltrks{flex:none;width:calc(var(--u)*9);display:flex;flex-direction:column;gap:calc(var(--u)*.6)}
+.ltrks .lr{color:#ff5a4f;font-size:calc(var(--u)*3);line-height:1.1;text-align:center;font-weight:700}
+.ltrk{flex:1;min-height:0;border-radius:calc(var(--u)*.5);background:#2d3439;color:#aab3b9;font-size:calc(var(--u)*4);font-weight:700;padding:0}
+.ltrk.arm{background:#e0382d;color:#fff}
+.lscale{flex:1;min-width:0;background:#0d1316;border-radius:calc(var(--u)*.6);display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:calc(var(--u)*1.4);color:#6e7a83}
+.lscale span{font-size:calc(var(--u)*7);align-self:center;margin-top:auto;margin-bottom:auto}
+.lscale i{font-style:normal;font-size:calc(var(--u)*2.8);letter-spacing:.1em}
+.snokb{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s3);text-align:center;padding:var(--s4);background:rgba(6,9,11,.92);border-radius:var(--r3);color:var(--text);font-size:var(--t2)}
+.snokb button{border:0;background:var(--accent);color:#fff;font-weight:600;border-radius:var(--r2);padding:var(--s3) var(--s4);min-height:44px;cursor:pointer}
+.sctl{display:flex;flex-direction:column;gap:var(--s2);flex:none;width:min(100%,560px);margin:0 auto}
+.sknobrow,.sbtnrow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s2)}
+.sbtnrow{grid-template-columns:repeat(2,minmax(0,1fr))}
+.sctl .b{height:52px;font-weight:600;font-size:var(--t3);background:var(--panel)}
+.sctl .b.knob{background:var(--btn)}
+.sbar{height:56px}
+.sbar .rtime{white-space:nowrap;font-size:18px}
+#railView{color:var(--text)}
+body.simple .tabbar [data-tab]{display:none}
+.tabbar .rail-only#railView{font-size:11px;font-weight:600;border-radius:var(--r1);width:56px}
+#viewBtn{flex:none}
+.viewonly{display:none}
+@media (max-width:899px) and (min-height:501px){ body.simple .tabbar{display:none!important} }
+/* Simple view in landscape phones and on wide screens: screen on the left, controls on the right */
+@media (orientation:landscape) and (max-height:500px){
+  #simple{flex-direction:row;align-items:center;gap:var(--s3)}
+  .sscreen-wrap{width:min(62%,calc((100dvh - 20px) * 4 / 3));margin:0}
+  .sctl{flex:1;min-width:0;width:auto;margin:0}
+  .sctl .b{height:44px}
+  .sbar{height:52px}
+}
+@media (min-width:900px) and (min-height:501px){
+  #simple{flex-direction:row;align-items:flex-start;justify-content:center;gap:var(--s5)}
+  .sscreen-wrap{width:min(60%,calc((100dvh - 120px) * 4 / 3));margin:0}
+  .sctl{flex:none;width:300px;margin:0}
+  #simple .rbar{display:flex}
+}
 /* phone landscape: side rail instead of the bottom tabs, two panes, side panels */
 .tabbar .rail-only,.lname{display:none}
 @media (orientation:landscape) and (max-height:500px){
@@ -435,6 +524,7 @@ html,body{overflow-x:clip}
       <div class="brand" id="brand">MixPre Remote</div>
       <button class="stat" id="statusPill" aria-haspopup="dialog" hidden><span class="dot"></span><span id="statusText">Offline</span></button>
     </div>
+    <button class="pill" id="viewBtn" title="Switch view">Simple</button>
     <button class="pill audio" id="audioPill" hidden title="Audio">🎧 <span id="audioPillText">Listening</span></button>
     <button class="iconbtn" id="settingsBtn" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
   </div>
@@ -574,6 +664,28 @@ html,body{overflow-x:clip}
       </div>
     </div>
   </section>
+
+  <!-- SIMPLE: a clickable copy of the recorder's own screen -->
+  <section id="simple" hidden>
+    <div class="sscreen-wrap">
+      <div class="sscreen" id="sscreen"></div>
+      <div class="snokb" id="snokb" hidden><span>Simple view needs Keyboard or Both mode.</span><button id="snokbBtn">Switch to Both</button></div>
+    </div>
+    <div class="sctl">
+      <div class="sknobrow">
+        <button class="b knob" data-hold="DOWN" aria-label="Headphone knob left">↶</button>
+        <button class="b knob" id="sKnob" aria-label="Knob press">Press</button>
+        <button class="b knob" data-hold="UP" aria-label="Headphone knob right">↷</button>
+      </div>
+      <div class="sbtnrow"><button class="b" id="sBack">↰ Back</button><button class="b" id="sHome">Home</button></div>
+      <div class="rbar sbar" aria-label="Recorder">
+        <span class="rdot"></span><span class="rtime">--:--:--</span>
+        <button class="rbtn" data-tr="stop" aria-label="Stop"><svg width="16" height="16" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3" fill="currentColor"/></svg></button>
+        <button class="rbtn rec" data-tr="rec" aria-label="Record"><i></i></button>
+        <button class="rbtn play" data-tr="play" aria-label="Play"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5z" fill="currentColor"/></svg></button>
+      </div>
+    </div>
+  </section>
 </main>
 
 <nav class="tabbar" id="tabbar" aria-label="Sections"><div>
@@ -581,6 +693,7 @@ html,body{overflow-x:clip}
   <button data-tab="rec" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>Record</button>
   <button data-tab="menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>Menu</button>
   <button data-tab="sc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z"/></svg>Shortcuts</button>
+  <button class="rail-only" id="railView" aria-label="Switch view">Simple</button>
   <button class="rail-only" id="railStatus" aria-label="Status"><span class="dot"></span></button>
   <button class="rail-only" id="railGear" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
 </div></nav>
@@ -662,6 +775,12 @@ html,body{overflow-x:clip}
   </div>
 
   <div class="sech">MixPre</div>
+  <div class="group">
+    <h4>View</h4>
+    <p>Simple copies the recorder's own screen (MixPre-6 II). Advanced is the full remote.</p>
+    <div class="seg" id="viewSeg"><button data-v="simple">Simple</button><button data-v="advanced">Advanced</button></div>
+  </div>
+
   <div class="group">
     <h4>MixPre model</h4>
     <p>Sets how many channels are shown.</p>
@@ -861,7 +980,7 @@ setInterval(() => {
   if (!transport || transport.kind !== "Wi\u2011Fi") return;
   const flowing = performance.now() - lastMsgAt < 9000 && transport.ws && transport.ws.readyState === 1;
   if (flowing) { if (offlineSince !== null) setOffline(false); }
-  else if (!$("control").hidden || offlineSince !== null) {
+  else if (ctlOn || offlineSince !== null) {
     setConn("bad", "Offline"); setOffline(true);
     try { if (transport.ws && transport.ws.readyState === 1) transport.ws.close(); } catch {}
   }
@@ -1803,11 +1922,13 @@ function renderStatus() {
   ].map(([k, v]) => `<span>${k}</span><span>${escapeHtml(v)}</span>`).join("");
   $("devLine").textContent = (S.name || "Not connected") + (transport ? " · " + transport.label() : "");
 }
+let ctlOn = false;   // connected: the control page (Advanced or Simple) is showing
 function showControl(on) {
-  $("connect").hidden = on; $("control").hidden = !on; $("statusPill").hidden = !on;
+  ctlOn = on;
+  $("connect").hidden = on; $("statusPill").hidden = !on;
+  applyView();
   document.body.classList.toggle("ctl", on);
   $("backBtn").hidden = !(on && !PI_SERVED && transport && transport.kind === "Cloud");
-  $("railBack").hidden = $("backBtn").hidden;
   $("homeLink").hidden = on || !HOME_HOST;   // one back control at a time
   if (on) { requestAnimationFrame(redrawSliders); firstRunTip(); }
   else closeChannel();
@@ -1835,14 +1956,14 @@ function applyState(m) {
 // Recording timer: counted from when the MixPre's Rec LED came on (the MixPre doesn't send its own clock)
 function fmtRec(sec) { sec = Math.max(0, Math.floor(sec)); const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60; return (h ? h + ":" : "") + String(m).padStart(h ? 2 : 1, "0") + ":" + String(s).padStart(2, "0"); }
 const fmtClock = sec => { sec = Math.max(0, Math.floor(sec)); const p = n => String(n).padStart(2, "0"); return `${p(Math.floor(sec / 3600))}:${p(Math.floor(sec % 3600 / 60))}:${p(sec % 60)}`; };
-const isRecording = () => !$("control").hidden && hasMidi() && !!(S.transport & 16);
+const isRecording = () => ctlOn && hasMidi() && !!(S.transport & 16);
 function tickTimer() {
   const t = isRecording() && S.rec_s != null && S.rec_at != null ? fmtClock(S.rec_s + (performance.now() - S.rec_at) / 1000) : "--:--:--";
   document.querySelectorAll(".rtime").forEach(e => { if (e.textContent !== t) e.textContent = t; });
 }
 setInterval(tickTimer, 250);
 function renderRecorder() {
-  const on = !$("control").hidden && hasMidi();
+  const on = ctlOn && hasMidi();
   const recording = isRecording(), playing = on && !recording && !!(S.transport & 1);
   document.body.classList.toggle("recording", recording);
   document.querySelectorAll(".rcard, .rbar").forEach(e => { e.classList.toggle("rec-on", recording); e.classList.toggle("play-on", playing); });
@@ -1871,6 +1992,267 @@ function render() {
   document.querySelectorAll("#starSeg button").forEach(b => b.classList.toggle("on", b.dataset.v === starStyle));
   renderStatus();
   renderSheet();
+  updateSimpleHome();
+  if (view === "simple") $("snokb").hidden = hasKb();
+}
+
+/* ============================================================ Simple view: a clickable copy of the MixPre-6 II screen (firmware 9.02) */
+// Every key the Simple view sends lives in this one table.
+// UNVERIFIED ON HARDWARE: assumed values, to be confirmed by the Phase 0 key-mapping test (Task 21 in CODE.MD).
+const SIMPLE_KEYS = {
+  menu: KEY.F1, back: KEY.ESC, home: KEY.F12,
+  tile: [KEY.Q, KEY.W, KEY.A, KEY.S],                    // 4-tile page, in reading order
+  tile6: [KEY.Q, KEY.W, KEY.E, KEY.A, KEY.S, KEY.D],     // 6-tile page (channel screen)
+  nextPage: KEY.RIGHT, prevPage: KEY.LEFT,
+  up: KEY.UP, down: KEY.DOWN, select: KEY.ENTER,
+  popupOk: KEY.ENTER, popupCancel: KEY.ESC, popupOption: [KEY.Q, KEY.W, KEY.A, KEY.S],
+  kbSubmit: KEY.ENTER,                                   // name keyboard: type the text, then this
+  channel: n => DIGIT(n),                                // open channel n from Home
+};
+// Where the copy goes after an action that finishes a screen (also unverified)
+const SIMPLE_AFTER = { listSelect: "back", editorOk: "back", choice: "back", keyboardOk: "back", popupOk: "back" };
+
+const sT = (label, to) => to === undefined ? { label, unm: true } : { label, to };   // tile; no target = "not mapped yet"
+const sC = label => ({ label, choice: true });                                       // option: picking it returns to the parent screen
+const sKb = (title, back) => ({ kind: "keyboard", title, back });
+const sEd = (title, back) => ({ kind: "editor", title, back });
+const sList = (title, back) => ({ kind: "list", title, back });
+const sGrid = (title, back, items) => ({ kind: "grid", title, back, items });
+const sPop = (title, back, msg, opts = {}) => Object.assign({ kind: "popup", title, back, msg }, opts);
+const UNSEEN = null;   // a page that was not in the video
+const REPORT_PAGES = [["Producer", "Director", "Job", "Location"], ["Sound Mixer", "Phone", "E-Mail", "Client"], ["Boom Op", "Prod.Co", "Prod.Co Tel", "Comments"]];
+
+const MENU_6II = {
+  menu: { kind: "tiles", title: "Menu", back: "home", headphone: true, pages: [
+    [sT("Presets", "presets"), sT("Project", "project"), sT("Inputs", "inputs"), sT("Outputs", "outputs")],
+    [sT("Timecode", "timecode"), sT("Tone", "tone"), sT("Record", "record"), sT("SD Card", "sdcard")],
+    [sT("USB Drive", "popUsb"), sT("* Button", "star"), sT("System", "system"), sT("Power", "power")]] },
+
+  presets: { kind: "tiles", title: "Presets", back: "menu", pages: [
+    [sT("Load Preset", "loadPreset"), sT("Save to Int1", "saveInt1"), sT("Save to Int2", "saveInt2"), sT("Save to Int3", "saveInt3")], UNSEEN] },
+  loadPreset: sList("Load Preset", "presets"),
+  saveInt1: sKb("Preset Name:", "presets"), saveInt2: sKb("Preset Name:", "presets"), saveInt3: sKb("Preset Name:", "presets"),
+
+  project: { kind: "tiles", title: "Project", back: "menu", pages: [
+    [sT("New", "popNew"), sT("Open", "openList"), sT("Copy"), sT("Create Report")],
+    [sT("Report Info", "reportInfo"), sT("Trash Project", "trashList")]] },
+  popNew: sPop("Project", "project", "New project", { options: [{ label: "Custom", to: "notMapped" }, { label: "Date", to: "notMapped" }] }),
+  openList: sList("Open", "project"),
+  trashList: sList("Trash Project", "project"),
+  reportInfo: { kind: "tiles", title: "Report Info", back: "project", pages: REPORT_PAGES.map(p => p.map(n => sT(n, "rep:" + n))) },
+
+  inputs: { kind: "tiles", title: "Inputs", back: "menu", pages: [
+    [sT("Setup"), sT("Ch 5 Screen"), sT("Ch 6 Screen"), sT("Aux In Mode")],
+    [sT("MS Decode / ISOs & Mix"), sT("Ambisonics"), sT("Knob Press / Ch.View+Solo"), sT("MixAssist", "mixAssist")]] },
+  mixAssist: sGrid("MixAssist", "inputs", ["MixAssist On", "MixAssist Ring LEDs Off", "Input 1", "Input 2", "Input 3", "Input 4", "Input 5", "Input 6"]),
+
+  outputs: { kind: "tiles", title: "Outputs", back: "menu", pages: [
+    [sT("St. Out Mute"), sT("St. Out Gain", "stGain"), sT("St. Out Left", "lOutput"), sT("St. Out Right", "rOutput")],
+    [sT("St. Out L Dly"), sT("St. Out R Dly"), sT("St. Out Mode"), sT("USB Output…", "usbOut")], UNSEEN, UNSEEN] },
+  stGain: sEd("St. Out Gain", "outputs"),
+  lOutput: sGrid("L Output", "outputs", ["Mix L", "Mix R", "Chan 1", "Chan 2", "Chan 3", "Chan 4", "Aux In 1", "Aux In 2", "USB In 1", "USB In 2"]),
+  rOutput: sGrid("R Output", "outputs", ["Mix L", "Mix R", "Chan 1", "Chan 2", "Chan 3", "Chan 4", "Aux In 1", "Aux In 2", "USB In 1", "USB In 2"]),
+  usbOut: { kind: "tiles", title: "USB Output", back: "outputs", pages: [[sT("USB Output 1", "usb1"), sT("USB Output 2", "usb2")]] },
+  usb1: sGrid("USB Output 1", "usbOut", ["Track L", "Track R", "Track 1", "Track 2", "Track 3", "Track 4", "Track 5", "Track 6", "HP L", "HP R", "Out L", "Out R"]),
+  usb2: sGrid("USB Output 2", "usbOut", ["Track L", "Track R", "Track 1", "Track 2", "Track 3", "Track 4", "Track 5", "Track 6", "HP L", "HP R", "Out L", "Out R"]),
+
+  channel: { kind: "tiles", title: "Channel", back: "home", pages: [
+    [sT("Solo"), sT("Mute"), sT("Arm"), sT("Gain"), sT("Fader"), sT("Pan")],
+    [sT("Low Cut"), sT("Input"), sT("N.Asst"), sT("Linking")]] },
+
+  timecode: { kind: "tiles", title: "Timecode", back: "menu", pages: [
+    [sT("TC Mode", "tcMode"), sT("Frame Rate"), sT("Jam"), sT("Set TC")], [sT("UBits"), UNSEEN]] },
+  tcMode: { kind: "tiles", title: "TC Mode", back: "timecode", pages: [
+    [sC("Free Run"), sC("Time of Day"), sC("Rec Run"), sC("HDMI")], [sC("HDMI TC FUJIFILM"), sC("Off")]] },
+  tone: { kind: "tiles", title: "Tone", back: "menu", pages: [[sT("Tone"), sT("Tone Mode", "toneMode"), sT("Tone Level", "toneLevel")]] },
+  toneMode: { kind: "tiles", title: "Tone Mode", back: "tone", pages: [[sC("Continuous"), sC("L Ident")]] },
+  toneLevel: sEd("Tone Level", "tone"),
+
+  record: { kind: "tiles", title: "Record", back: "menu", pages: [
+    [sT("Rec L,R", "recLR"), sT("Left Gain", "leftGain"), sT("Right Gain", "rightGain"), sT("Sample Rate", "sampleRate")],
+    [sT("Bit Depth"), sT("Pre-roll Time"), sT("Rec Trigger"), sT("Rem…")],
+    [sT("Left N.Asst", "leftNA"), sT("Right N.Asst", "rightNA"), sT("Record Bells"), UNSEEN]] },
+  recLR: { kind: "tiles", title: "Rec L,R", back: "record", pages: [[sC("Off"), sC("Off & Linked")]] },
+  leftGain: sEd("Left Gain", "record"), rightGain: sEd("Right Gain", "record"),
+  leftNA: sEd("Left N.Asst", "record"), rightNA: sEd("Right N.Asst", "record"),
+  sampleRate: { kind: "tiles", title: "Sample Rate", back: "record", pages: [[sC("44.1kHz"), sC("47.952kHz"), sC("48kHz"), sC("48.048kHz")]] },
+
+  sdcard: { kind: "tiles", title: "SD Card", back: "menu", note: "SD Name · Free · Size: —", pages: [[sT("Edit"), sT("Empty Trash", "popEmpty"), sT("Format", "popFormat")]] },
+  popEmpty: sPop("SD Card", "sdcard", "Empty the trash?", { destructive: true, ok: true, cancel: true }),
+  popFormat: sPop("SD Card", "sdcard", "Format the SD card? Everything on it is erased.", { destructive: true, ok: true, cancel: true }),
+  popUsb: sPop("USB Drive", "menu", "No drive attached", { ok: true }),
+
+  star: { kind: "tiles", title: "* Button", back: "menu", pages: [[sT("Ch 5/6 Screen"), sT("Solo/Mute Screen"), sT("Project"), sT("SD Card")]] },
+
+  system: { kind: "tiles", title: "System", back: "menu", pages: [
+    [sT("Mode", "popMode"), sT("USB-C Audio"), sT("USB Audio"), sT("File Transfer")],
+    [sT("NoiseAssist", "noiseAssist"), sT("Bluetooth"), sT("Wingman Password", "password"), sT("Brightness", "brightness")],
+    [sT("Date/Time", "dateTime"), sT("Reg…"), sT("Version", "popVersion"), sT("Firmware")],   // Firmware is deliberately never mapped
+    [sT("Plugins"), UNSEEN]] },
+  popMode: sPop("Mode", "system", "Change the recorder mode?", { destructive: true, cancel: true, options: [{ label: "Basic", to: "system" }, { label: "Advanced", to: "system" }] }),
+  popVersion: sPop("Version", "system", "MixPre-6 II · firmware 9.02", { ok: true }),
+  noiseAssist: sGrid("NoiseAssist", "system", ["On", "Off", "Ch 1", "Ch 2", "Ch 3", "Ch 4", "Ch 5", "Ch 6", "Bus L", "Bus R"]),
+  password: { kind: "tiles", title: "Wingman Password", back: "system", pages: [[sT("Enter", "pwEnter"), sT("Clear", "popClearPw")]] },
+  pwEnter: sKb("Password:", "password"),
+  popClearPw: sPop("Wingman Password", "password", "Clear the password?", { destructive: true, ok: true, cancel: true }),
+  brightness: { kind: "tiles", title: "Brightness", back: "system", pages: [[sT("LCD", "lcd"), sT("LED", "led")]] },
+  lcd: sEd("LCD", "brightness"), led: sEd("LED", "brightness"),
+  dateTime: { kind: "tiles", title: "Date/Time", back: "system", pages: [[sT("Set Date"), sT("Set Time")]] },
+
+  power: { kind: "tiles", title: "Power", back: "menu", pages: [[sT("Battery Type"), UNSEEN]] },
+  notMapped: { kind: "unmapped", title: "Not mapped yet", back: "home" },
+};
+for (const [i, n] of REPORT_PAGES.flat().entries()) MENU_6II["rep:" + n] = sKb(n, "reportInfo");
+MENU_6II.home = { kind: "home" };
+
+const sim = { id: "home", page: 0, armed: false };
+const simScreen = () => MENU_6II[sim.id] || MENU_6II.notMapped;
+function simGo(id, page = 0) { sim.id = id; sim.page = page; sim.armed = false; renderSimple(); }
+const simAfter = (rule, sc) => simGo(rule === "back" ? (sc.back || "home") : "home");
+const simKeys = (...keys) => needs("kb") && (tapKey(0, ...keys), true);
+
+const SIM_HOME_ICON = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3z"/></svg>';
+const SIM_HEAD_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4" height="6" rx="1.5" fill="currentColor"/><rect x="17" y="14" width="4" height="6" rx="1.5" fill="currentColor"/></svg>';
+function simHeader(sc) {
+  const pages = sc.pages || [];
+  const dots = pages.length > 1 ? `<span class="ldots">${pages.map((_, i) => `<button class="ldot${i === sim.page ? " on" : ""}" data-act="page" data-p="${i}" aria-label="Page ${i + 1}"></button>`).join("")}</span>` : "";
+  const head = sc.headphone ? `<button class="ltile lhp" data-act="unm" aria-label="Headphones"><small>LR Stereo</small>${SIM_HEAD_ICON}</button>` : "";
+  return `<div class="lhead">${head}<div class="ltitle"><b>${escapeHtml(sc.title)}</b><div class="lsub"><button class="lback" data-act="back">↰ Back</button>${dots}</div></div><button class="ltile lhome" data-act="home" aria-label="Home">${SIM_HOME_ICON}</button></div>`;
+}
+function simBody(sc) {
+  switch (sc.kind) {
+    case "tiles": {
+      const page = sc.pages[sim.page];
+      const six = page && page.length > 4;
+      const tiles = page ? page : [0, 1, 2, 3].map(() => ({ label: "", unm: true, unseen: true }));
+      return `<div class="lgrid${six ? " six" : ""}">${tiles.map((t, i) => t && t.label !== undefined
+        ? `<button class="ltile${t.unm ? " unm" : ""}" data-act="tile" data-i="${i}">${escapeHtml(t.label)}${t.unm ? "<em>not mapped yet</em>" : ""}</button>` : `<span></span>`).join("")}</div>${sc.note ? `<p class="lnote">${escapeHtml(sc.note)}</p>` : ""}`;
+    }
+    case "list":
+      return `<div class="llist"><p class="lhint">Select using headphone knob</p><div class="lrow"><button class="ltile" data-act="up">↑</button><button class="ltile" data-act="down">↓</button><button class="ltile lsel" data-act="select">Select</button></div></div>`;
+    case "editor":
+      return `<div class="ledit"><div class="lvh"><button class="ltile" data-act="down">↓</button><span>value</span><button class="ltile" data-act="up">↑</button></div><p class="lhint">Adjust with the headphone knob or ↓ ↑</p><button class="ltile lsel" data-act="ok">OK</button></div>`;
+    case "keyboard":
+      return `<div class="lkbw"><input class="lkb" id="skbText" maxlength="32" autocomplete="off" spellcheck="false" aria-label="${escapeHtml(sc.title)}"><div class="lrow"><button class="ltile lsel" data-act="kbok">OK</button><button class="ltile" data-act="back">Cancel</button></div></div>`;
+    case "grid":
+      return `<div class="lchips">${sc.items.map(n => `<span class="lchip">${escapeHtml(n)}</span>`).join("")}</div><div class="lrow"><button class="ltile" data-act="arrow" data-k="LEFT">←</button><button class="ltile" data-act="arrow" data-k="UP">↑</button><button class="ltile" data-act="arrow" data-k="DOWN">↓</button><button class="ltile" data-act="arrow" data-k="RIGHT">→</button><button class="ltile lsel" data-act="select">Enter</button></div>`;
+    case "unmapped":
+      return `<div class="llist"><p class="lhint">This screen isn't mapped yet.<br>Use Home to re-sync with the recorder.</p></div>`;
+    default: return "";
+  }
+}
+function simPopup(sc) {
+  const conf = sim.armed;
+  const opts = (sc.options || []).map((o, i) => `<button class="lpbtn" data-act="opt" data-i="${i}">${escapeHtml(o.label)}</button>`).join("");
+  const ok = sc.ok ? `<button class="lpbtn lok${conf ? " conf" : ""}" data-act="popok">${conf ? "Tap again to confirm" : "OK"}</button>` : "";
+  const cancel = sc.cancel || sc.options ? `<button class="lpbtn" data-act="back">Cancel</button>` : "";
+  return `<div class="lpop"><p>${escapeHtml(sc.msg)}</p><div class="lrow">${opts}${ok}${cancel}</div></div>`;
+}
+function simHome() {
+  const tr = [1, 2, 3, 4, 5, 6].map(n => `<button class="ltrk${S.arm & (1 << (n - 1)) ? " arm" : ""}" data-act="track" data-n="${n}" aria-label="Channel ${n}">${n}</button>`).join("");
+  return `<div class="lhome-s"><div class="ltop"><span class="lwav">∿ --------WAV</span><span class="lbatt"></span></div>
+    <div class="ltc"><span class="rtime lbig">--:--:--</span><button class="ltile lmenu" data-act="menu" aria-label="Menu">≡</button></div>
+    <div class="lmeters"><div class="ltrks"><span class="lr">L<br>R</span>${tr}</div><div class="lscale"><span>—</span><i>-50 -40 -30 -20 -12 0</i></div></div></div>`;
+}
+function renderSimple() {
+  const sc = simScreen(), el = $("sscreen");
+  if (sim.id === "home" || sc.kind === "home") { el.innerHTML = simHome(); el.dataset.kind = "home"; }
+  else {
+    el.dataset.kind = sc.kind;
+    el.innerHTML = simHeader(sc) + simBody(sc) + (sc.kind === "popup" ? simPopup(sc) : "");
+    if (sc.kind === "popup") el.querySelector(".lhead").classList.add("dim");
+    if (sc.kind === "keyboard") $("skbText").focus({ preventScroll: true });
+  }
+  $("snokb").hidden = hasKb();
+  tickTimer();
+}
+// physical-style actions (knob press, in-screen OK/Select)
+function simEnter() {
+  const sc = simScreen();
+  if (sc.kind === "popup" && sc.destructive) return toast("Use the on-screen OK to confirm");
+  if (!simKeys(SIMPLE_KEYS.select)) return;
+  if (sc.kind === "list") simAfter(SIMPLE_AFTER.listSelect, sc);
+  else if (sc.kind === "editor") simAfter(SIMPLE_AFTER.editorOk, sc);
+  else if (sc.kind === "popup" && sc.ok) simAfter(SIMPLE_AFTER.popupOk, sc);
+}
+function simBack() { const sc = simScreen(); if (simKeys(SIMPLE_KEYS.back)) simGo(sc.back || "home"); }
+function simHomeKey() { if (simKeys(SIMPLE_KEYS.home)) simGo("home"); }
+function simAct(e) {
+  const b = e.target.closest("[data-act]"); if (!b) return;
+  const sc = simScreen(), act = b.dataset.act, i = +b.dataset.i;
+  switch (act) {
+    case "unm": toast("Not mapped yet"); break;
+    case "home": simHomeKey(); break;
+    case "back": simBack(); break;
+    case "menu": if (simKeys(SIMPLE_KEYS.menu)) simGo("menu"); break;
+    case "track": if (simKeys(SIMPLE_KEYS.channel(+b.dataset.n))) simGo("channel"); break;
+    case "page": {
+      const to = +b.dataset.p, d = to - sim.page; if (!d || !needs("kb")) break;
+      for (let k = 0; k < Math.abs(d); k++) tapKey(0, d > 0 ? SIMPLE_KEYS.nextPage : SIMPLE_KEYS.prevPage);
+      simGo(sim.id, to); break;
+    }
+    case "tile": {
+      const page = sc.pages[sim.page], t = page && page[i];
+      if (!t || t.unm) return toast("Not mapped yet");
+      const keys = page.length > 4 ? SIMPLE_KEYS.tile6 : SIMPLE_KEYS.tile;
+      if (!simKeys(keys[i])) break;
+      if (t.choice) simAfter(SIMPLE_AFTER.choice, sc); else simGo(t.to);
+      break;
+    }
+    case "up": simKeys(SIMPLE_KEYS.up); break;
+    case "down": simKeys(SIMPLE_KEYS.down); break;
+    case "arrow": simKeys(KEY[b.dataset.k]); break;
+    case "select": case "ok": simEnter(); break;
+    case "opt": {
+      const o = sc.options[i];
+      if (sc.destructive && !sim.armed) { sim.armed = true; sim.armedOpt = i; return renderSimple(); }
+      if (simKeys(SIMPLE_KEYS.popupOption[i])) simGo(o.to);
+      break;
+    }
+    case "popok":
+      if (sc.destructive && !sim.armed) { sim.armed = true; return renderSimple(); }
+      if (simKeys(SIMPLE_KEYS.popupOk)) simAfter(SIMPLE_AFTER.popupOk, sc);
+      break;
+    case "kbok": {
+      if (!needs("kb")) break;
+      sendText($("skbText").value);
+      tapKey(0, SIMPLE_KEYS.kbSubmit);
+      simAfter(SIMPLE_AFTER.keyboardOk, sc);
+      break;
+    }
+  }
+}
+// scale the screen copy: --u = 1% of its width, so everything stays crisp at any size
+function simScale() { const w = $("sscreen").clientWidth; if (w) $("sscreen").style.setProperty("--u", (w / 100) + "px"); }
+function updateSimpleHome() {
+  if (sim.id !== "home") return;
+  document.querySelectorAll("#sscreen .ltrk").forEach((b, i) => b.classList.toggle("arm", !!(S.arm & (1 << i))));
+}
+/* view switch: Advanced (the tabs) or Simple (the screen copy) */
+let view = store.get("view", "advanced");
+function applyView() {
+  const simple = view === "simple";
+  document.body.classList.toggle("simple", simple);
+  $("control").hidden = !ctlOn || simple;
+  $("simple").hidden = !ctlOn || !simple;
+  $("viewBtn").textContent = simple ? "Advanced" : "Simple";
+  $("railView").textContent = simple ? "Adv." : "Simple";
+  $("viewBtn").setAttribute("aria-label", "Switch to " + (simple ? "Advanced" : "Simple") + " view");
+  document.querySelectorAll("#viewSeg button").forEach(b => b.classList.toggle("on", b.dataset.v === view));
+  if (simple && ctlOn) { renderSimple(); requestAnimationFrame(simScale); }
+  else if (ctlOn) requestAnimationFrame(redrawSliders);
+}
+function setView(v) { view = v; store.set("view", v); applyView(); render(); }
+function wireSimple() {
+  $("sscreen").addEventListener("click", simAct);
+  $("sKnob").onclick = simEnter;
+  $("sBack").onclick = simBack;
+  $("sHome").onclick = simHomeKey;
+  $("snokbBtn").onclick = () => { send(OP.MODE, 2); toast("Switching USB mode to Both…", 3500); };
+  $("viewBtn").onclick = $("railView").onclick = () => setView(view === "simple" ? "advanced" : "simple");
+  document.querySelectorAll("#viewSeg button").forEach(b => b.onclick = () => setView(b.dataset.v));
+  if (window.ResizeObserver) new ResizeObserver(simScale).observe($("sscreen"));
+  new MutationObserver(simScale).observe($("simple"), { attributes: true, attributeFilter: ["hidden"] });
 }
 
 /* ============================================================ log */
@@ -1883,6 +2265,10 @@ function addLog(line) {
 }
 
 /* ============================================================ wire up */
+function sendText(t) {   // typed on the MixPre's USB keyboard, 18 bytes per message
+  const bytes = new TextEncoder().encode(t);
+  for (let i = 0; i < bytes.length; i += 18) send(OP.TYPE, [...bytes.slice(i, i + 18)]);
+}
 function wireRecorder() {
   const tbtn = (el, ccName, kbMods, kbKey) => bindHold(el,
     () => { if (hasMidi()) return send(OP.HOLD_CC, CC[ccName]); if (!el._sent && needs("kb")) { el._sent = true; tapKey(kbMods, kbKey); } return true; },
@@ -1914,8 +2300,7 @@ function wire() {
   const doType = () => {
     if (!needs("kb")) return;
     let t = $("typeText").value; if ($("typeEnter").checked) t += "\n";
-    const bytes = new TextEncoder().encode(t);
-    for (let i = 0; i < bytes.length; i += 18) send(OP.TYPE, [...bytes.slice(i, i + 18)]);
+    sendText(t);
     $("typeText").value = ""; toast("Typing on MixPre…");
   };
   $("typeBtn").onclick = doType;
@@ -1928,6 +2313,10 @@ function wire() {
   $("railGear").onclick = () => $("settingsBtn").click();
   $("railStatus").onclick = () => openStatus($("statusSheet").hidden);
   $("railBack").onclick = () => $("backBtn").click();
+  // the rail copy of the back button always mirrors the header one
+  const mirrorBack = () => { $("railBack").hidden = $("backBtn").hidden; };
+  new MutationObserver(mirrorBack).observe($("backBtn"), { attributes: true, attributeFilter: ["hidden"] });
+  mirrorBack();
   $("statusPill").onclick = () => openStatus($("statusSheet").hidden);
   $("closeSheet").onclick = $("scrim").onclick = () => { openSheet(false); openStatus(false); };
   document.querySelectorAll("#tabbar button[data-tab]").forEach(b => b.onclick = () => setTab(b.dataset.tab));
@@ -2075,7 +2464,7 @@ function wirePairing() {
 /* ============================================================ list of online remotes (hosted page) */
 let listTimer = null, listBusy = false;
 async function refreshList() {
-  if (PI_SERVED || listBusy || !$("control").hidden || document.hidden) return;
+  if (PI_SERVED || listBusy || ctlOn || document.hidden) return;
   const relay = relayUrl();
   if (!relay) { showSetup("Enter your relay URL (and access key) once to see your remotes."); return; }
   listBusy = true;
@@ -2181,6 +2570,8 @@ wire();
 buildSheet();
 setTab(store.get("tab", "rec"));
 buildInputs();
+wireSimple();
+applyView();
 buildShortcuts();
 render();
 wireNet();
@@ -2225,7 +2616,7 @@ if (PI_SERVED) {
   // No internet on a laptop usually means it just joined the MixPre's Wi-Fi -> point at the local page
   let fails = 0;
   setInterval(async () => {
-    if (!$("control").hidden) { fails = 0; $("noNetHint").hidden = true; return; }
+    if (ctlOn) { fails = 0; $("noNetHint").hidden = true; return; }
     try { await fetch(location.pathname + "?ping=" + Date.now(), { method: "HEAD", cache: "no-store" }); fails = 0; }
     catch { fails++; }
     $("noNetHint").hidden = fails < 1;
