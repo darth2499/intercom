@@ -464,6 +464,11 @@ button.stat:active{opacity:.7}
 .console .tile .ico-send{color:var(--red);background:rgba(255,69,58,.12);border-color:rgba(255,69,58,.3)!important}
 .console .tile .ico-listen{color:var(--green);background:rgba(50,215,75,.12);border-color:rgba(50,215,75,.3)!important}
 .console .tile .ico-mixpre{color:var(--blue);background:rgba(10,132,255,.12);border-color:rgba(10,132,255,.3)!important}
+.console .tile.rec .ico-mixpre{color:var(--red);background:rgba(255,69,58,.14);border-color:rgba(255,69,58,.4)!important}
+.recpill{display:inline-block;vertical-align:1px;margin:-2px 0 -2px 6px;padding:2px 8px;border-radius:999px;background:var(--red);color:#fff;font:700 11px/14px var(--mono);letter-spacing:.04em;font-variant-numeric:tabular-nums}
+.recpill::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:#fff;margin-right:5px;vertical-align:1px;animation:recblink 1.2s steps(2,start) infinite}
+@keyframes recblink{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.recpill::before{animation:none}}
 .console .tile .ico-talk{color:var(--acc);background:rgba(255,176,32,.12);border-color:rgba(255,176,32,.3)!important}
 .console .send-stack .resume{border-radius:0 0 18px 18px;height:52px;font-size:16px}
 .console .send-stack.resumable .tile{border-bottom:0}
@@ -740,7 +745,7 @@ button.stat:active{opacity:.7}
       <span class="ico ico-mixpre">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v18M12 3v18M18 3v18"/><rect x="4" y="13" width="4" height="3.5" rx="1" fill="currentColor"/><rect x="10" y="7" width="4" height="3.5" rx="1" fill="currentColor"/><rect x="16" y="15" width="4" height="3.5" rx="1" fill="currentColor"/></svg>
       </span>
-      <span><h2>Control</h2><p>Control the recorder from your phone</p></span>
+      <span><h2>Control <span class="recpill" id="mixRec" hidden></span></h2><p>Control the recorder from your phone</p></span>
       <svg class="chev" viewBox="0 0 9 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5 7.5 8l-6 6.5"/></svg>
     </a>
     <!-- WIP: Talkback hidden -->
@@ -995,7 +1000,7 @@ button.stat:active{opacity:.7}
               sender watchdog re-acquires a lost input, listener auto-resyncs a bloated buffer. */
 
 /* ============ Config ============ */
-const VERSION = '0.17.16-beta';                     // shown on the home screen — go to 1.0.0 when ready
+const VERSION = '0.17.17-beta';                     // shown on the home screen — go to 1.0.0 when ready
 const PREFIX = 'asahina-intercom-';            // namespace for room ids on the PeerJS server
 const ICE = [
   { urls: 'stun:stun.l.google.com:19302' },
@@ -3310,6 +3315,34 @@ function paintResume(){
   if (on) $('resumeBtn').textContent = `Resume sending · room ${store.get('ic-code')}`;
 }
 paintResume();
+/* Control tile: live REC badge for MixPres this phone is paired with (tokens saved by the MixPre page on this same origin) */
+const WATCH_URL = 'wss://relay.mixremote.app/watch';
+const mixRec = { ws:null, timer:null, retry:0, since:0, tick:null };
+function mixTokens(){ try { const a = JSON.parse(localStorage.getItem('mixpre-tokens') || '[]'); return Array.isArray(a) ? a.filter(t => typeof t === 'string' && t) : []; } catch { return []; } }
+function mixRecPaint(pis){
+  const recs = (pis || []).filter(p => p.rec === true);
+  mixRec.since = recs.length ? Math.min(...recs.map(p => p.rec_since || Date.now())) : 0;
+  clearInterval(mixRec.tick); mixRec.tick = null;
+  const el = $('mixRec'), tile = $('goMixpre');
+  tile.classList.toggle('rec', !!mixRec.since); el.hidden = !mixRec.since;
+  if (!mixRec.since) return;
+  const fmt = () => { const s = Math.max(0, Math.floor((Date.now() - mixRec.since) / 1000)), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60;
+    el.textContent = 'REC ' + (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(s % 60).padStart(2, '0'); };
+  fmt(); mixRec.tick = setInterval(fmt, 1000);
+}
+function mixRecClose(){ clearTimeout(mixRec.timer); if (mixRec.ws) { mixRec.ws.onclose = null; try { mixRec.ws.close(); } catch {} mixRec.ws = null; } mixRecPaint([]); }
+function mixRecOpen(){
+  clearTimeout(mixRec.timer);
+  const toks = mixTokens();
+  if (document.hidden || !toks.length || mixRec.ws) return;
+  let ws; try { ws = new WebSocket(WATCH_URL + '?tokens=' + encodeURIComponent(toks.join(','))); } catch { return; }
+  mixRec.ws = ws;
+  ws.onopen = () => { mixRec.retry = 0; };
+  ws.onmessage = e => { try { const d = JSON.parse(e.data); if (d.t === 'list') mixRecPaint(d.pis); } catch {} };
+  ws.onclose = ws.onerror = () => { if (mixRec.ws !== ws) return; mixRec.ws = null; mixRecPaint([]); mixRec.timer = setTimeout(mixRecOpen, Math.min(60000, 2000 * 2 ** mixRec.retry++)); };
+}
+document.addEventListener('visibilitychange', () => document.hidden ? mixRecClose() : mixRecOpen());
+mixRecOpen();
 $('goListen').addEventListener('click', openListen);
 $('stopSend').addEventListener('click', () => { if (confirmStop(`Stop sending? ${listenerWord()}will lose audio.`)) stopSend(); });
 document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click', () => {
