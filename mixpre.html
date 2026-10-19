@@ -1092,6 +1092,7 @@ function handleServerMsg(m) {
   else if (m.type === "you") Aud.myId = m.id;
   else if (m.type === "pair") onPair(m);
   else if (m.type === "peer") Aud.onPeer(m.from, m.d || {});
+  else if (m.type === "simple") simRemote(m);
 }
 function applyNet(n) {
   S.net = n;
@@ -1968,7 +1969,6 @@ const SMR = {
 const viaMidi = i => hasMidi() && i < MIDI_STRIPS;
 function pressSMR(i, k) {
   const d = SMR[k];
-  if (k === "s") soloSent[i] = performance.now();   // see simFollowSolo
   if (viaMidi(i)) return tapCC(d.cc() + i);
   if (needs("kb")) { tapKey(d.mods, DIGIT(i + 1)); kbToggle(d.lit, i); }
 }
@@ -2128,12 +2128,10 @@ function setTab(t) {
   if (t === "rec") requestAnimationFrame(redrawSliders);
 }
 function applyState(m) {
-  const prevSolo = S.solo;
   for (const k of ["mode","role","midi","hid","usb","arm","mute","solo","transport","name","version"]) if (m[k] !== undefined) S[k] = m[k];
   if (m.levels) S.levels = m.levels;
   if (m.pre_roll !== undefined && document.activeElement !== $("preRoll")) $("preRoll").value = m.pre_roll;
   if (m.rec_s !== undefined) { S.rec_s = m.rec_s; S.rec_at = performance.now(); }
-  if (m.solo !== undefined) simFollowSolo(prevSolo, S.solo);
   render();
 }
 // Recording timer: counted from when the MixPre's Rec LED came on (the MixPre doesn't send its own clock)
@@ -2298,7 +2296,7 @@ MENU_6II.home = { kind: "home" };
 
 const sim = { id: "home", page: 0, armed: false, ch: 0, kbLower: false };
 const simScreen = () => MENU_6II[sim.id] || MENU_6II.notMapped;
-function simGo(id, page = 0) { sim.id = id; sim.page = page; sim.armed = false; renderSimple(); }
+function simGo(id, page = 0) { sim.id = id; sim.page = page; sim.armed = false; renderSimple(); simPublish(); }
 const simAfter = (rule, sc) => simGo(rule === "back" ? (sc.back || "home") : "home");
 const simKeys = (...keys) => needs("kb") && (tapKey(0, ...keys), true);
 
@@ -2408,32 +2406,23 @@ function simHome() {
     <div class="lfoot lcdtile"><span>—</span><span class="lhpn">${SIM_ICON.head}LR Stereo</span></div></div>`;
 }
 let simSlider = null;
-// UNVERIFIED ON HARDWARE (Phase 0 checklist in CODE.MD).
-// With Inputs > Knob Press = "Ch.View+Solo", pressing the knob on the MixPre solos a channel AND shows its screen.
-// A solo sent from this page (the MIDI solo CC, from Simple or Advanced) is assumed NOT to change the recorder's screen.
-// So the copy follows only MixPre-side solos: feedback for channel n that arrives within SOLO_ECHO_MS of our own send is ignored;
-// otherwise solo ON moves the copy to channel n, solo OFF returns it to where it was; with several soloed, follow the most recent.
-const SOLO_ECHO_MS = 1500;
-const soloSent = {};             // channel -> time we last sent its solo CC
-const soloOrder = [];            // MixPre-side soloed channels, oldest first
-let soloReturn = null;           // where the copy was before the first MixPre-side solo
-function simFollowSolo(prev, now) {
-  if (view !== "simple" || !ctlOn || prev === now) return;
-  const t = performance.now();
-  for (let i = 0; i < 16; i++) {
-    const bit = 1 << i, was = prev & bit, is = now & bit;
-    if (!!was === !!is || t - (soloSent[i] || -1e9) < SOLO_ECHO_MS) continue;   // unchanged, or the echo of our own send
-    if (is) soloOrder.push(i);
-    else { const k = soloOrder.indexOf(i); if (k >= 0) soloOrder.splice(k, 1); }
-  }
-  if (simScreen().kind === "keyboard") return;   // don't pull the screen away while a name is being typed
-  if (soloOrder.length) {
-    if (!soloReturn) { soloReturn = { id: sim.id, page: sim.page, ch: sim.ch }; if (!inChannelPage()) chReturn = { id: sim.id, page: sim.page }; }
-    const ch = soloOrder[soloOrder.length - 1];
-    if (!(sim.id === "channel" && sim.ch === ch)) { sim.ch = ch; simGo("channel"); }
-  } else if (soloReturn) {
-    const r = soloReturn; soloReturn = null; sim.ch = r.ch; simGo(r.id, r.page);
-  }
+// The Pi keeps the one shared copy position (`simple` messages) and also moves it for MixPre-side solos
+// (server/simple_sync.py, unverified on hardware): this page only sends its own navigation and applies what the Pi broadcasts.
+let simSeq = 0, simEpoch = null;
+const simClientId = () => Aud.myId || (simClientId.anon = simClientId.anon || Math.random().toString(36).slice(2, 10));
+function simPublish() {
+  if (!transport || transport.kind === "Demo") return;
+  sendJson({ op: "simple_nav", screen: sim.id, page: sim.page, ch: sim.ch, kb: simScreen().kind === "keyboard", by: simClientId(), base: simSeq,
+    prev: chReturn ? { screen: chReturn.id, page: chReturn.page } : null });
+}
+function simRemote(m) {
+  if (simEpoch !== m.epoch) { simEpoch = m.epoch; simSeq = 0; }       // the Pi restarted
+  if (!(m.seq > simSeq)) return;
+  simSeq = m.seq;
+  if (m.by === simClientId()) return;                                  // our own change, already applied
+  sim.id = String(m.screen); sim.page = m.page | 0; sim.ch = m.ch | 0; sim.armed = false;
+  chReturn = m.prev ? { id: m.prev.screen, page: m.prev.page } : null;
+  if (view === "simple" && ctlOn) renderSimple();
 }
 function renderSimple() {
   const sc = simScreen(), el = $("sscreen");
@@ -2481,7 +2470,7 @@ function simCloseChannel() {
     if (isLit(i, "s")) pressSMR(i, "s");   // solo CC toggles it off
     tapCC(CC.open + i);                    // Open CC toggles the channel page closed
   } else if (!simKeys(SIMPLE_KEYS.back)) return;
-  const r = chReturn || { id: "home", page: 0 }; chReturn = null; soloReturn = null; soloOrder.length = 0;
+  const r = chReturn || { id: "home", page: 0 }; chReturn = null;
   simGo(r.id, r.page);
 }
 function simBack() { const sc = simScreen(); if (sim.id === "channel") return simCloseChannel(); if (sc.local) return simGo(sc.back); if (simKeys(SIMPLE_KEYS.back)) simGo(sc.back || "home"); }
