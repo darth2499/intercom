@@ -461,6 +461,19 @@ button.lcdtile:active{filter:brightness(.88)}
 .lpbtn{flex:0 0 auto;min-width:calc(var(--u)*22);min-height:calc(var(--u)*9);padding:0 calc(var(--u)*2)!important;background:#eef3f0;color:var(--lcd-text);font-size:calc(var(--u)*6.4);border-radius:calc(var(--u)*.3)}
 .lpbtn.sel,.lpbtn.lok{background:var(--lcd-ok);color:#3a2a08}
 .lpbtn.lok.conf{background:#e0382d;color:#fff}
+/* level meters (Simple home + Advanced card) */
+.lrow2{display:flex;flex-direction:column;gap:calc(var(--u)*.5)}
+.lmb,.ab{position:relative;display:block;overflow:hidden;font-style:normal}
+.lmb{height:calc(var(--u)*4.6)}
+.lmb u,.ab u{position:absolute;inset:0;background:linear-gradient(90deg,#79d444 0 66%,#e6c93f 66% 82.3%,#e0382d 82.3% 100%);clip-path:inset(0 100% 0 0);text-decoration:none}
+.lmb s,.ab s{position:absolute;left:0;top:10%;bottom:10%;width:calc(var(--u)*1.1);margin-left:calc(var(--u)*-.5);background:#7fa0ff;transform:translateX(0);opacity:0;text-decoration:none;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
+.lgap{flex:none;height:calc(var(--u)*4.6)}
+.lscale .lrow2{flex:none}
+.lscale .lbar{flex:none;height:calc(var(--u)*4.6)}
+.amet{display:none;width:100%;flex-direction:column;gap:3px}
+body.metering .amet{display:flex}
+.ab{height:5px;background:#000;border-radius:2px}
+.ab s{width:3px;margin-left:-1px;clip-path:none;top:0;bottom:0}
 /* Home */
 .lhome-s{grid-row:1/4;min-height:0;display:grid;grid-template-rows:34fr minmax(0,48fr) 11fr;gap:calc(var(--u)*1.4)}
 .lhtop{display:grid;grid-template-columns:minmax(0,1fr) calc(var(--u)*26);column-gap:calc(var(--u)*.4);position:relative;min-height:0}
@@ -476,10 +489,10 @@ button.lcdtile:active{filter:brightness(.88)}
 .lhmenu svg{width:calc(var(--u)*13);height:calc(var(--u)*13)}
 .lmeters{display:grid;grid-template-columns:calc(var(--u)*7.5) minmax(0,1fr);gap:calc(var(--u)*1.2);min-height:0}
 .ltrks{display:flex;flex-direction:column;gap:calc(var(--u)*.5);min-height:0}
-.ltrks .lr{flex:none;background:var(--lcd-red);color:#fff;font-size:calc(var(--u)*3.4);line-height:1.15;text-align:center;font-weight:700;border-radius:calc(var(--u)*.3)}
+.ltrks .lr{flex:none;height:calc(var(--u)*4.6);display:grid;place-items:center;background:var(--lcd-red);color:#fff;font-size:calc(var(--u)*3.4);line-height:1;text-align:center;font-weight:700;border-radius:calc(var(--u)*.3)}
 .ltrk{flex:1;min-height:0;background:transparent;color:#e6ede6;font-size:calc(var(--u)*3.8);line-height:1;font-weight:700;border-radius:calc(var(--u)*.3)!important}
 .ltrk.arm{background:var(--lcd-red);color:#fff}
-.lscale{min-width:0;background:#000 repeating-linear-gradient(90deg,transparent 0 calc(var(--u)*13.4),#d8e0dc calc(var(--u)*13.4) calc(var(--u)*13.7));position:relative;display:flex;flex-direction:column;color:#7f8a90}
+.lscale{min-width:0;position:relative;display:flex;flex-direction:column;color:#7f8a90;background:linear-gradient(#d8e0dc,#d8e0dc) 17.4% 0/calc(var(--u)*.35) 100% no-repeat,linear-gradient(#d8e0dc,#d8e0dc) 34.8% 0/calc(var(--u)*.35) 100% no-repeat,linear-gradient(#d8e0dc,#d8e0dc) 52% 0/calc(var(--u)*.35) 100% no-repeat,linear-gradient(#d8e0dc,#d8e0dc) 66% 0/calc(var(--u)*.35) 100% no-repeat,linear-gradient(#d8e0dc,#d8e0dc) 87% 0/calc(var(--u)*.35) 100% no-repeat,#000}
 .lbar{display:flex;justify-content:space-between;background:#7c878b;color:#eef2ee;font-size:calc(var(--u)*4.4);padding:0 calc(var(--u)*1.4)}
 .lnone{margin:auto;font-size:calc(var(--u)*7)}
 .lfoot{flex-direction:row!important;justify-content:space-between!important;padding:0 calc(var(--u)*2);font-size:calc(var(--u)*4.6)!important;color:var(--lcd-text)}
@@ -665,6 +678,7 @@ html,body{overflow-x:clip}
           <button class="rp" data-tr="cue">Mark</button>
           <button class="rp" data-tr="ff">Forward</button>
         </div>
+        <div class="amet" aria-hidden="true"><i class="ab"><u></u><s></s></i><i class="ab"><u></u><s></s></i></div>
       </section>
       <section class="inputs" aria-label="Inputs">
         <div class="sec-h"><h2>Inputs</h2><span>S · M · R</span></div>
@@ -910,6 +924,12 @@ html,body{overflow-x:clip}
   </div>
 
   <div class="sech">Audio</div>
+  <div class="group" id="meterGroup">
+    <h4>Meter source</h4>
+    <p>Shows a live L/R meter in the Simple view. The Pi gets no audio from the MixPre, so levels come from a device that has it.</p>
+    <div class="seg" id="meterSeg"><button data-v="off">Off</button><button data-v="listen">Listen stream</button><button data-v="input">This device</button></div>
+    <p class="small" id="meterNote" style="margin-top:var(--s2)"></p>
+  </div>
   <div class="group" id="audioGroup">
     <h4>Listen</h4>
     <p>Hear the MixPre on any device on this page, even over the internet.</p>
@@ -1483,6 +1503,7 @@ const Aud = {
   myId: null, stream: null, sending: false, label: "", peers: {}, sender: null,
   listenPc: null, listening: false, ctx: null, analysers: null, raf: 0, peaks: [0, 0], holds: [-90, -90], holdT: [0, 0],
   ice: null, iceAt: 0,
+  muted: false, auto: false, listenStream: null, metIn: null, metBusy: false, metErr: "", lastDraw: 0,
 
   // ---- signaling through the hub (relay room or the Pi)
   hub() {
@@ -1562,7 +1583,7 @@ const Aud = {
     if (!navigator.mediaDevices) return toast("This browser can't capture audio");
     const id = $("srcSel").value;
     try {
-      this.stream = await navigator.mediaDevices.getUserMedia({ audio: {
+      this.stream = params.has("metertest") ? this.testStream() : await navigator.mediaDevices.getUserMedia({ audio: {
         deviceId: id ? { exact: id } : undefined, channelCount: { ideal: 2 }, sampleRate: { ideal: 48000 },
         echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
     } catch (e) { return toast("Couldn't open that input: " + (e.message || e.name)); }
@@ -1570,7 +1591,7 @@ const Aud = {
     const opt = $("srcSel").selectedOptions[0];
     this.label = (opt ? opt.textContent : "Audio") + (S.name ? "" : "");
     this.sending = true;
-    this.meterFrom(this.stream);
+    this.meterRefresh();
     this.send({ a: "sender", label: this.label });
     if (!this.hub()) toast("Sending works over Wi‑Fi or the cloud connection (not Bluetooth)");
     this.render();
@@ -1581,7 +1602,7 @@ const Aud = {
     if (this.stream) this.stream.getTracks().forEach(t => t.stop());
     this.stream = null; this.sending = false;
     this.send({ a: "sender_off" });
-    if (!this.listening) this.meterStop();
+    this.meterRefresh();
     this.render();
   },
   async offerTo(lid) {
@@ -1609,17 +1630,18 @@ const Aud = {
   },
 
   // ---- listening
-  startListening() {
+  // auto = meter-only: join as a listener but stay muted (Meter source = Listen stream)
+  startListening(auto) {
     if (transport && transport.kind === "Demo" && this.stream) {   // demo: hear your own input
-      this.listening = true; this.play(this.stream); this.render(); return;
+      this.listening = true; this.auto = !!auto; this.muted = !!auto; this.play(this.stream); this.render(); return;
     }
-    if (!this.sender) return toast("Nobody is sending yet");
+    if (!this.sender) { if (!auto) toast("Nobody is sending yet"); return; }
     this.ensureCtx();
-    this.listening = true;
+    this.listening = true; this.auto = !!auto; this.muted = !!auto;
     this.send({ a: "listen" }, this.sender.id);
     $("audioStatus").textContent = "Connecting audio…";
     clearTimeout(this.listenTimer);
-    this.listenTimer = setTimeout(() => { if (this.listening && !(this.listenPc && this.listenPc.connectionState === "connected")) toast("Audio is taking a while — the networks may block it (add TURN to your relay)", 5000); }, 12000);
+    this.listenTimer = setTimeout(() => { if (this.listening && !this.auto && !(this.listenPc && this.listenPc.connectionState === "connected")) toast("Audio is taking a while — the networks may block it (add TURN to your relay)", 5000); }, 12000);
   },
   async onOffer(from, sdp) {
     if (!this.listening || !this.sender || this.sender.id !== from) return;
@@ -1642,17 +1664,18 @@ const Aud = {
   },
   play(stream) {
     const el = this.el || (this.el = Object.assign(document.createElement("audio"), { autoplay: true, playsInline: true }));
-    el.srcObject = stream; el.volume = +$("volume").value;
-    el.play().catch(() => toast("Tap Listen again to allow audio"));
-    this.meterFrom(stream);
+    el.srcObject = stream; el.volume = +$("volume").value; el.muted = this.muted;   // a muted element still feeds the meter
+    el.play().catch(() => { if (!this.auto) toast("Tap Listen again to allow audio"); });
+    this.listenStream = stream;
+    this.meterRefresh();
     this.render();
   },
   stopListening(silent) {
-    this.listening = false;
+    this.listening = false; this.auto = false; this.muted = false; this.listenStream = null;
     if (this.listenPc) { try { this.listenPc.close(); } catch {} this.listenPc = null; }
     if (this.el) this.el.srcObject = null;
     if (!silent && this.sender) this.send({ a: "bye" }, this.sender.id);
-    if (this.sending) this.meterFrom(this.stream); else this.meterStop();
+    this.meterRefresh();
     this.render();
   },
 
@@ -1661,6 +1684,63 @@ const Aud = {
     if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
     if (this.ctx.state === "suspended") this.ctx.resume();
     return this.ctx;
+  },
+  // which stream feeds the level meters: our own sending stream, else the stream we listen to, else the metering input
+  meterRefresh() {
+    const want = this.sending ? this.stream : this.listenStream || this.metIn || null;
+    if (want === this.metered) return;
+    this.metered = want;
+    if (want) this.meterFrom(want); else this.meterStop();
+  },
+  // Meter source setting: "off" | "listen" (muted listener) | "input" (a local input, secure page only)
+  syncMeter() {
+    const mode = meterMode;
+    if (mode !== "input" && this.metIn) this.stopMeterInput();
+    if (mode === "listen") {
+      if (!this.listening && !this.sending && this.sender && this.hub()) this.startListening(true);
+    } else {
+      if (this.listening && this.auto) this.stopListening(true);
+      if (mode === "input" && !this.metIn && !this.sending && !this.metBusy && !this.metErr) this.startMeterInput();
+    }
+    this.meterNote();
+  },
+  async startMeterInput() {
+    if (!window.isSecureContext || !navigator.mediaDevices) { this.metErr = "This input needs a secure page (https), such as mixremote.app."; return; }
+    this.metBusy = true;
+    try {
+      if (params.has("metertest")) this.metIn = this.testStream();
+      else {
+        const id = $("srcSel").value || store.get("audioSrc", "");
+        this.metIn = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: id ? { exact: id } : undefined, channelCount: { ideal: 2 }, echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+      }
+    } catch (e) { this.metErr = "That input isn't allowed: " + (e.message || e.name); }
+    this.metBusy = false;
+    this.meterRefresh(); this.meterNote();
+  },
+  stopMeterInput() {
+    if (this.metIn) this.metIn.getTracks().forEach(t => t.stop());
+    this.metIn = null; this.meterRefresh();
+  },
+  // ?metertest: two oscillators with slow level swings, so the meters can be seen moving without hardware
+  testStream() {
+    const ctx = this.ensureCtx(), dest = ctx.createMediaStreamDestination(), merge = ctx.createChannelMerger(2);
+    [[440, 0.45, 0.35], [660, 0.3, 0.22]].forEach(([f, rate, base], i) => {
+      const osc = ctx.createOscillator(), g = ctx.createGain(), lfo = ctx.createOscillator(), depth = ctx.createGain();
+      osc.frequency.value = f; g.gain.value = base; lfo.frequency.value = rate; depth.gain.value = base * 0.9;
+      lfo.connect(depth); depth.connect(g.gain); osc.connect(g); g.connect(merge, 0, i); osc.start(); lfo.start();
+    });
+    merge.connect(dest);
+    const t = dest.stream; t._test = true; return t;
+  },
+  meterNote() {
+    const el = $("meterNote"); if (!el) return;
+    const secure = window.isSecureContext && !!navigator.mediaDevices;
+    $("meterSeg").querySelector('[data-v="input"]').disabled = !secure;
+    let t = "";
+    if (meterMode === "off") t = "The Simple view's L/R meter is off.";
+    else if (meterMode === "input") t = !secure ? "This device's input needs a secure page (https), such as mixremote.app. Not available on mixpre.local." : this.metErr ? this.metErr : this.metIn ? "Metering this device's input." : "Starting the input…";
+    else t = this.sending ? "Metering the input you are sending." : this.listenStream ? `Metering ${this.sender ? this.sender.label : "the stream"} (muted).` : this.sender ? "Connecting to the stream…" : "Waiting for a device that is sending (Start sending on a device connected to the MixPre).";
+    if (el.textContent !== t) el.textContent = t;
   },
   meterFrom(stream) {
     this.meterStop(true);
@@ -1676,60 +1756,84 @@ const Aud = {
     this.src = src; this.analysers = [L, R];
     $("meter").hidden = false; $("meterScale").hidden = false;
     const buf = new Float32Array(1024);
+    // one rAF loop for every meter (Settings canvas, Simple screen, Advanced card); ~25 fps; idle while the page is hidden
     const draw = () => {
       this.raf = requestAnimationFrame(draw);
-      const c = $("meter"), g = c.getContext("2d"), W = c.width, H = c.height;
-      g.clearRect(0, 0, W, H);
       const now = performance.now();
+      if (document.hidden || now - this.lastDraw < 38) return;
+      this.lastDraw = now;
       this.analysers.forEach((a, i) => {
         a.getFloatTimeDomainData(buf);
         let pk = 0; for (let j = 0; j < buf.length; j++) { const v = Math.abs(buf[j]); if (v > pk) pk = v; }
         const db = pk > 0 ? 20 * Math.log10(pk) : -90;
-        this.peaks[i] = Math.max(db, this.peaks[i] - 1.2);           // smooth fall
+        this.peaks[i] = Math.max(db, this.peaks[i] - 2.4);           // smooth fall (per ~40 ms frame)
         if (db >= this.holds[i] || now - this.holdT[i] > 1500) { this.holds[i] = db; this.holdT[i] = now; }
-        const x = d => Math.max(0, Math.min(1, (d + 60) / 60)) * W;
-        const y = i * (H / 2) + 4, h = H / 2 - 8;
-        g.fillStyle = "#1c1c1e"; g.fillRect(0, y, W, h);
-        const grad = g.createLinearGradient(0, 0, W, 0);
-        grad.addColorStop(0, "#30d158"); grad.addColorStop(0.7, "#30d158"); grad.addColorStop(0.8, "#ffd60a"); grad.addColorStop(0.9, "#ff9f0a"); grad.addColorStop(1, "#ff453a");
-        g.fillStyle = grad; g.fillRect(0, y, x(this.peaks[i]), h);
-        g.fillStyle = this.holds[i] > -1 ? "#ff453a" : "#fff"; g.fillRect(Math.max(0, x(this.holds[i]) - 3), y, 3, h);
-        g.fillStyle = "rgba(255,255,255,.5)"; g.font = "bold 18px -apple-system,sans-serif"; g.fillText(i ? "R" : "L", 8, y + h / 2 + 6);
       });
+      if (!$("sheet").hidden) this.drawCanvas();
+      drawLevelMeters();
     };
     draw();
+  },
+  drawCanvas() {
+    const c = $("meter"), g = c.getContext("2d"), W = c.width, H = c.height;
+    g.clearRect(0, 0, W, H);
+    [0, 1].forEach(i => {
+      const x = d => Math.max(0, Math.min(1, (d + 60) / 60)) * W;
+      const y = i * (H / 2) + 4, h = H / 2 - 8;
+      g.fillStyle = "#1c1c1e"; g.fillRect(0, y, W, h);
+      const grad = g.createLinearGradient(0, 0, W, 0);
+      grad.addColorStop(0, "#30d158"); grad.addColorStop(0.7, "#30d158"); grad.addColorStop(0.8, "#ffd60a"); grad.addColorStop(0.9, "#ff9f0a"); grad.addColorStop(1, "#ff453a");
+      g.fillStyle = grad; g.fillRect(0, y, x(this.peaks[i]), h);
+      g.fillStyle = this.holds[i] > -1 ? "#ff453a" : "#fff"; g.fillRect(Math.max(0, x(this.holds[i]) - 3), y, 3, h);
+      g.fillStyle = "rgba(255,255,255,.5)"; g.font = "bold 18px -apple-system,sans-serif"; g.fillText(i ? "R" : "L", 8, y + h / 2 + 6);
+    });
   },
   meterStop(keepVisible) {
     cancelAnimationFrame(this.raf); this.raf = 0;
     try { this.src && this.src.disconnect(); } catch {}
     this.src = null; this.analysers = null; this.peaks = [-90, -90]; this.holds = [-90, -90];
-    if (!keepVisible) { $("meter").hidden = true; $("meterScale").hidden = true; }
+    if (!keepVisible) { $("meter").hidden = true; $("meterScale").hidden = true; this.metered = null; drawLevelMeters(); }
   },
 
   render() {
     const n = Object.values(this.peers).filter(pc => pc.connectionState === "connected").length;
     const st = $("audioStatus");
     if (this.sending) st.innerHTML = `Sending <b>${escapeHtml(this.label)}</b> · ${n} listening`;
+    else if (this.listening && this.auto) st.innerHTML = `Metering <b>${escapeHtml(this.sender ? this.sender.label : "")}</b> (muted) · tap Hear it to listen`;
     else if (this.listening) st.innerHTML = this.listenPc && this.listenPc.connectionState === "connected"
       ? `Listening to <b>${escapeHtml(this.sender ? this.sender.label : "")}</b>` : (transport && transport.kind === "Demo" ? "Listening to your own input (demo)" : "Connecting audio…");
     else st.innerHTML = this.sender ? `<b>${escapeHtml(this.sender.label)}</b> is sending — tap Listen` : (this.hub() ? "Nobody is sending audio right now." : "Listen works over Wi‑Fi or the cloud connection (not Bluetooth).");
-    $("listenBtn").textContent = this.listening ? "Stop listening" : "🎧 Listen";
-    $("listenBtn").classList.toggle("on", this.listening);
+    $("listenBtn").textContent = this.listening && this.auto ? "🎧 Hear it" : this.listening ? "Stop listening" : "🎧 Listen";
+    $("listenBtn").classList.toggle("on", this.listening && !this.auto);
     $("sendBtn").textContent = this.sending ? "Stop sending" : "Start sending";
     $("sendBtn").classList.toggle("sending", this.sending);
     $("srcSel").disabled = this.sending;
     $("sendStatus").textContent = this.sending ? "Keep this page open while sending." : "";
-    $("audioPill").hidden = !(this.sending || this.listening);
+    $("audioPill").hidden = !(this.sending || (this.listening && !this.auto));
     $("audioPillText").textContent = this.sending ? `Sending · ${n}` : "Listening";
+    this.syncMeter();
   },
   reset() {
     if (this.sending) this.stopSending();
     if (this.listening) this.stopListening(true);
+    this.stopMeterInput(); this.metErr = "";
     this.sender = null; this.render();
   },
 };
 function wireAudio() {
-  $("listenBtn").onclick = () => Aud.listening ? Aud.stopListening() : Aud.startListening();
+  $("listenBtn").onclick = () => {
+    if (Aud.listening && Aud.auto) { Aud.auto = false; Aud.muted = false; if (Aud.el) Aud.el.muted = false; Aud.render(); }   // muted meter listener -> audible
+    else if (Aud.listening) Aud.stopListening();
+    else Aud.startListening();
+  };
+  document.querySelectorAll("#meterSeg button").forEach(b => b.onclick = () => {
+    meterMode = b.dataset.v; store.set("meterSrc", meterMode);
+    Aud.metErr = ""; document.querySelectorAll("#meterSeg button").forEach(x => x.classList.toggle("on", x === b));
+    if (meterMode === "input") Aud.loadSources();
+    Aud.syncMeter(); Aud.render();
+  });
+  $("srcSel").addEventListener("change", () => { if (meterMode === "input" && Aud.metIn && !Aud.sending) { Aud.stopMeterInput(); Aud.metErr = ""; Aud.syncMeter(); } });
+  document.querySelectorAll("#meterSeg button").forEach(b => b.classList.toggle("on", b.dataset.v === meterMode));
   $("sendBtn").onclick = () => Aud.sending ? Aud.stopSending() : Aud.startSending();
   $("srcSel").addEventListener("focus", () => Aud.loadSources(), { once: true });
   $("srcSel").addEventListener("pointerdown", () => Aud.loadSources(), { once: true });
@@ -1864,6 +1968,7 @@ const SMR = {
 const viaMidi = i => hasMidi() && i < MIDI_STRIPS;
 function pressSMR(i, k) {
   const d = SMR[k];
+  if (k === "s") soloSent[i] = performance.now();   // see simFollowSolo
   if (viaMidi(i)) return tapCC(d.cc() + i);
   if (needs("kb")) { tapKey(d.mods, DIGIT(i + 1)); kbToggle(d.lit, i); }
 }
@@ -2023,10 +2128,12 @@ function setTab(t) {
   if (t === "rec") requestAnimationFrame(redrawSliders);
 }
 function applyState(m) {
+  const prevSolo = S.solo;
   for (const k of ["mode","role","midi","hid","usb","arm","mute","solo","transport","name","version"]) if (m[k] !== undefined) S[k] = m[k];
   if (m.levels) S.levels = m.levels;
   if (m.pre_roll !== undefined && document.activeElement !== $("preRoll")) $("preRoll").value = m.pre_roll;
   if (m.rec_s !== undefined) { S.rec_s = m.rec_s; S.rec_at = performance.now(); }
+  if (m.solo !== undefined) simFollowSolo(prevSolo, S.solo);
   render();
 }
 // Recording timer: counted from when the MixPre's Rec LED came on (the MixPre doesn't send its own clock)
@@ -2272,15 +2379,62 @@ function simPopup(sc) {
   const icon = sc.destructive ? SIM_ICON.warn : SIM_ICON.ask;
   return `<div class="lpop"><div class="lph">${icon}<span>${escapeHtml(sc.title)}</span></div><p>${escapeHtml(sc.msg)}</p><div class="lrow">${opts}${ok}${cancel}</div></div>`;
 }
+// Level meters: scale -50..0 dB drawn on the MixPre's own scale (0 dB at 87% of the width, as on the recorder); peak hold marker
+const levelFrac = db => Math.max(0, Math.min(1, (db + 50) / 50)) * 0.87;
+function drawLevelMeters() {
+  const live = !!Aud.analysers;
+  const bars = [];
+  if (simMeter && simMeter[0].isConnected) bars.push(...simMeter);
+  const adv = document.querySelectorAll(".amet .ab");
+  if (adv.length) bars.push(...adv);
+  document.body.classList.toggle("metering", live);
+  const none = document.querySelector("#sscreen .lnone"); if (none) none.style.display = live ? "none" : "";
+  bars.forEach((el, k) => {
+    const i = k % 2, fill = el.firstChild, hold = el.lastChild;
+    const f = live ? levelFrac(Aud.peaks[i]) : 0, h = live ? levelFrac(Aud.holds[i]) : 0;
+    fill.style.clipPath = `inset(0 ${((1 - f) * 100).toFixed(1)}% 0 0)`;   // the fill grows with the level; the gradient stays put
+    hold.style.transform = `translateX(${(h * 100).toFixed(1)}%)`;
+    hold.style.opacity = live && Aud.holds[i] > -50 ? 1 : 0;
+  });
+}
+let simMeter = null;   // cached bar elements of the Simple home, filled by simHome()
 function simHome() {
   const tr = [1, 2, 3, 4, 5, 6].map(n => `<button class="ltrk${S.arm & (1 << (n - 1)) ? " arm" : ""}" data-act="track" data-n="${n}" aria-label="Channel ${n}">${n}</button>`).join("");
   return `<div class="lhome-s">
     <div class="lhtop"><div class="lhl"><div class="ltop"><span class="wav">${SIM_ICON.wave}--------WAV</span></div><div class="ltc"><span class="lbig rtime">--:--:--</span><span class="lq">Q</span></div></div>
       <button class="lcdtile lhmenu" data-act="menu" aria-label="Menu">${SIM_ICON.menu}</button><div class="lbatt" aria-hidden="true"><i></i><b></b></div></div>
-    <div class="lmeters"><div class="ltrks"><span class="lr">L</span><span class="lr">R</span>${tr}</div><div class="lscale"><div class="lbar"><span>-50</span><span>-40</span><span>-30</span><span>-20</span><span>-12</span><span>0</span><span>L</span></div><span class="lnone">—</span></div></div>
+    <div class="lmeters"><div class="ltrks"><span class="lr">L</span><span class="lr">R</span><span class="lgap"></span>${tr}</div>
+      <div class="lscale"><div class="lrow2"><i class="lmb"><u></u><s></s></i><i class="lmb"><u></u><s></s></i></div><div class="lbar"><span>-50</span><span>-40</span><span>-30</span><span>-20</span><span>-12</span><span>0</span><span>L</span></div><span class="lnone">—</span></div></div>
     <div class="lfoot lcdtile"><span>—</span><span class="lhpn">${SIM_ICON.head}LR Stereo</span></div></div>`;
 }
 let simSlider = null;
+// UNVERIFIED ON HARDWARE (Phase 0 checklist in CODE.MD).
+// With Inputs > Knob Press = "Ch.View+Solo", pressing the knob on the MixPre solos a channel AND shows its screen.
+// A solo sent from this page (the MIDI solo CC, from Simple or Advanced) is assumed NOT to change the recorder's screen.
+// So the copy follows only MixPre-side solos: feedback for channel n that arrives within SOLO_ECHO_MS of our own send is ignored;
+// otherwise solo ON moves the copy to channel n, solo OFF returns it to where it was; with several soloed, follow the most recent.
+const SOLO_ECHO_MS = 1500;
+const soloSent = {};             // channel -> time we last sent its solo CC
+const soloOrder = [];            // MixPre-side soloed channels, oldest first
+let soloReturn = null;           // where the copy was before the first MixPre-side solo
+function simFollowSolo(prev, now) {
+  if (view !== "simple" || !ctlOn || prev === now) return;
+  const t = performance.now();
+  for (let i = 0; i < 16; i++) {
+    const bit = 1 << i, was = prev & bit, is = now & bit;
+    if (!!was === !!is || t - (soloSent[i] || -1e9) < SOLO_ECHO_MS) continue;   // unchanged, or the echo of our own send
+    if (is) soloOrder.push(i);
+    else { const k = soloOrder.indexOf(i); if (k >= 0) soloOrder.splice(k, 1); }
+  }
+  if (simScreen().kind === "keyboard") return;   // don't pull the screen away while a name is being typed
+  if (soloOrder.length) {
+    if (!soloReturn) soloReturn = { id: sim.id, page: sim.page, ch: sim.ch };
+    const ch = soloOrder[soloOrder.length - 1];
+    if (!(sim.id === "channel" && sim.ch === ch)) { sim.ch = ch; simGo("channel"); }
+  } else if (soloReturn) {
+    const r = soloReturn; soloReturn = null; sim.ch = r.ch; simGo(r.id, r.page);
+  }
+}
 function renderSimple() {
   const sc = simScreen(), el = $("sscreen");
   simSlider = null;
@@ -2300,7 +2454,8 @@ function renderSimple() {
     }
   }
   $("snokb").hidden = hasKb();
-  tickTimer();
+  simMeter = el.querySelector(".lmb") ? [...el.querySelectorAll(".lmb")] : null;
+  tickTimer(); drawLevelMeters();
 }
 // physical-style actions (knob press, in-screen OK/Select)
 function simEnter() {
@@ -2379,6 +2534,7 @@ function updateSimpleHome() {
 }
 /* view switch: Advanced (the tabs) or Simple (the screen copy) */
 let view = store.get("view", "advanced");
+let meterMode = store.get("meterSrc", "off");   // Meter source: off | listen | input
 function applyView() {
   const simple = view === "simple";
   document.body.classList.toggle("simple", simple);
