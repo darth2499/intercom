@@ -2428,7 +2428,7 @@ function simFollowSolo(prev, now) {
   }
   if (simScreen().kind === "keyboard") return;   // don't pull the screen away while a name is being typed
   if (soloOrder.length) {
-    if (!soloReturn) soloReturn = { id: sim.id, page: sim.page, ch: sim.ch };
+    if (!soloReturn) { soloReturn = { id: sim.id, page: sim.page, ch: sim.ch }; if (!inChannelPage()) chReturn = { id: sim.id, page: sim.page }; }
     const ch = soloOrder[soloOrder.length - 1];
     if (!(sim.id === "channel" && sim.ch === ch)) { sim.ch = ch; simGo("channel"); }
   } else if (soloReturn) {
@@ -2466,8 +2466,26 @@ function simEnter() {
   else if (sc.kind === "editor") simAfter(SIMPLE_AFTER.editorOk, sc);
   else if (sc.kind === "popup" && sc.ok) simAfter(SIMPLE_AFTER.popupOk, sc);
 }
-function simBack() { const sc = simScreen(); if (sc.local) return simGo(sc.back); if (simKeys(SIMPLE_KEYS.back)) simGo(sc.back || "home"); }
-function simHomeKey() { if (simKeys(SIMPLE_KEYS.home)) simGo("home"); }
+// The channel page is opened with the Open CC (a toggle), so it is closed with the same CC, not Esc / F12: unsolo first if it is soloed,
+// then toggle the page shut, then put the copy back where it was. Keyboard-only mode has no MIDI, so it keeps Esc.
+const CHANNEL_SCREENS = ["channel", "chFader", "chPan"];
+let chReturn = null;   // the screen the copy was on before the channel page
+const inChannelPage = () => CHANNEL_SCREENS.includes(sim.id);
+function enterChannel(n) {
+  if (!inChannelPage()) chReturn = { id: sim.id, page: sim.page };
+  sim.ch = n; simGo("channel");
+}
+function simCloseChannel() {
+  const i = sim.ch;
+  if (viaMidi(i)) {
+    if (isLit(i, "s")) pressSMR(i, "s");   // solo CC toggles it off
+    tapCC(CC.open + i);                    // Open CC toggles the channel page closed
+  } else if (!simKeys(SIMPLE_KEYS.back)) return;
+  const r = chReturn || { id: "home", page: 0 }; chReturn = null; soloReturn = null; soloOrder.length = 0;
+  simGo(r.id, r.page);
+}
+function simBack() { const sc = simScreen(); if (sim.id === "channel") return simCloseChannel(); if (sc.local) return simGo(sc.back); if (simKeys(SIMPLE_KEYS.back)) simGo(sc.back || "home"); }
+function simHomeKey() { if (inChannelPage()) return simCloseChannel(); if (simKeys(SIMPLE_KEYS.home)) simGo("home"); }
 function simAct(e) {
   const b = e.target.closest("[data-act]"); if (!b) return;
   const sc = simScreen(), act = b.dataset.act, i = +b.dataset.i;
@@ -2479,7 +2497,7 @@ function simAct(e) {
     case "track": {   // open the channel on the recorder (verified CC, or the digit key) and in the copy
       const n = +b.dataset.n - 1;
       if (!viaMidi(n) && !needs("kb")) break;
-      openOnMixPre(n); sim.ch = n; simGo("channel"); break;
+      openOnMixPre(n); enterChannel(n); break;
     }
     case "page": {
       const to = +b.dataset.p, d = to - sim.page; if (!d || !needs("kb")) break;
