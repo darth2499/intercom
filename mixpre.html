@@ -363,6 +363,8 @@ details.sys > summary .sech{margin:0}
   --lcd-bg:#0d0f0e; --lcd-top:#e6ede6; --lcd-bot:#afbdc2; --lcd-text:#5c6c62; --lcd-bold:#49524c;
   --lcd-green:#9be377; --lcd-orange:#daa83d; --lcd-blue:#486ae2; --lcd-popup:#8a9ca3; --lcd-ok:#daa738;
   --lcd-red:#dd591e; --lcd-batt:#79d444; --lcd-grey:#3b4347;
+  /* sampled from the manual's clean meter renders (MixPre II User Guide p20): bar, segments, file-name states */
+  --lcd-mg:#18c800; --lcd-my:#f8f800; --lcd-mr:#f82000; --lcd-mpeak:#e6ede6; --lcd-file-rec:#e0261b; --lcd-file-play:#00b000; --lcd-trk:#aab5b6;
   --u:3.5px;position:relative;aspect-ratio:13/10;width:100%;background:var(--lcd-bg);border-radius:calc(var(--u)*2.5);padding:calc(var(--u)*2.4) calc(var(--u)*2.4) calc(var(--u)*2.8);overflow:hidden;
   color:var(--lcd-text);font-family:Ubuntu,"Helvetica Neue",Arial,system-ui,sans-serif;font-weight:400;letter-spacing:0;
   display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:31fr 30fr 30fr;row-gap:calc(var(--u)*2.7);user-select:none;-webkit-user-select:none}
@@ -372,8 +374,8 @@ details.sys > summary .sech{margin:0}
 button.lcdtile:active{filter:brightness(.88)}
 .lcdtile .ico{width:calc(var(--u)*10);height:calc(var(--u)*10);margin-top:calc(var(--u)*.6)}
 .lgrid.six .lcdtile{justify-content:space-evenly}
-.lcdtile.unm{opacity:.5}
-.lcdtile em{display:block;font-style:normal;font-size:calc(var(--u)*3.6);color:var(--lcd-text);margin-top:calc(var(--u)*.6);opacity:.8}
+.lcdtile.unm{filter:brightness(.55) saturate(.7)}
+.lcdtile.unm .tl{opacity:.6}   /* not mapped yet: dimmed tile, label at 60% (explained once in the "?" help) */
 .lcdtile .ico .orange,.lcdtile svg.orange{color:var(--lcd-orange)}
 .lcdtile.on{background:linear-gradient(#b6f294,var(--lcd-green))}
 .lcdtile .val{font-weight:700;color:var(--lcd-bold)}
@@ -388,12 +390,30 @@ button.lcdtile:active{filter:brightness(.88)}
 .lhead.std.nodots .ltitle,.lhead.std.nodots .lback{grid-column:1}
 .lhead.std.nodots .lhome{grid-column:2}
 .lhead.menu{grid-template-columns:calc(var(--u)*36) minmax(0,1fr) calc(var(--u)*26)}
-.lhead.chan{grid-template-columns:minmax(0,1fr) calc(var(--u)*24) calc(var(--u)*26)}
+.lhead.chan{grid-template-columns:calc(var(--u)*30) minmax(0,1fr) calc(var(--u)*24) calc(var(--u)*26);grid-template-rows:1fr 1fr}
+.lhead.chan .ltitle{grid-column:1/4;grid-row:1}
+.lhead.chan .ltitle b{font-size:calc(var(--u)*8.2)}
+.lhead.chan .lstrip{grid-column:1/3;grid-row:2}
+.lhead.chan .ldots{grid-column:3;grid-row:2}
+.lhead.chan.gain .lstrip{grid-column:1;grid-row:1}
+.lhead.chan.gain .ltitle{grid-column:2/4;grid-row:1}
+.lhead.chan.gain .lgedit{grid-column:1/3;grid-row:2}
+.lhead.chan .lhome{grid-column:4;grid-row:1/3}
+.lgedit{flex-direction:row!important;align-items:center;justify-content:space-between;padding:0 calc(var(--u)*2.4);font-size:calc(var(--u)*6.4)}
+.lgedit button{background:none;color:var(--lcd-bold);width:calc(var(--u)*8);height:100%;display:grid;place-items:center}
+.lgedit svg{width:calc(var(--u)*6);height:calc(var(--u)*6)}
+.lhead.std .lbedit{grid-column:2;grid-row:2;color:var(--lcd-text);font-size:calc(var(--u)*5.6)}
+.lfl{flex:1;min-height:0;display:flex;flex-direction:column;gap:calc(var(--u)*.8)}
+.lflrow{display:flex;justify-content:space-between;padding:calc(var(--u)*1.6) calc(var(--u)*2.4);font-size:calc(var(--u)*5.6);background:#000;color:#e6ede6}
+.lflrow.top{background:var(--lcd-orange);color:#3a2a08;font-weight:700}
+.lhp{filter:brightness(.6)}
 .sscreen[data-chan="1"]{grid-template-rows:26fr 38fr 38fr}
 .lhead.chan .lhome{margin-top:calc(var(--u)*5.2)}
+.ltop{width:100%;text-align:left}
 .lhead.chan .lhome svg{width:calc(var(--u)*9);height:calc(var(--u)*9)}
 .lhead .lcell{background:linear-gradient(var(--lcd-top),var(--lcd-bot));display:flex;flex-direction:column;justify-content:center;min-width:0;color:var(--lcd-bold);border-radius:calc(var(--u)*.25)}
-.lhead .ltitle{padding:0 calc(var(--u)*2);align-items:flex-start}
+.lhead .ltitle{padding:0 calc(var(--u)*2);align-items:center;text-align:center}   /* titles are centred over Back | dots, as on the recorder (video 26 s, manual p34) */
+.lhead.chan .ltitle{align-items:flex-start;text-align:left}
 .lhead.menu .ltitle{align-items:center}
 .lhead .ltitle b{font-weight:700;font-size:calc(var(--u)*10);line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .lhead .lback{flex-direction:row;align-items:center;justify-content:flex-start;gap:calc(var(--u)*1.4);padding:0 calc(var(--u)*2);color:var(--lcd-text);font-size:calc(var(--u)*5.6)}
@@ -407,11 +427,11 @@ button.lcdtile:active{filter:brightness(.88)}
 .lhome svg{width:calc(var(--u)*12);height:calc(var(--u)*12)}
 .lhp{align-items:center;justify-content:space-around;font-size:calc(var(--u)*6.4);color:var(--lcd-text);padding:calc(var(--u)*1) 0}
 .lhp svg{width:calc(var(--u)*13);height:calc(var(--u)*13);color:var(--lcd-bold)}
-.lstrip{flex-direction:row!important;align-items:center;justify-content:space-between;gap:calc(var(--u)*2);padding:0 calc(var(--u)*2.4);font-size:calc(var(--u)*5)}
-.lstrip i{font-style:normal;font-size:calc(var(--u)*3.4);color:var(--lcd-text)}
-.lbatt{position:absolute;right:0;top:0;width:calc(var(--u)*26);height:calc(var(--u)*5.4);display:flex;align-items:center}
-.lbatt i{flex:1;height:calc(var(--u)*3);background:var(--lcd-batt);border-radius:calc(var(--u)*.3)}
-.lbatt b{width:calc(var(--u)*1.8);height:calc(var(--u)*5.4);background:var(--lcd-batt)}
+.lstrip{align-items:stretch;gap:calc(var(--u)*.5);padding:0 calc(var(--u)*2)}
+.lstrip i{font-style:normal;font-size:calc(var(--u)*3.2);color:var(--lcd-text);line-height:1;white-space:nowrap}
+.lstrip .lsm{display:block;height:calc(var(--u)*3.4);background:#000;border-radius:calc(var(--u)*.2)}
+.lbatt{position:absolute;right:0;top:0;width:calc(var(--u)*26);height:calc(var(--u)*5.4)}
+.lbatt svg{width:100%;height:100%;color:var(--lcd-batt)}
 /* body area spans rows 2-3 */
 .lbody{grid-row:2/4;min-height:0;display:flex;flex-direction:column;gap:calc(var(--u)*2);min-width:0}
 .lgrid{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;column-gap:calc(var(--u)*.4);row-gap:calc(var(--u)*2.7)}
@@ -466,7 +486,9 @@ button.lcdtile:active{filter:brightness(.88)}
 .lmb,.ab{position:relative;display:block;overflow:hidden;font-style:normal}
 .lmb{height:calc(var(--u)*4.6)}
 .lmb u,.ab u{position:absolute;inset:0;background:linear-gradient(90deg,#79d444 0 66%,#e6c93f 66% 82.3%,#e0382d 82.3% 100%);clip-path:inset(0 100% 0 0);text-decoration:none}
+.lmb u{background:linear-gradient(90deg,var(--lcd-mg) 0 52.2%,var(--lcd-my) 52.2% 81.8%,var(--lcd-mr) 81.8% 100%)}   /* yellow from -20, red from about -3 (0 dB is at 87%) */
 .lmb s,.ab s{position:absolute;left:0;top:10%;bottom:10%;width:calc(var(--u)*1.1);margin-left:calc(var(--u)*-.5);background:#7fa0ff;transform:translateX(0);opacity:0;text-decoration:none;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
+.lmb s{background:var(--lcd-mpeak)}
 .lgap{flex:none;height:calc(var(--u)*4.6)}
 .lscale .lrow2{flex:none}
 .lscale .lbar{flex:none;height:calc(var(--u)*4.6)}
@@ -490,21 +512,32 @@ body.metering .amet{display:flex}
 .lmeters{display:grid;grid-template-columns:calc(var(--u)*7.5) minmax(0,1fr);gap:calc(var(--u)*1.2);min-height:0}
 .ltrks{display:flex;flex-direction:column;gap:calc(var(--u)*.5);min-height:0}
 .ltrks .lr{flex:none;height:calc(var(--u)*4.6);display:grid;place-items:center;background:var(--lcd-red);color:#fff;font-size:calc(var(--u)*3.4);line-height:1;text-align:center;font-weight:700;border-radius:calc(var(--u)*.3)}
-.ltrk{flex:1;min-height:0;background:transparent;color:#e6ede6;font-size:calc(var(--u)*3.8);line-height:1;font-weight:700;border-radius:calc(var(--u)*.3)!important}
-.ltrk.arm{background:var(--lcd-red);color:#fff}
+.ltrk{flex:1;min-height:0;background:var(--lcd-trk);color:#3a4347;font-size:calc(var(--u)*3.3);line-height:1;font-weight:700;border-radius:calc(var(--u)*.3)!important;display:grid;place-items:center;overflow:hidden}
+.ltrk.arm{background:var(--lcd-red);color:#fff}   /* on and not armed = grey box, armed = red-orange box, off (unknown to us) would be white on black */
+.lhome-s[data-tr=rec] .ltop,.lhome-s[data-tr=rec] .lbig{color:var(--lcd-file-rec)}
+.lhome-s[data-tr=play] .ltop,.lhome-s[data-tr=play] .lbig{color:var(--lcd-file-play)}
+button.ltop,button.lq{font-family:inherit;border:0}
 .lscale{min-width:0;position:relative;display:flex;flex-direction:column;color:#7f8a90;background:linear-gradient(#d8e0dc,#d8e0dc) 17.4% 0/calc(var(--u)*.35) 100% no-repeat,linear-gradient(#d8e0dc,#d8e0dc) 34.8% 0/calc(var(--u)*.35) 100% no-repeat,linear-gradient(#d8e0dc,#d8e0dc) 52% 0/calc(var(--u)*.35) 100% no-repeat,linear-gradient(#d8e0dc,#d8e0dc) 66% 0/calc(var(--u)*.35) 100% no-repeat,linear-gradient(#d8e0dc,#d8e0dc) 87% 0/calc(var(--u)*.35) 100% no-repeat,#000}
 .lbar{display:flex;justify-content:space-between;background:#7c878b;color:#eef2ee;font-size:calc(var(--u)*4.4);padding:0 calc(var(--u)*1.4)}
 .lnone{margin:auto;font-size:calc(var(--u)*7)}
 .lfoot{flex-direction:row!important;justify-content:space-between!important;padding:0 calc(var(--u)*2);font-size:calc(var(--u)*4.6)!important;color:var(--lcd-text)}
+.lfoot .lsd{display:flex;align-items:center;gap:calc(var(--u)*1.2)}
+.lfoot .lsd b{font-weight:400}
+.lfoot .lsd svg{width:calc(var(--u)*4.4);height:calc(var(--u)*5.6)}
 .lfoot .lhpn{display:flex;align-items:center;gap:calc(var(--u)*1.2)}
 .lfoot svg{width:calc(var(--u)*5);height:calc(var(--u)*5)}
 .snokb{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s3);text-align:center;padding:var(--s4);background:rgba(6,9,11,.92);border-radius:var(--r3);color:var(--text);font-size:var(--t2)}
 .snokb button{border:0;background:var(--accent);color:#fff;font-weight:600;border-radius:var(--r2);padding:var(--s3) var(--s4);min-height:44px;cursor:pointer}
 .sctl{display:flex;flex-direction:column;gap:var(--s2);flex:none;width:min(100%,560px);margin:0 auto}
 .sknobrow,.sbtnrow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s2)}
-.sbtnrow{grid-template-columns:repeat(2,minmax(0,1fr))}
+.sbtnrow{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 52px}
+.sknobfader{display:flex;align-items:center;gap:var(--s3);font-size:var(--t2);color:var(--text)}
+.sknobfader[hidden]{display:none}
+.sknobfader>div{flex:1;min-width:0}
+.sknobfader .slider{height:40px}
 .sctl .b{height:52px;font-weight:600;font-size:var(--t3);background:var(--panel)}
 .sctl .b.knob{background:var(--btn)}
+.sctl .b.knob{white-space:nowrap;padding:0 4px;font-size:min(var(--t3),15px)}
 .sbar{height:56px}
 .sbar .rtime{white-space:nowrap;font-size:18px}
 #railView{color:var(--text)}
@@ -762,12 +795,13 @@ html,body{overflow-x:clip}
       <div class="snokb" id="snokb" hidden><span>Simple view needs Keyboard or Both mode.</span><button id="snokbBtn">Switch to Both</button></div>
     </div>
     <div class="sctl">
+      <div class="sknobfader" id="sKnobFader" hidden><span id="sKnobLbl"></span><div id="sKnobBox"></div></div>
       <div class="sknobrow">
-        <button class="b knob" data-hold="DOWN" aria-label="Headphone knob left">↶</button>
+        <button class="b knob" id="sKnobL" data-hold="DOWN" aria-label="Headphone knob left">↶ HP vol</button>
         <button class="b knob" id="sKnob" aria-label="Knob press">Press</button>
-        <button class="b knob" data-hold="UP" aria-label="Headphone knob right">↷</button>
+        <button class="b knob" id="sKnobR" data-hold="UP" aria-label="Headphone knob right">HP vol ↷</button>
       </div>
-      <div class="sbtnrow"><button class="b" id="sBack">↰ Back</button><button class="b" id="sHome">Home</button></div>
+      <div class="sbtnrow"><button class="b" id="sBack">↰ Back</button><button class="b" id="sHome">Home</button><button class="b" id="sHelp" aria-label="About this screen">?</button></div>
       <div class="rbar sbar" aria-label="Recorder">
         <span class="rdot"></span><span class="rtime">--:--:--</span>
         <button class="rbtn" data-tr="stop" aria-label="Stop"><svg width="16" height="16" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3" fill="currentColor"/></svg></button>
@@ -2141,6 +2175,8 @@ const isRecording = () => ctlOn && hasMidi() && !!(S.transport & 16);
 function tickTimer() {
   const t = isRecording() && S.rec_s != null && S.rec_at != null ? fmtClock(S.rec_s + (performance.now() - S.rec_at) / 1000) : "--:--:--";
   document.querySelectorAll(".rtime").forEach(e => { if (e.textContent !== t) e.textContent = t; });
+  const sd = document.querySelector("#sscreen .lsdt");   // Simple home status bar: our REC elapsed time, else "—" (remaining time is unknown)
+  if (sd) { const v = isRecording() && S.rec_s != null && S.rec_at != null ? fmtRec(S.rec_s + (performance.now() - S.rec_at) / 1000) : "—"; if (sd.textContent !== v) sd.textContent = v; }
 }
 setInterval(tickTimer, 250);
 function renderRecorder() {
@@ -2176,6 +2212,7 @@ function render() {
   updateSimpleHome();
   if (view === "simple") {
     $("snokb").hidden = hasKb();
+    if (simKnob) simKnob.set(S.levels[simKnob.lvl] ?? 255);
     if (simSlider) simSlider.set(S.levels[simSlider.lvl] ?? 255);
     else if (simScreen().channel) renderSimple();   // Solo / Mute / Arm lights follow the recorder
   }
@@ -2183,16 +2220,22 @@ function render() {
 
 /* ============================================================ Simple view: a clickable copy of the MixPre-6 II screen (firmware 9.02) */
 // Every key the Simple view sends lives in this one table.
-// UNVERIFIED ON HARDWARE: assumed values, to be confirmed by the Phase 0 key-mapping test (Task 21 in CODE.MD).
+// "documented" = listed in the MixPre II User Guide's USB keyboard table (manual p40); "undocumented" = a guess.
+// Nothing here has been tested on the unit yet: the Phase 0 key-mapping test (CODE.MD) confirms each one.
+// Never sent from Simple: Ctrl+F (file transfer mode), Firmware, 1+2+3 (front panel lock).
 const SIMPLE_KEYS = {
-  menu: KEY.F1, back: KEY.ESC, home: KEY.F12,
-  tile: [KEY.Q, KEY.W, KEY.A, KEY.S],                    // 4-tile page, in reading order
-  tile6: [KEY.Q, KEY.W, KEY.E, KEY.A, KEY.S, KEY.D],     // 6-tile page (channel screen)
-  nextPage: KEY.RIGHT, prevPage: KEY.LEFT,
-  up: KEY.UP, down: KEY.DOWN, select: KEY.ENTER,
-  popupOk: KEY.ENTER, popupCancel: KEY.ESC, popupOption: [KEY.Q, KEY.W, KEY.A, KEY.S],
-  kbSubmit: KEY.ENTER,                                   // name keyboard: type the text, then this
-  channel: n => DIGIT(n),                                // open channel n from Home
+  menu: KEY.F1, back: KEY.ESC, home: KEY.F12,           // documented (p40): F1 Menu, Esc Back, F12 Home
+  tile: [KEY.Q, KEY.W, KEY.A, KEY.S],                    // documented (p40): the 4 quad tiles, in reading order
+  tile6: [KEY.Q, KEY.W, KEY.E, KEY.A, KEY.S, KEY.D],     // undocumented on the 6 II: E and D are listed for the MixPre-10 II only
+  nextPage: KEY.RIGHT, prevPage: KEY.LEFT,               // documented (p40): LEFT / RIGHT change pages in menus and channel screens
+  up: KEY.UP, down: KEY.DOWN, select: KEY.ENTER,         // documented (p40): UP / DOWN move or change values, ENTER selects
+  popupOk: KEY.ENTER, popupCancel: KEY.ESC,              // documented (ENTER = knob press, Esc cancels)
+  popupOption: [KEY.Q, KEY.W, KEY.A, KEY.S],             // undocumented (Custom / Date and Basic / Advanced option keys)
+  kbSubmit: KEY.ENTER,                                   // documented (p40): ENTER is OK on the virtual keyboard; type the text first
+  channel: n => DIGIT(n),                                // documented (p40): 1-6 open channel screen 1-6
+  files: KEY.F2,                                         // documented (p40): F2 = File List
+  meters: KEY.F3,                                        // documented (p40): F3 cycles the meter views
+  cue: [MOD.CTRL, KEY.M],                                // documented (p40): Ctrl+M = cue mark (MIDI mode uses the marker CC instead)
 };
 // Where the copy goes after an action that finishes a screen (also unverified)
 const SIMPLE_AFTER = { listSelect: "back", editorOk: "back", choice: "back", keyboardOk: "back", popupOk: "back" };
@@ -2214,9 +2257,10 @@ const MENU_6II = {
     [sT("USB Drive", "popUsb"), sT("* Button", "star"), sT("System", "system"), sT("Power", "power")]] },
 
   presets: { kind: "tiles", title: "Presets", back: "menu", pages: [
-    [sT("Load Preset", "loadPreset"), sT("Save to Int1", "saveInt1"), sT("Save to Int2", "saveInt2"), sT("Save to Int3", "saveInt3")], UNSEEN] },
+    [sT("Load Preset", "loadPreset"), sT("Save to Int1", "saveInt1"), sT("Save to Int2", "saveInt2"), sT("Save to Int3", "saveInt3")],
+    [sT("Save to Int4", "saveInt4"), sT("Save to SD", "saveSD")]] },   // page 2 from manual (p2 of Presets)
   loadPreset: sList("Load Preset", "presets"),
-  saveInt1: sKb("Preset Name:", "presets"), saveInt2: sKb("Preset Name:", "presets"), saveInt3: sKb("Preset Name:", "presets"),
+  saveInt1: sKb("Preset Name:", "presets"), saveInt2: sKb("Preset Name:", "presets"), saveInt3: sKb("Preset Name:", "presets"), saveInt4: sKb("Preset Name:", "presets"), saveSD: sKb("Preset Name:", "presets"),
 
   project: { kind: "tiles", title: "Project", back: "menu", pages: [
     [sT("New", "popNew"), sT("Open", "openList"), sT("Copy"), sT("Create Report")],
@@ -2227,30 +2271,44 @@ const MENU_6II = {
   reportInfo: { kind: "tiles", title: "Report Info", back: "project", pages: REPORT_PAGES.map(p => p.map(n => sT(n, "rep:" + n))) },
 
   inputs: { kind: "tiles", title: "Inputs", back: "menu", pages: [
-    [sT("Setup"), sT("Ch 5 Screen"), sT("Ch 6 Screen"), sT("Aux In Mode")],
-    [sT("MS Decode / ISOs & Mix"), sT("Ambisonics"), sT("Knob Press / Ch.View+Solo"), sT("MixAssist", "mixAssist")]] },
+    [sT("Setup"), { label: "Ch 5 Screen", openCh: 4 }, { label: "Ch 6 Screen", openCh: 5 }, sT("Aux In Mode", "auxMode")],
+    [sT("MS Decode", "msDecode"), sT("Ambisonics"), sT("Knob Press", "knobPress"), sT("MixAssist", "mixAssist")]] },
+  // choices below are from the manual (Inputs menu, p18-p19)
+  auxMode: { kind: "tiles", title: "Aux In Mode", back: "inputs", pages: [[sC("Mic"), sC("Line"), sC("Camera"), sC("Timecode")], [sC("Off")]] },
+  msDecode: { kind: "tiles", title: "MS Decode", back: "inputs", pages: [[sC("ISOs & Mix"), sC("Mix Only")]] },
+  knobPress: { kind: "tiles", title: "Knob Press", back: "inputs", pages: [[sC("Ch.View"), sC("Ch.View + Solo")]] },
   mixAssist: { kind: "grid", title: "MixAssist", back: "inputs", rows: [{ t: "MixAssist On", blue: true }, { t: "MixAssist Ring LEDs Off" }, { head: "Inputs", boxes: [1, 2, 3, 4, 5, 6] }] },
 
   outputs: { kind: "tiles", title: "Outputs", back: "menu", pages: [
-    [sT("St. Out Mute"), sT("St. Out Gain", "stGain"), sT("St. Out Left", "lOutput"), sT("St. Out Right", "rOutput")],
-    [sT("St. Out L Dly"), sT("St. Out R Dly"), sT("St. Out Mode"), sT("USB Output…", "usbOut")], UNSEEN, UNSEEN] },
-  stGain: sEd("St. Out Gain", "outputs"),
+    [sT("St. Out Mute", "stMute"), sT("St. Out Gain", "stGain"), sT("St. Out Left", "lOutput"), sT("St. Out Right", "rOutput")],
+    [sT("St. Out L Dly"), sT("St. Out R Dly"), sT("St. Out Mode", "stMode"), sT("USB Output…", "usbOut")], UNSEEN, UNSEEN] },
+  stGain: Object.assign(sEd("St. Out Gain", "outputs"), { hint: "Off, −40 to +20 dB" }),   // range from manual (Outputs menu)
+  stMute: { kind: "tiles", title: "St. Out Mute", back: "outputs", pages: [[sC("Off"), sC("On")]] },   // from manual
+  stMode: { kind: "tiles", title: "St. Out Mode", back: "outputs", pages: [[sC("Audio"), sC("LTC")]] },   // from manual
   lOutput: sGrid("L Output", "outputs", ["Mix L", "Mix R", "Chan 1", "Chan 2", "Chan 3", "Chan 4", "Aux In 1", "Aux In 2", "USB In 1", "USB In 2"]),
   rOutput: sGrid("R Output", "outputs", ["Mix L", "Mix R", "Chan 1", "Chan 2", "Chan 3", "Chan 4", "Aux In 1", "Aux In 2", "USB In 1", "USB In 2"]),
   usbOut: { kind: "tiles", title: "USB Output", back: "outputs", pages: [[sT("USB Output 1", "usb1"), sT("USB Output 2", "usb2")]] },
   usb1: sGrid("USB Output 1", "usbOut", ["Track L", "Track R", "Track 1", "Track 2", "Track 3", "Track 4", "Track 5", "Track 6", "HP L", "HP R", "Out L", "Out R"]),
   usb2: sGrid("USB Output 2", "usbOut", ["Track L", "Track R", "Track 1", "Track 2", "Track 3", "Track 4", "Track 5", "Track 6", "HP L", "HP R", "Out L", "Out R"]),
 
-  // Solo / Mute / Arm / Fader / Pan use the verified MIDI CCs (keyboard shortcuts in keyboard-only mode); Fader and Pan screens are copy-only
-  channel: { kind: "tiles", channel: true, title: "Channel", back: "home", pages: [
-    [{ label: "Solo", icon: "head", smr: "s" }, { label: "Mute", icon: "mute", smr: "m" }, { label: "Arm", icon: "arm", smr: "r" },
-     sT("Gain"), { label: "Fader", to: "chFader", local: true }, { label: "Pan", icon: "knob", to: "chPan", local: true }],
-    [sT("Low Cut"), sT("Input"), sT("N.Asst"), sT("Linking")]] },
+  // Solo / Mute / Arm / Fader / Pan use the verified MIDI CCs (keyboard shortcuts in keyboard-only mode); Fader and Pan screens are copy-only.
+  // Gain is pre-selected on entry (manual p19), shown green with the ↓ — ↑ editor (DOWN / UP keys, unverified).
+  // Ch 5-6 (software channels): the layout from the video. Ch 1-4 (knob channels, Advanced mode): the layout from the manual p18, UNVERIFIED on fw 9.02
+  // (press knob 1 and compare); there is no Fader tile because the front knob is the fader, so the page shows "Ch n knob (fader)" under the screen instead.
+  channel: { kind: "tiles", channel: true, title: "Channel", back: "home", pagesFor: ch => {
+    const smr = [{ label: "Solo", icon: "head", smr: "s" }, { label: "Mute", icon: "mute", smr: "m" }, { label: "Arm", icon: "arm", smr: "r" }];
+    const gain = { label: "Gain", icon: "knob", on: true, stay: true }, pan = { label: "Pan", icon: "knob", to: "chPan", local: true };
+    return ch >= 4
+      ? [[...smr, gain, { label: "Fader", to: "chFader", local: true }, pan], [sT("Low Cut"), sT("Input"), sT("N.Asst"), sT("Linking")]]
+      : [[...smr, gain, pan, sT("Low Cut")], [sT("Input"), sT("Phantom"), sT("Phase"), sT("Delay"), sT("N.Asst"), sT("Linking")]];
+  } },
   chFader: { kind: "slider", title: "Fader", back: "channel", cc: "fader", local: true },
   chPan: { kind: "slider", title: "Pan", back: "channel", cc: "knob", local: true },
 
   timecode: { kind: "tiles", title: "Timecode", back: "menu", pages: [
-    [sT("TC Mode", "tcMode"), sT("Frame Rate"), sT("Jam"), sT("Set TC")], [sT("UBits"), UNSEEN]] },
+    [sT("TC Mode", "tcMode"), sT("Frame Rate", "frameRate"), sT("Jam"), sT("Set TC")], [sT("UBits"), UNSEEN]] },
+  // Frame Rate from the manual; the page split is guessed, so page 2 stays dimmed
+  frameRate: { kind: "tiles", title: "Frame Rate", back: "timecode", pages: [[sC("23.98"), sC("24"), sC("25"), sC("29.97ND")], [sT("29.97DF"), sT("30"), sT("30DF")]] },
   tcMode: { kind: "tiles", title: "TC Mode", back: "timecode", pages: [
     [sC("Free Run"), sC("Time of Day"), sC("Rec Run"), sC("HDMI")], [sC("HDMI TC FUJIFILM"), sC("Off")]] },
   tone: { kind: "tiles", title: "Tone", back: "menu", pages: [[sT("Tone"), sT("Tone Mode", "toneMode"), sT("Tone Level", "toneLevel")]] },
@@ -2259,25 +2317,29 @@ const MENU_6II = {
 
   record: { kind: "tiles", title: "Record", back: "menu", pages: [
     [sT("Rec L,R", "recLR"), sT("Left Gain", "leftGain"), sT("Right Gain", "rightGain"), sT("Sample Rate", "sampleRate")],
-    [sT("Bit Depth"), sT("Pre-roll Time"), sT("Rec Trigger"), sT("Rem…")],
+    [sT("Bit Depth", "bitDepth"), sT("Pre-roll Time"), sT("Rec Trigger"), sT("Remix")],   // "Remix" (Record menu, manual) is the video's "Rem…"; position unseen
     [sT("Left N.Asst", "leftNA"), sT("Right N.Asst", "rightNA"), sT("Record Bells"), UNSEEN]] },
-  recLR: { kind: "tiles", title: "Rec L,R", back: "record", pages: [[sC("Off"), sC("Off & Linked")]] },
+  // Rec L,R: the video showed Off and Off & Linked; the rest is from the manual, positions guessed (dimmed)
+  recLR: { kind: "tiles", title: "Rec L,R", back: "record", pages: [[sC("Off"), sC("Off & Linked"), sT("L"), sT("R")], [sT("L&R"), sT("L&R Linked")]] },
+  bitDepth: { kind: "tiles", title: "Bit Depth", back: "record", pages: [[sC("16"), sC("24"), sC("32 float")]] },   // from manual
   leftGain: sEd("Left Gain", "record"), rightGain: sEd("Right Gain", "record"),
   leftNA: sEd("Left N.Asst", "record"), rightNA: sEd("Right N.Asst", "record"),
-  sampleRate: { kind: "tiles", title: "Sample Rate", back: "record", pages: [[sC("44.1kHz"), sC("47.952kHz"), sC("48kHz"), sC("48.048kHz")]] },
+  sampleRate: { kind: "tiles", title: "Sample Rate", back: "record", pages: [[sC("44.1kHz"), sC("47.952kHz"), sC("48kHz"), sC("48.048kHz")], [sC("96kHz"), sC("192kHz")]] },   // page 2 from manual
 
   sdcard: { kind: "tiles", title: "SD Card", back: "menu", note: "SD Name · Free · Size: —", pages: [[sT("Edit"), sT("Empty Trash", "popEmpty"), sT("Format", "popFormat")]] },
   popEmpty: sPop("SD Card", "sdcard", "Empty the trash?", { destructive: true, ok: true, cancel: true }),
   popFormat: sPop("Format: SD Card", "sdcard", "Are you sure?", { destructive: true, ok: true, cancel: true }),
   popUsb: sPop("USB Drive", "menu", "No drive attached", { ok: true }),
 
-  star: { kind: "tiles", title: "* Button", back: "menu", pages: [[sT("Ch 5/6 Screen"), sT("Solo/Mute Screen"), sT("Project"), sT("SD Card")]] },
+  star: { kind: "tiles", title: "* Button", back: "menu", pages: [[sT("Ch 5/6 Screen"), sT("Solo/Mute Screen"), sT("Project"), sT("SD Card")],
+    // page 2 from the manual's 6 II list, positions guessed (dimmed). If Undo is ever mapped it moves the last take to the UNDO folder: give it a second tap
+    [sT("Undo"), sT("Tone"), sT("Q"), sT("St Out Mute")]] },
 
   system: { kind: "tiles", title: "System", back: "menu", pages: [
     [sT("Mode", "popMode"), sT("USB-C Audio"), sT("USB Audio"), sT("File Transfer")],
     [sT("NoiseAssist", "noiseAssist"), sT("Bluetooth"), sT("Wingman Password", "password"), sT("Brightness", "brightness")],
     [sT("Date/Time", "dateTime"), sT("Reg…"), sT("Version", "popVersion"), sT("Firmware")],   // Firmware is deliberately never mapped
-    [sT("Plugins"), UNSEEN]] },
+    [sT("Plugins"), sT("Limiters?")]] },   // Limiters (manual p21) is not in the video's 4 pages: position guessed
   popMode: sPop("Mode", "system", "Change the recorder mode?", { destructive: true, cancel: true, options: [{ label: "Basic", to: "system" }, { label: "Advanced", to: "system" }] }),
   popVersion: sPop("Version", "system", "MixPre-6 II · firmware 9.02", { ok: true }),
   noiseAssist: sGrid("NoiseAssist", "system", ["On", "Off", "Ch 1", "Ch 2", "Ch 3", "Ch 4", "Ch 5", "Ch 6", "Bus L", "Bus R"]),
@@ -2289,6 +2351,9 @@ const MENU_6II = {
   dateTime: { kind: "tiles", title: "Date/Time", back: "system", pages: [[sT("Set Date"), sT("Set Time")]] },
 
   power: { kind: "tiles", title: "Power", back: "menu", pages: [[sT("Battery Type"), UNSEEN]] },
+  // File List (F2, manual p34-p36). The Edit submenu is dimmed; Trash File and Undo would need a second tap if they are ever mapped.
+  fileList: { kind: "filelist", title: "—", back: "home" },
+  fileEdit: { kind: "tiles", title: "Edit", back: "fileList", pages: [[sT("Undo"), sT("Name/Num/Notes"), sT("Track Names")], [sT("Rename"), sT("Trash File"), sT("Cue List")]] },
   notMapped: { kind: "unmapped", title: "Not mapped yet", back: "home" },
 };
 for (const [i, n] of REPORT_PAGES.flat().entries()) MENU_6II["rep:" + n] = sKb(n, "reportInfo");
@@ -2316,39 +2381,49 @@ const SIM_ICON = {
   info: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10.5" fill="#fff"/><rect x="10.8" y="10" width="2.4" height="8" fill="#3b6fd6"/><rect x="10.8" y="5.8" width="2.4" height="2.4" fill="#3b6fd6"/></svg>',
   down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v15M6 13l6 6 6-6"/></svg>',
   up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V5M6 11l6-6 6 6"/></svg>',
+  // power status icon, green USB (manual p09): a thin line into a thicker block with a cap
+  usb: '<svg viewBox="0 0 52 11" preserveAspectRatio="none" fill="currentColor"><rect x="0" y="4" width="25" height="3"/><rect x="24" y=".5" width="25" height="10"/><rect x="49" y="3" width="3" height="5" opacity=".55"/><rect x="31" y="3" width="13" height="5" fill="#a9ee7c"/></svg>',
+  sd: '<svg viewBox="0 0 24 24"><path d="M6 2h9l4 4v16H6z" fill="#4a78b8"/></svg>',
 };
-const tileInner = t => escapeHtml(t.label) + (t.icon ? `<span class="ico">${SIM_ICON[t.icon]}</span>` : "");
+const tileInner = t => `<span class="tl">${escapeHtml(t.label)}</span>` + (t.icon ? `<span class="ico">${SIM_ICON[t.icon]}</span>` : "");
 function simHeader(sc) {
-  const pages = sc.pages || [];
+  const pages = simPages(sc);
   const dots = pages.length > 1 ? pages.map((_, i) => `<button class="ldot${i === sim.page ? " on" : ""}" data-act="page" data-p="${i}" aria-label="Page ${i + 1}"></button>`).join("") : "";
-  const home = `<button class="lcell lhome" data-act="home" aria-label="Home">${SIM_ICON.home}</button><div class="lbatt" aria-hidden="true"><i></i><b></b></div>`;
+  const home = `<button class="lcell lhome" data-act="home" aria-label="Home">${SIM_ICON.home}</button><div class="lbatt" aria-hidden="true">${SIM_ICON.usb}</div>`;
   const title = sc.title;
   if (sc.headphone)   // Menu: headphone | title + dots | home
-    return `<div class="lhead menu"><button class="lcell lhp" data-act="unm" aria-label="Headphones">LR Stereo${SIM_ICON.head}</button><div class="lcell ltitle"><b>${escapeHtml(title)}</b><div class="ldots">${dots}</div></div>${home}</div>`;
-  if (sc.channel)     // channel: level strip (no levels, so "—") | dots | home
-    return `<div class="lhead chan"><div class="lcell lstrip"><span>—</span><i>-40 -20 0 L</i></div><div class="lcell ldots">${dots}</div>${home}</div>`;
+    return `<div class="lhead menu"><button class="lcell lhp" data-act="hp" aria-label="Headphones">LR Stereo${SIM_ICON.head}</button><div class="lcell ltitle"><b>${escapeHtml(title)}</b><div class="ldots">${dots}</div></div>${home}</div>`;
+  if (sc.channel) {   // channel: "n: Ch n", the small channel meter (no levels, so empty), page dots, home. Page 1 has Gain pre-selected, with the ↓ — ↑ editor row (manual p19-p20)
+    const strip = `<div class="lcell lstrip"><i class="lsm"></i><i>-40 -20 0 L</i></div>`, ttl = `<div class="lcell ltitle"><b>${sim.ch + 1}: Ch ${sim.ch + 1}</b></div>`;
+    const dotc = `<div class="lcell ldots">${dots}</div>`;
+    if (sim.page === 0) return `<div class="lhead chan gain">${strip}${ttl}<div class="lcell lgedit"><button data-act="down" aria-label="Down">${SIM_ICON.down}</button><span>—</span><button data-act="up" aria-label="Up">${SIM_ICON.up}</button></div>${dotc}${home}</div>`;
+    return `<div class="lhead chan">${ttl}${strip}${dotc}${home}</div>`;
+  }
+  if (sc.kind === "filelist")   // File List (manual p34-p36): project name, ↰ Back | Edit, home
+    return `<div class="lhead std"><div class="lcell ltitle"><b>—</b></div><button class="lcell lback" data-act="back">${SIM_ICON.back}Back</button><button class="lcell ldots lbedit" data-act="fedit">Edit</button>${home}</div>`;
   const tsz = Math.min(8.6, 70 / Math.max(1, title.length)).toFixed(2);   // long titles shrink to fit, as on the recorder
   return `<div class="lhead std${dots ? "" : " nodots"}"><div class="lcell ltitle"><b style="font-size:calc(var(--u)*${tsz})">${escapeHtml(title)}</b></div><button class="lcell lback" data-act="back">${SIM_ICON.back}Back</button>${dots ? `<div class="lcell ldots">${dots}</div>` : ""}${home}</div>`;
 }
 const smrOn = k => isLit(sim.ch, k);
+const simPages = sc => sc.pagesFor ? sc.pagesFor(sim.ch) : sc.pages || [];
 function simBody(sc) {
   switch (sc.kind) {
     case "tiles": {
-      const page = sc.pages[sim.page];
+      const page = simPages(sc)[sim.page];
       const six = page && page.length > 4;
       const tiles = page ? page : [0, 1, 2, 3].map(() => ({ label: "", unm: true }));
       const html = tiles.map((t, i) => {
         if (!t || t.label === undefined) return `<span></span>`;
-        const lit = t.smr && smrOn(t.smr);
+        const lit = (t.smr && smrOn(t.smr)) || t.on;
         const cls = "lcdtile" + (t.unm ? " unm" : "") + (lit ? " on" : "");
-        return `<button class="${cls}" data-act="tile" data-i="${i}">${tileInner(t)}${t.unm && !t.label ? "<em>not mapped yet</em>" : t.unm ? "<em>not mapped yet</em>" : ""}</button>`;
+        return `<button class="${cls}" data-act="tile" data-i="${i}">${tileInner(t)}</button>`;
       }).join("");
       return `<div class="lbody"><div class="lgrid${six ? " six" : ""}">${html}</div>${sc.note ? `<p class="lnote">${escapeHtml(sc.note)}</p>` : ""}</div>`;
     }
     case "list":
       return `<div class="lbody"><div class="llist lbot"><p class="lhint">Select using headphone knob</p></div><div class="lrow"><button class="lcdtile" data-act="up">${SIM_ICON.up.replace("<svg", '<svg class="ico"')}</button><button class="lcdtile" data-act="down">${SIM_ICON.down.replace("<svg", '<svg class="ico"')}</button><button class="lcdtile lsel" data-act="select">Select</button></div></div>`;
     case "editor":
-      return `<div class="lbody"><div class="lvh"><button class="lcdtile" data-act="down">${SIM_ICON.down.replace("<svg", '<svg class="ico"')}</button><span>value</span><button class="lcdtile" data-act="up">${SIM_ICON.up.replace("<svg", '<svg class="ico"')}</button></div><div class="ledit"><p class="lhint">Adjust with the headphone knob</p></div><div class="lrow"><button class="lcdtile lsel" data-act="ok">OK</button></div></div>`;
+      return `<div class="lbody"><div class="lvh"><button class="lcdtile" data-act="down">${SIM_ICON.down.replace("<svg", '<svg class="ico"')}</button><span>value</span><button class="lcdtile" data-act="up">${SIM_ICON.up.replace("<svg", '<svg class="ico"')}</button></div><div class="ledit"><p class="lhint">${escapeHtml(sc.hint || "Adjust with the headphone knob")}</p></div><div class="lrow"><button class="lcdtile lsel" data-act="ok">OK</button></div></div>`;
     case "slider": {
       return `<div class="lbody"><div class="lslot"><div class="lcdtile on" id="sliderTile"><span>${escapeHtml(sc.title)}</span><span class="val" id="sliderVal">—</span></div><div id="sliderBox"></div></div></div>`;
     }
@@ -2364,6 +2439,8 @@ function simBody(sc) {
       if (sc.rows) return `<div class="lbody"><div class="lchipsw">${sc.rows.map(r => r.head ? `<div class="lgh">${escapeHtml(r.head)}</div><div class="lboxes">${r.boxes.map(n => `<span class="lbox">${n}</span>`).join("")}</div>` : `<div class="lwide${r.blue ? " blue" : ""}">${escapeHtml(r.t)}</div>`).join("")}</div>${arrows}</div>`;
       return `<div class="lbody"><div class="lchipsw"><div class="lchips">${sc.items.map((n, i) => `<span class="lchip${i === 0 ? " hl" : ""}">${escapeHtml(n)}</span>`).join("")}</div></div>${arrows}</div>`;
     }
+    case "filelist":   // we don't know the files, so only the "[next]" row; ENTER opens Edit on the recorder
+      return `<div class="lbody"><div class="lfl"><div class="lflrow top"><span>[next]</span><span>—</span></div></div><p class="lhint">▶ = Play, HP Knob = Edit</p><div class="lrow"><button class="lcdtile" data-act="up">${SIM_ICON.up.replace("<svg", '<svg class="ico"')}</button><button class="lcdtile" data-act="down">${SIM_ICON.down.replace("<svg", '<svg class="ico"')}</button><button class="lcdtile lsel" data-act="fedit">Edit</button></div></div>`;
     case "unmapped":
       return `<div class="lbody"><div class="llist"><p class="lhint">This screen isn't mapped yet.<br>Use Home to re-sync with the recorder.</p></div></div>`;
     default: return "";
@@ -2396,14 +2473,16 @@ function drawLevelMeters() {
   });
 }
 let simMeter = null;   // cached bar elements of the Simple home, filled by simHome()
+// transport state for the file-name / timer colours: stopped, recording (red), playing (green); needs MIDI state, else stopped
+const simTr = () => !(ctlOn && hasMidi()) ? "stop" : isRecording() ? "rec" : (S.transport & 1) ? "play" : "stop";
 function simHome() {
   const tr = [1, 2, 3, 4, 5, 6].map(n => `<button class="ltrk${S.arm & (1 << (n - 1)) ? " arm" : ""}" data-act="track" data-n="${n}" aria-label="Channel ${n}">${n}</button>`).join("");
-  return `<div class="lhome-s">
-    <div class="lhtop"><div class="lhl"><div class="ltop"><span class="wav">${SIM_ICON.wave}--------WAV</span></div><div class="ltc"><span class="lbig rtime">--:--:--</span><span class="lq">Q</span></div></div>
-      <button class="lcdtile lhmenu" data-act="menu" aria-label="Menu">${SIM_ICON.menu}</button><div class="lbatt" aria-hidden="true"><i></i><b></b></div></div>
+  return `<div class="lhome-s" data-tr="${simTr()}">
+    <div class="lhtop"><div class="lhl"><button class="ltop" data-act="files" aria-label="File list"><span class="wav">${SIM_ICON.wave}--------WAV</span></button><div class="ltc"><span class="lbig rtime">--:--:--</span><button class="lq" data-act="cue" aria-label="Cue marker">Q</button></div></div>
+      <button class="lcdtile lhmenu" data-act="menu" aria-label="Menu">${SIM_ICON.menu}</button><div class="lbatt" aria-hidden="true">${SIM_ICON.usb}</div></div>
     <div class="lmeters"><div class="ltrks"><span class="lr">L</span><span class="lr">R</span><span class="lgap"></span>${tr}</div>
-      <div class="lscale"><div class="lrow2"><i class="lmb"><u></u><s></s></i><i class="lmb"><u></u><s></s></i></div><div class="lbar"><span>-50</span><span>-40</span><span>-30</span><span>-20</span><span>-12</span><span>0</span><span>L</span></div><span class="lnone">—</span></div></div>
-    <div class="lfoot lcdtile"><span>—</span><span class="lhpn">${SIM_ICON.head}LR Stereo</span></div></div>`;
+      <div class="lscale" data-act="meters"><div class="lrow2"><i class="lmb"><u></u><s></s></i><i class="lmb"><u></u><s></s></i></div><div class="lbar"><span>-50</span><span>-40</span><span>-30</span><span>-20</span><span>-12</span><span>0</span><span>L</span></div><span class="lnone">—</span></div></div>
+    <div class="lfoot lcdtile"><span class="lsd">${SIM_ICON.sd}<b class="lsdt">—</b></span><span class="lhpn">${SIM_ICON.head}LR Stereo</span></div></div>`;
 }
 let simSlider = null;
 // The Pi keeps the one shared copy position (`simple` messages) and also moves it for MixPre-side solos
@@ -2444,7 +2523,25 @@ function renderSimple() {
   }
   $("snokb").hidden = hasKb();
   simMeter = el.querySelector(".lmb") ? [...el.querySelectorAll(".lmb")] : null;
+  simUpdateCtl();
   tickTimer(); drawLevelMeters();
+}
+// the physical controls under the screen: the headphone knob's job depends on the screen; ch 1-4 get their front knob (= the fader) while a channel page is open
+let simKnob = null;
+function simUpdateCtl() {
+  const cap = sim.id === "home" ? "HP vol" : inChannelPage() ? "Value" : "Scroll";
+  $("sKnobL").textContent = "↶ " + cap; $("sKnobR").textContent = cap + " ↷";
+  const box = $("sKnobFader"), show = inChannelPage() && sim.ch < 4;
+  box.hidden = !show;
+  if (!show) { simKnob = null; return; }
+  if (simKnob && simKnob.ch === sim.ch) return;
+  const idx = sim.ch;
+  $("sKnobLbl").textContent = `Ch ${idx + 1} knob (fader)`;
+  $("sKnobBox").textContent = "";
+  simKnob = makeSlider(() => CC.fader + idx, { pad: 14 });
+  simKnob.ch = idx; simKnob.lvl = idx;
+  $("sKnobBox").append(simKnob.el);
+  requestAnimationFrame(() => { if (simKnob) { simKnob.redraw(); simKnob.set(S.levels[idx] ?? 255); } });
 }
 // physical-style actions (knob press, in-screen OK/Select)
 function simEnter() {
@@ -2480,6 +2577,11 @@ function simAct(e) {
   const sc = simScreen(), act = b.dataset.act, i = +b.dataset.i;
   switch (act) {
     case "unm": toast("Not mapped yet"); break;
+    case "hp": toast("No key for this: touch the recorder"); break;
+    case "files": if (simKeys(SIMPLE_KEYS.files)) simGo("fileList"); break;
+    case "fedit": if (simKeys(SIMPLE_KEYS.select)) simGo("fileEdit"); break;
+    case "meters": if (simKeys(SIMPLE_KEYS.meters)) toast("Meter view changed on the MixPre; this copy stays on L/R", 2800); break;
+    case "cue": if (hasMidi()) tapCC(CC.set); else if (needs("kb")) tapKey(...SIMPLE_KEYS.cue); break;
     case "home": simHomeKey(); break;
     case "back": simBack(); break;
     case "menu": if (simKeys(SIMPLE_KEYS.menu)) simGo("menu"); break;
@@ -2494,10 +2596,15 @@ function simAct(e) {
       simGo(sim.id, to); break;
     }
     case "tile": {
-      const page = sc.pages[sim.page], t = page && page[i];
+      const page = simPages(sc)[sim.page], t = page && page[i];
       if (!t || t.unm) return toast("Not mapped yet");
+      if (t.openCh !== undefined) {   // Inputs > Ch 5 / 6 Screen: the same as tapping the track on Home (Open CC, or the digit key). The tile key is not sent too: the Open CC toggles
+        if (!viaMidi(t.openCh) && !needs("kb")) break;
+        openOnMixPre(t.openCh); enterChannel(t.openCh); break;
+      }
       if (t.smr) { pressSMR(sim.ch, t.smr); break; }
       if (t.local) { simGo(t.to); break; }
+      if (t.stay) { simKeys((page.length > 4 ? SIMPLE_KEYS.tile6 : SIMPLE_KEYS.tile)[i]); break; }   // Gain: already selected, the tap just re-selects it
       const keys = page.length > 4 ? SIMPLE_KEYS.tile6 : SIMPLE_KEYS.tile;
       if (!simKeys(keys[i])) break;
       if (t.choice) simAfter(SIMPLE_AFTER.choice, sc); else simGo(t.to);
@@ -2537,6 +2644,7 @@ function simScale() {
 }
 function updateSimpleHome() {
   if (sim.id !== "home") return;
+  const hs = document.querySelector("#sscreen .lhome-s"); if (hs) hs.dataset.tr = simTr();
   document.querySelectorAll("#sscreen .ltrk").forEach((b, i) => b.classList.toggle("arm", !!(S.arm & (1 << i))));
 }
 /* view switch: Advanced (the tabs) or Simple (the screen copy) */
@@ -2559,6 +2667,7 @@ function wireSimple() {
   $("sscreen").addEventListener("click", simAct);
   $("sKnob").onclick = simEnter;
   $("sBack").onclick = simBack;
+  $("sHelp").onclick = () => toast("Dimmed tiles aren't mapped yet. Tap the meters to change the recorder's meter view (the copy stays on L/R). Tap the file name for the File List, Q for a cue mark.", 9000);
   $("sHome").onclick = simHomeKey;
   $("snokbBtn").onclick = () => { send(OP.MODE, 2); toast("Switching USB mode to Both…", 3500); };
   $("viewBtn").onclick = $("railView").onclick = () => setView(view === "simple" ? "advanced" : "simple");
