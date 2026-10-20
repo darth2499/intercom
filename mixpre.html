@@ -1690,7 +1690,7 @@ class DemoTransport {
     for (let i = 0; i < n; i++) {
       const on = u.inputs_on.includes(i + 1);
       let pk = -122;
-      if (on) pk = -64 + 38 * (0.5 + 0.5 * Math.sin(t * (0.9 + i * 0.37) + i)) + (armed.includes(i + 3) ? 6 : 0) * Math.sin(t * 3 + i) - (rec ? 0 : 8);
+      if (on) pk = -64 + 38 * (0.5 + 0.5 * Math.sin(t * (0.9 + i * 0.37) + i)) + (armed.includes(i + 5) ? 6 : 0) * Math.sin(t * 3 + i) - (rec ? 0 : 8);
       inm.push([null, Math.round(pk), pk > -2 ? 1 : 0]);
     }
     const l = inm.length ? Math.max(...inm.slice(0, 2).map(x => x[1])) : -122;
@@ -2229,7 +2229,7 @@ function wmTransport(k) {
 function wmArm(n) {
   const cur = new Set(W.d.arms || []), want = !cur.has(n);
   want ? cur.add(n) : cur.delete(n);
-  const what = n <= 2 ? "mix " + "LR"[n - 1] : "input " + (n - 2);
+  const what = n <= 2 ? "mix " + "LR"[n - 1] : n < ARM_INPUT0 ? "X" + (n - 2) : "input " + (n - ARM_INPUT0 + 1);
   wmOp("wm_arm", { tracks: [...cur].sort((a, b) => a - b) }, r => {
     if (!r.ok) return toast(r.error, 3500);
     setTimeout(() => { if ((W.d.arms || []).includes(n) !== want) toast(`The MixPre did not ${want ? "arm" : "disarm"} ${what}`, 3000); }, 900);
@@ -2238,8 +2238,9 @@ function wmArm(n) {
 const wmName = i => ((W.d.names || [])[i + 2] || "");   // the list starts with the two mix tracks, then the inputs
 const wmClock = () => W.d.tc_mode_idx === 0 ? W.d.file_time : W.d.tc;   // timecode off: show the file's elapsed time
 const wmIsOn = i => (W.d.inputs_on || []).includes(i + 1);
-// RECORD_TRACK_ARMS as the Wingman app maps a MixPre: bit 1 = mix L, bit 2 = mix R, then one bit per input
-const wmIsArmed = i => (W.d.arms || []).includes(i + 3);
+// RECORD_TRACK_ARMS as the unit does (checked on a MixPre-10 II): bit 1 = mix L, bit 2 = mix R, bits 3-4 = X1 / X2 (the unit won't arm them), bit 5 = input 1 ...
+const ARM_INPUT0 = 5;
+const wmIsArmed = i => (W.d.arms || []).includes(i + ARM_INPUT0);
 const wmMixArmed = k => (W.d.arms || []).includes(k + 1);     // k: 0 = L, 1 = R
 // Bluetooth only: the link is up and the MixPre is not connected to the Pi by USB, so there is no MIDI and no keyboard
 const btOnly = () => wmFresh() && !S.usb;
@@ -2535,7 +2536,7 @@ const SMR = {
 const viaMidi = i => hasMidi() && i < MIDI_STRIPS;
 function pressSMR(i, k) {
   const d = SMR[k];
-  if (k === "r" && wmFresh()) return wmArm(i + 3);
+  if (k === "r" && wmFresh()) return wmArm(i + ARM_INPUT0);
   if (viaMidi(i)) return tapCC(d.cc() + i);
   if (needs("kb")) { tapKey(d.mods, DIGIT(i + 1)); kbToggle(d.lit, i); }
 }
@@ -2575,7 +2576,7 @@ function buildInputs() {
     row.onclick = e => {
       if (e.target.closest(".slider, .smr")) return;
       if (e.target.closest(".inm") && wmFresh()) return openRenameTrack(i);
-      if (btOnly()) { if (e.target.closest(".n")) wmArm(i + 3); return; }   // no channel sheet without USB: the number arms
+      if (btOnly()) { if (e.target.closest(".n")) wmArm(i + ARM_INPUT0); return; }   // no channel sheet without USB: the number arms
       openChannel(i);
     };
     box.append(row);
@@ -3204,7 +3205,7 @@ function simAct(e) {
     case "mix": if (wmFresh()) wmArm(+b.dataset.b); else toast("Needs the Bluetooth link"); break;
     case "trname": if (wmFresh()) openRenameTrack(+b.dataset.i); break;
     case "track": {   // open the channel on the recorder (verified CC, or the digit key) and in the copy
-      if (wmFresh() && btOnly()) { wmArm(+b.dataset.n + 2); break; }   // Bluetooth only: the number arms the track
+      if (wmFresh() && btOnly()) { wmArm(+b.dataset.n - 1 + ARM_INPUT0); break; }   // Bluetooth only: the number arms the track
       const n = +b.dataset.n - 1;
       if (!viaMidi(n) && !needs("kb")) break;
       openOnMixPre(n); enterChannel(n); break;
