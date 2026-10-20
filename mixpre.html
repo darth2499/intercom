@@ -503,7 +503,7 @@ body.metering .amet{display:flex}
 .lhl{display:grid;grid-template-rows:minmax(0,1fr) minmax(0,1fr);row-gap:0;min-height:0;background:linear-gradient(var(--lcd-top),var(--lcd-bot));border-radius:calc(var(--u)*.25)}   /* one continuous panel: WAV row + TC | Q row */
 .ltop,.ltc .lbig,.ltc .lq{background:none;display:flex;align-items:center;min-width:0;border-radius:calc(var(--u)*.25)}
 .ltop{padding:0 calc(var(--u)*2.2);font-size:calc(var(--u)*7.4);font-weight:700;color:var(--lcd-bold)}
-.ltop .wav{display:flex;align-items:center;gap:calc(var(--u)*1.6);white-space:nowrap}
+.ltop .wav{display:inline-flex;align-items:center;gap:calc(var(--u)*1.6);white-space:nowrap}
 .ltop svg{width:calc(var(--u)*9);height:calc(var(--u)*9)}
 .ltc{display:grid;grid-template-columns:minmax(0,1fr) calc(var(--u)*17);grid-template-rows:minmax(0,1fr);column-gap:0;min-height:0}
 .ltc .lq,.ltc .lbig,.ltop{min-height:0;overflow:hidden;line-height:1;padding-top:0;padding-bottom:0}
@@ -708,7 +708,7 @@ button.lr{border:0;font-family:inherit;cursor:pointer;padding:0}
 .lht{flex:1;min-height:0;position:relative;display:block;overflow:hidden;font-style:normal}
 .lht u{position:absolute;inset:0;background:linear-gradient(90deg,var(--lcd-mg) 0 52.2%,var(--lcd-my) 52.2% 81.8%,var(--lcd-mr) 81.8% 100%);clip-path:inset(0 100% 0 0);text-decoration:none}
 .lht s{position:absolute;top:10%;bottom:10%;left:0;width:calc(var(--u)*1.1);margin-left:calc(var(--u)*-.5);background:var(--lcd-mpeak);opacity:0;text-decoration:none;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
-.lht em{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-style:normal;font-weight:700;font-size:calc(var(--u)*3);color:#fff;text-shadow:0 0 calc(var(--u)*.5) #000,0 0 calc(var(--u)*.5) #000,0 0 calc(var(--u)*1) #000;white-space:nowrap;cursor:pointer;max-width:92%;overflow:hidden;text-overflow:ellipsis;text-align:center}
+.lht em{position:absolute;left:43.5%;top:50%;transform:translate(-50%,-50%);font-style:normal;font-weight:700;font-size:calc(var(--u)*3);color:#fff;text-shadow:0 0 calc(var(--u)*.5) #000,0 0 calc(var(--u)*.5) #000,0 0 calc(var(--u)*1) #000;white-space:nowrap;cursor:pointer;max-width:92%;overflow:hidden;text-overflow:ellipsis;text-align:center}
 .vcol{position:relative;display:block;min-width:0;height:100%}
 .vcol .vtk{width:80%;margin:0 auto}
 .vnm{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(180deg);writing-mode:vertical-rl;max-height:94%;font-weight:700;font-size:calc(var(--u)*3);color:#fff;text-shadow:0 0 calc(var(--u)*.5) #000,0 0 calc(var(--u)*.5) #000,0 0 calc(var(--u)*1) #000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;line-height:1;z-index:2}
@@ -3197,6 +3197,7 @@ function renderSimple() {
   }
   $("snokb").hidden = hasKb();
   simMeter = el.querySelector(".lmb") ? [...el.querySelectorAll(".lmb")] : null;
+  simFitName();
   simUpdateCtl();
   tickTimer(); drawLevelMeters();
 }
@@ -3316,8 +3317,24 @@ function simAct(e) {
 // scale the screen copy: --u = 1% of its width, so everything stays crisp at any size
 function simScale() {
   const el = $("sscreen"), w = el.clientWidth;
-  if (w) el.style.setProperty("--u", (w / 100) + "px");
+  if (w) { el.style.setProperty("--u", (w / 100) + "px"); simFitName(); }
   if (!simScale.again) { simScale.again = true; requestAnimationFrame(() => { simScale.again = false; if (el.clientWidth !== w) simScale(); }); }   // the width can settle a frame later (rotation, resizing)
+}
+// File name on Home: one line inside the panel. Shrink to 70% at most, then cut the middle with an ellipsis and keep the end (take number) visible.
+function simFitName() {
+  const top = document.querySelector("#sscreen .ltop"), fn = top && top.querySelector(".fn"), wav = top && top.querySelector(".wav");
+  if (!fn) return;
+  const full = simFileBase(), avail = top.clientWidth - 2 * parseFloat(getComputedStyle(top).paddingLeft || 0), key = full + "|" + avail;
+  if (simFitName.key === key && top.isConnected && simFitName.el === top) return;
+  simFitName.key = key; simFitName.el = top;
+  wav.style.fontSize = ""; fn.textContent = full;
+  if (!avail || wav.offsetWidth <= avail) return;
+  const k = Math.max(0.7, avail / wav.offsetWidth * 0.97);
+  wav.style.fontSize = (k * 100).toFixed(1) + "%";
+  for (let keep = full.length - 1; keep >= 4 && wav.offsetWidth > avail; keep--) {
+    const head = Math.floor((keep - 1) * 0.4), tail = keep - 1 - head;
+    fn.textContent = full.slice(0, head) + "…" + full.slice(full.length - tail);
+  }
 }
 function updateSimpleHome() {
   if (sim.id !== "home") return;
@@ -3328,7 +3345,7 @@ function updateSimpleHome() {
   if (ext !== has && hs) return renderSimple();
   document.querySelectorAll("#sscreen .lr").forEach((b, k) => { const c = simMixCls(b.dataset.b === "2" ? 1 : 0); b.classList.toggle("arm", c === " arm"); b.classList.toggle("idle", c === " idle"); });
   document.querySelectorAll("#sscreen [data-act=trname]").forEach(e => { const t = simName(+e.dataset.i); if (e.textContent !== t) e.textContent = t; });
-  const fn = document.querySelector("#sscreen .fn"); if (fn && fn.textContent !== simFileBase()) fn.textContent = simFileBase();
+  simFitName();
   const inputs = channelCount();
   document.querySelectorAll("#sscreen .ltrk").forEach((b, i) => { const c = simTrkCls(i, inputs); b.classList.toggle("arm", c === " arm"); b.classList.toggle("off", c === " off"); });
 }
