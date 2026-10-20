@@ -524,6 +524,9 @@ button.ltop,button.lq{font-family:inherit;border:0}
 .lfoot{flex-direction:row!important;justify-content:space-between!important;padding:0 calc(var(--u)*2);font-size:calc(var(--u)*4.6)!important;color:var(--lcd-text)}
 .lfoot .lsd{display:flex;align-items:center;gap:calc(var(--u)*1.2)}
 .lfoot .lsd b{font-weight:400}
+.lfoot .lsd[data-act] svg path{fill:#f2c40b}   /* the yellow file icon while recording / playing */
+.lfoot .lsd[data-act=rec] b{color:var(--lcd-file-rec)}
+.lfoot .lsd[data-act=play] b{color:var(--lcd-file-play)}
 .lfoot .lsd svg{width:calc(var(--u)*4.4);height:calc(var(--u)*5.6)}
 .lfoot .lhpn{display:flex;align-items:center;gap:calc(var(--u)*1.2)}
 .lfoot svg{width:calc(var(--u)*5);height:calc(var(--u)*5)}
@@ -701,10 +704,11 @@ button.lr{border:0;font-family:inherit;cursor:pointer;padding:0}
 .lht{flex:1;min-height:0;position:relative;display:block;overflow:hidden;font-style:normal}
 .lht u{position:absolute;inset:0;background:linear-gradient(90deg,var(--lcd-mg) 0 52.2%,var(--lcd-my) 52.2% 81.8%,var(--lcd-mr) 81.8% 100%);clip-path:inset(0 100% 0 0);text-decoration:none}
 .lht s{position:absolute;top:10%;bottom:10%;left:0;width:calc(var(--u)*1.1);margin-left:calc(var(--u)*-.5);background:var(--lcd-mpeak);opacity:0;text-decoration:none;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
-.lht em{position:absolute;left:calc(var(--u)*1.2);top:50%;transform:translateY(-50%);font-style:normal;font-size:calc(var(--u)*3);color:#fff;text-shadow:0 0 calc(var(--u)*.6) #000;white-space:nowrap;cursor:pointer;max-width:90%;overflow:hidden;text-overflow:ellipsis}
-.vcol{display:flex;align-items:stretch;justify-content:center;gap:calc(var(--u)*.4);min-width:0;height:100%}
-.vcol .vtk{width:42%;margin:0;flex:none}
-.vnm{flex:1;min-width:0;writing-mode:vertical-rl;transform:rotate(180deg);font-weight:400;font-size:calc(var(--u)*2.9);color:#c9d3d0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left;cursor:pointer;line-height:1.1}
+.lht em{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-style:normal;font-weight:700;font-size:calc(var(--u)*3);color:#fff;text-shadow:0 0 calc(var(--u)*.5) #000,0 0 calc(var(--u)*.5) #000,0 0 calc(var(--u)*1) #000;white-space:nowrap;cursor:pointer;max-width:92%;overflow:hidden;text-overflow:ellipsis;text-align:center}
+.vcol{position:relative;display:block;min-width:0;height:100%}
+.vcol .vtk{width:80%;margin:0 auto}
+.vnm{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(180deg);writing-mode:vertical-rl;max-height:94%;font-weight:700;font-size:calc(var(--u)*3);color:#fff;text-shadow:0 0 calc(var(--u)*.5) #000,0 0 calc(var(--u)*.5) #000,0 0 calc(var(--u)*1) #000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;line-height:1;z-index:2}
+.vnm:empty{display:none}
 /* recorder bars: TC and file name on top, four evenly spaced 44px+ buttons below */
 .rbar{height:auto;flex-direction:column;align-items:stretch;gap:8px;padding:10px var(--s3) 10px var(--s4)}
 .rbar .rbtop{display:flex;align-items:center;gap:10px;min-width:0}
@@ -1713,7 +1717,7 @@ class DemoTransport {
         return this.wmResult(o);
       }
       case "wm_arm": {
-        const ok = o.tracks.filter(n => ![3, 4].includes(n));     // the real unit refused arming 3 and 4 in Yuki's setup
+        const ok = o.tracks.filter(n => ![3, 4].includes(n) && !(n >= 5 && !u.inputs_on.includes(n - 4)));     // the unit refuses X1/X2 and inputs that are off
         this.wmDelta({ arms: ok }); return this.wmResult(o);
       }
       case "wm_takes": return this.wmResult(o, { takes: this.takes.map(t => ({ ...t })) });
@@ -2232,7 +2236,11 @@ function wmArm(n) {
   const what = n <= 2 ? "mix " + "LR"[n - 1] : n < ARM_INPUT0 ? "X" + (n - 2) : "input " + (n - ARM_INPUT0 + 1);
   wmOp("wm_arm", { tracks: [...cur].sort((a, b) => a - b) }, r => {
     if (!r.ok) return toast(r.error, 3500);
-    setTimeout(() => { if ((W.d.arms || []).includes(n) !== want) toast(`The MixPre did not ${want ? "arm" : "disarm"} ${what}`, 3000); }, 900);
+    setTimeout(() => {
+      if ((W.d.arms || []).includes(n) === want) return;
+      const inp = n - ARM_INPUT0, off = want && inp >= 0 && !wmIsOn(inp);
+      toast(off ? `Input ${inp + 1} is off on the MixPre (pick its source in Menu › Inputs), so it can't be armed` : `The MixPre did not ${want ? "arm" : "disarm"} ${what}`, 3800);
+    }, 900);
   });
 }
 const wmName = i => ((W.d.names || [])[i + 2] || "");   // the list starts with the two mix tracks, then the inputs
@@ -2713,6 +2721,8 @@ function applyState(m) {
 }
 // Recording timer: counted from when the MixPre's Rec LED came on (the MixPre doesn't send its own clock)
 function fmtRec(sec) { sec = Math.max(0, Math.floor(sec)); const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60; return (h ? h + ":" : "") + String(m).padStart(h ? 2 : 1, "0") + ":" + String(s).padStart(2, "0"); }
+// "HH:MM:SS:FF" from the unit -> "MM:SS" (or "H:MM:SS" past an hour), as the status bar shows it
+const fmtFileTime = t => { const [h, m, sec] = String(t).split(":").map(Number); return h ? `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}` : `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`; };
 const fmtClock = sec => { sec = Math.max(0, Math.floor(sec)); const p = n => String(n).padStart(2, "0"); return `${p(Math.floor(sec / 3600))}:${p(Math.floor(sec % 3600 / 60))}:${p(sec % 60)}`; };
 const isRecording = () => ctlOn && (wmFresh() ? wmRecording() : hasMidi() && !!(S.transport & 16));
 const isPlaying = () => ctlOn && !isRecording() && (wmFresh() ? wmPlaying() : hasMidi() && !!(S.transport & 1));
@@ -2720,8 +2730,14 @@ function tickTimer() {
   const bt = wmFresh() && wmClock();
   const t = bt ? wmClock() : isRecording() && S.rec_s != null && S.rec_at != null ? fmtClock(S.rec_s + (performance.now() - S.rec_at) / 1000) : "--:--:--";
   document.querySelectorAll(".rtime").forEach(e => { if (e.textContent !== t) e.textContent = t; });
-  const sd = document.querySelector("#sscreen .lsdt");   // Simple home status bar: our REC elapsed time, else "—" (remaining time is unknown)
-  if (sd) { const v = !bt && isRecording() && S.rec_s != null && S.rec_at != null ? fmtRec(S.rec_s + (performance.now() - S.rec_at) / 1000) : "—"; if (sd.textContent !== v) sd.textContent = v; }
+  const sd = document.querySelector("#sscreen .lsdt");   // Simple home status bar (manual p20): while recording / playing the file's elapsed time with a yellow file icon, else the SD icon and "—" (time left is unknown)
+  if (sd) {
+    const live = wmFresh() && (isRecording() || isPlaying()) && W.d.file_time;   // the unit's own file time over Bluetooth, else our REC timer
+    const v = live ? fmtFileTime(W.d.file_time) : !bt && isRecording() && S.rec_s != null && S.rec_at != null ? fmtRec(S.rec_s + (performance.now() - S.rec_at) / 1000) : "—";
+    if (sd.textContent !== v) sd.textContent = v;
+    const act = v === "—" ? "" : isRecording() ? "rec" : "play";
+    if (sd.parentElement.dataset.act !== act) sd.parentElement.dataset.act = act;
+  }
 }
 setInterval(tickTimer, 250);
 function renderRecorder() {
