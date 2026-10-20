@@ -497,18 +497,20 @@ body.metering .amet{display:flex}
 .ab{height:5px;background:#000;border-radius:2px}
 .ab s{width:3px;margin-left:-1px;clip-path:none;top:0;bottom:0}
 /* Home */
-.lhome-s{grid-row:1/4;min-height:0;display:grid;grid-template-rows:34fr minmax(0,48fr) 11fr;gap:calc(var(--u)*1.4)}
+.lhome-s{grid-row:1/4;min-height:0;display:grid;grid-template-rows:34fr minmax(0,48fr) 11fr;gap:0}
+.lhome-s .lfoot{margin-top:calc(var(--u)*1.4)}   /* the top block sits directly on the meter area, as on the recorder */
 .lhtop{display:grid;grid-template-columns:minmax(0,1fr) calc(var(--u)*26);column-gap:calc(var(--u)*.4);position:relative;min-height:0}
-.lhl{display:grid;grid-template-rows:1fr 1fr;row-gap:calc(var(--u)*.4);min-height:0}
-.ltop,.ltc .lbig,.ltc .lq{background:linear-gradient(var(--lcd-top),var(--lcd-bot));display:flex;align-items:center;min-width:0;border-radius:calc(var(--u)*.25)}
+.lhl{display:grid;grid-template-rows:minmax(0,1fr) minmax(0,1fr);row-gap:0;min-height:0;background:linear-gradient(var(--lcd-top),var(--lcd-bot));border-radius:calc(var(--u)*.25)}   /* one continuous panel: WAV row + TC | Q row */
+.ltop,.ltc .lbig,.ltc .lq{background:none;display:flex;align-items:center;min-width:0;border-radius:calc(var(--u)*.25)}
 .ltop{padding:0 calc(var(--u)*2.2);font-size:calc(var(--u)*7.4);font-weight:700;color:var(--lcd-bold)}
 .ltop .wav{display:flex;align-items:center;gap:calc(var(--u)*1.6);white-space:nowrap}
 .ltop svg{width:calc(var(--u)*9);height:calc(var(--u)*9)}
-.ltc{display:grid;grid-template-columns:minmax(0,1fr) calc(var(--u)*17);column-gap:calc(var(--u)*.4);min-height:0}
+.ltc{display:grid;grid-template-columns:minmax(0,1fr) calc(var(--u)*17);grid-template-rows:minmax(0,1fr);column-gap:0;min-height:0}
+.ltc .lq,.ltc .lbig,.ltop{min-height:0;overflow:hidden;line-height:1;padding-top:0;padding-bottom:0}
 .ltc .lbig{padding:0 calc(var(--u)*2);font-size:calc(var(--u)*7.6);font-weight:400;color:var(--lcd-bold);font-variant-numeric:tabular-nums;font-family:Ubuntu,sans-serif}
-.ltc .lq{justify-content:center;font-size:calc(var(--u)*10);font-weight:700;color:var(--lcd-bold)}
-.lhmenu{margin-top:calc(var(--u)*6.5);color:var(--lcd-bold)}
-.lhmenu svg{width:calc(var(--u)*13);height:calc(var(--u)*13)}
+.ltc .lq{border-left:calc(var(--u)*.4) solid var(--lcd-grey);justify-content:center;font-size:calc(var(--u)*10);font-weight:700;color:var(--lcd-bold)}
+.lhmenu{position:relative;align-self:stretch;height:auto;color:var(--lcd-bold);clip-path:inset(calc(var(--u)*5.8) 0 0 0)}   /* fills below the power strip, down to the bottom of the TC | Q row */
+.lhmenu svg{position:absolute;left:50%;top:75%;transform:translate(-50%,-50%);width:calc(var(--u)*13);height:calc(var(--u)*13)}   /* centred on the TC / Q line */
 .lmeters{display:grid;grid-template-columns:calc(var(--u)*7.5) minmax(0,1fr);gap:calc(var(--u)*1.2);min-height:0}
 .ltrks{display:flex;flex-direction:column;gap:calc(var(--u)*.5);min-height:0}
 .ltrks .lr{flex:none;height:calc(var(--u)*4.6);display:grid;place-items:center;background:var(--lcd-red);color:#fff;font-size:calc(var(--u)*3.4);line-height:1;text-align:center;font-weight:700;border-radius:calc(var(--u)*.3)}
