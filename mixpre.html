@@ -524,7 +524,10 @@ button.ltop,button.lq{font-family:inherit;border:0}
 .lfoot{flex-direction:row!important;justify-content:space-between!important;padding:0 calc(var(--u)*2);font-size:calc(var(--u)*4.6)!important;color:var(--lcd-text)}
 .lfoot .lsd{display:flex;align-items:center;gap:calc(var(--u)*1.2)}
 .lfoot .lsd b{font-weight:400}
-.lfoot .lsd[data-act] svg path{fill:#f2c40b}   /* the yellow file icon while recording / playing */
+.lfoot .lsd b.low{color:var(--lcd-red);font-weight:700}
+.rsub .rcard{color:var(--muted)}
+.rsub .rcard.low{color:#FF9F0A;font-weight:600}
+.lfoot .lsd[data-act=rec] svg path,.lfoot .lsd[data-act=play] svg path{fill:#f2c40b}   /* the yellow file icon while recording / playing */
 .lfoot .lsd[data-act=rec] b{color:var(--lcd-file-rec)}
 .lfoot .lsd[data-act=play] b{color:var(--lcd-file-play)}
 .lfoot .lsd svg{width:calc(var(--u)*4.4);height:calc(var(--u)*5.6)}
@@ -1673,6 +1676,7 @@ class DemoTransport {
       fps: "23.98", fps_idx: 0, drop: false, transport: "stop", arms: [1, 2], inputs_on: ten ? [1, 2, 3, 4, 5, 6, 7, 8] : [1, 2, 3, 4], linking: { outputs: 0, inputs: 0, ms: 0 },
       sample_rate: 48000, sample_rate_idx: 3, bit_depth: 2, tc_mode: "external auto-rec", tc_mode_idx: 8, ballistics: "peak+vu", ballistics_idx: 3, peak_hold: 3,
       file: "Audio-004.WAV", next_file: "Audio-005.WAV", file_time: "00:00:00:00", tc: "07:38:44:07",
+      drive: { sd: { status: 0, size_kb: 124966912, free_kb: 76636160, rec_left_s: 199573 } },
       names: ["Boom Mix", "Lav Mix", "Boom", "Lav 1", "Lav 2", "Lav 3", "Lav 4", "Track 6", "Boom Left", "Boom Right", "Ch 9", "Ch 10"].slice(0, n + 2) };
     this.takes = [{ h: 6, i: 0, name: "Audio-005.WAV", number: "005", tc: "", notes: "" }, { h: 5, i: 1, name: "Audio-004.WAV", number: "004", tc: "07:36:10:12", notes: "good, plane" },
       { h: 4, i: 2, name: "Audio-003.WAV", number: "003", tc: "07:31:02:00", notes: "" }, { h: 3, i: 3, name: "Audio-002.WAV", number: "002", tc: "07:20:41:08", notes: "wild" }];
@@ -1685,9 +1689,9 @@ class DemoTransport {
     const u = this.u, rec = u.transport === "record";
     this.f += 2.6;   // 23.98 fps timecode, 110 ms per tick
     const adv = (t, k) => { const [h, m, s, f] = t.split(":").map(Number); let T = (((h * 60 + m) * 60 + s) * 24 + f) + k; T = Math.floor(T); const ff = T % 24, ss = Math.floor(T / 24) % 60, mm = Math.floor(T / 1440) % 60, hh = Math.floor(T / 86400) % 24; const p = x => String(x).padStart(2, "0"); return `${p(hh)}:${p(mm)}:${p(ss)}:${p(ff)}`; };
-    u.tc = adv(u.tc, 2.6); if (rec) u.file_time = adv(u.file_time, 2.6);
+    u.tc = adv(u.tc, 2.6); if (rec) { u.file_time = adv(u.file_time, 2.6); u.drive = { sd: { ...u.drive.sd, free_kb: u.drive.sd.free_kb - 4000, rec_left_s: u.drive.sd.rec_left_s - 1 } }; }
     const t = Date.now() / 1000, up = { tc: u.tc };
-    if (rec) up.file_time = u.file_time;
+    if (rec) { up.file_time = u.file_time; if (this.f % 1 < 0.2) up.drive = u.drive; }
     // meters: peak dB per input, a slow wandering signal on the armed ones; [vu(none), peak, limiter]
     const inm = [], armed = u.arms;
     for (let i = 0; i < n; i++) {
@@ -2267,6 +2271,11 @@ const WM_LABEL = {
   tcMode: { 0: "Off", 1: "Rec Run", 2: "Free Run", 3: "Free Run, auto-mute", 4: "Free Run, jam once", 5: "24 hour", 6: "24 hour, auto-mute", 7: "EXT", 8: "EXT, auto-rec", 9: "EXT, continuous", 10: "EXT, auto-rec continuous" },
   ballistics: { 0: "VU", 2: "Peak", 3: "Peak + VU" },
 };
+// the SD card as the unit reports it over Bluetooth: size and free space in KiB, record time left in seconds
+const wmCard = () => wmFresh() && W.d.drive && W.d.drive.sd;
+const LOW_SPACE_S = 600;
+const fmtLeft = sec => sec >= 3600 ? `${Math.floor(sec / 3600)}h${String(Math.floor(sec % 3600 / 60)).padStart(2, "0")}` : `${Math.floor(sec / 60)}min`;
+const fmtGB = kb => { const g = kb * 1024 / 1e9; return (g >= 100 ? Math.round(g) : g.toFixed(1)) + " GB"; };
 const tcBadge = () => { const m = W.d.tc_mode_idx; return m === 0 ? "TC off" : m >= 7 ? "EXT" : m === undefined ? "" : "INT"; };
 
 function renderWmSettings() {
@@ -2690,7 +2699,7 @@ function renderStatus() {
   $("statusHead").className = "headline " + st.cls; $("statusHeadText").textContent = st.long;
   $("devInfo").innerHTML = [
     ["Name", S.name || "—"], ["Link", transport ? transport.label() : "—"], ["USB to MixPre", S.usb ? "connected" : "not detected"],
-    ["USB mode", S.mode], ["MIDI", S.midi ? "ready" : "—"], ["MixPre Bluetooth", !S.wmLink ? "off" : wmFresh() ? "linked ✓" : (WM_LABEL.link[W.d.link] || "waiting").toLowerCase()], ["Keyboard", S.hid ? "ready" : "—"], ["Bridge version", S.version || "—"],
+    ["USB mode", S.mode], ["MIDI", S.midi ? "ready" : "—"], ["SD card", wmCard() ? `${fmtGB(wmCard().free_kb)} free of ${fmtGB(wmCard().size_kb)} · ${fmtLeft(wmCard().rec_left_s)} left` : "—"], ["MixPre Bluetooth", !S.wmLink ? "off" : wmFresh() ? "linked ✓" : (WM_LABEL.link[W.d.link] || "waiting").toLowerCase()], ["Keyboard", S.hid ? "ready" : "—"], ["Bridge version", S.version || "—"],
   ].map(([k, v]) => `<span>${k}</span><span>${escapeHtml(v)}</span>`).join("");
   $("devLine").textContent = (S.name || "Not connected") + (transport ? " · " + transport.label() : "");
 }
@@ -2741,11 +2750,16 @@ function tickTimer() {
   const sd = document.querySelector("#sscreen .lsdt");   // Simple home status bar (manual p20): while recording / playing the file's elapsed time with a yellow file icon, else the SD icon and "—" (time left is unknown)
   if (sd) {
     const live = wmFresh() && (isRecording() || isPlaying()) && W.d.file_time;   // the unit's own file time over Bluetooth, else our REC timer
-    const v = live ? fmtFileTime(W.d.file_time, isRecording() ? S.pre || 0 : 0) : !bt && isRecording() && S.rec_s != null && S.rec_at != null ? fmtRec(S.rec_s + (performance.now() - S.rec_at) / 1000) : "—";
+    const card = wmCard();
+    let v = live ? fmtFileTime(W.d.file_time, isRecording() ? S.pre || 0 : 0) : !bt && isRecording() && S.rec_s != null && S.rec_at != null ? fmtRec(S.rec_s + (performance.now() - S.rec_at) / 1000) : "—";
+    const running = v !== "—";
+    if (!running && card) v = fmtLeft(card.rec_left_s);   // stopped: time left on the card
     if (sd.textContent !== v) sd.textContent = v;
-    const act = v === "—" ? "" : isRecording() ? "rec" : "play";
+    const act = running ? (isRecording() ? "rec" : "play") : "";
     if (sd.parentElement.dataset.act !== act) sd.parentElement.dataset.act = act;
+    sd.classList.toggle("low", !running && !!card && card.rec_left_s < LOW_SPACE_S);
   }
+
 }
 setInterval(tickTimer, 250);
 function renderRecorder() {
@@ -2760,8 +2774,10 @@ function renderRecorder() {
     sub.push([fr, badge].filter(Boolean).join(" · "));
     const f = recording || playing ? W.d.file : W.d.next_file;
     if (f) sub.push((recording || playing ? "" : "Next: ") + f);
+    const card = wmCard();
+    if (card) sub.push((card.rec_left_s < LOW_SPACE_S ? "Low space: " : "") + fmtLeft(card.rec_left_s) + " left on the card");
   }
-  $("rSub").innerHTML = sub.map((x, k) => `<span${k === 1 ? ' class="rfn" title="Rename"' : ""}>${escapeHtml(x)}${k === 1 ? " ✎" : ""}</span>`).join("");
+  $("rSub").innerHTML = sub.map((x, k) => `<span${k === 1 ? ' class="rfn" title="Rename"' : k === 2 ? ` class="rcard${/^Low/.test(x) ? " low" : ""}"` : ""}>${escapeHtml(x)}${k === 1 ? " ✎" : ""}</span>`).join("");
   $("wmPills").hidden = !bt;
   const canUndo = bt && !recording && !playing && !!W.d.file;
   document.querySelectorAll('[data-tr="undo"]').forEach(b => { b.hidden = !bt; b.disabled = !canUndo; });
