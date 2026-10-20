@@ -954,8 +954,7 @@ button.lr{border:0;font-family:inherit;cursor:pointer;padding:0}
   <div id="takeList"></div>
   <div class="group" id="takeForm" hidden>
     <h4 id="takeFormTitle">Edit take</h4>
-    <div class="sublabel">File name</div><input type="text" id="tkName" maxlength="40" autocomplete="off">
-    <div class="sublabel">Take number</div><input type="text" id="tkNum" maxlength="12" autocomplete="off">
+    <div class="sublabel">Take number (the file name follows it)</div><input type="text" id="tkNum" maxlength="12" autocomplete="off">
     <div class="sublabel">Notes</div><input type="text" id="tkNotes" maxlength="120" autocomplete="off">
     <div class="row"><button class="b" id="takeSave">Save</button></div>
   </div>
@@ -966,8 +965,8 @@ button.lr{border:0;font-family:inherit;cursor:pointer;padding:0}
   <h3><span id="renTitle">Rename</span> <button class="iconbtn wmclose" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></h3>
   <div class="seg" id="renWhich"><button data-v="next">Next take</button><button data-v="current">Current take</button></div>
   <div class="group" style="margin-top:var(--s3)">
-    <div class="sublabel" id="renL1">File name</div><input type="text" id="renA" maxlength="40" autocomplete="off">
-    <div id="renBWrap"><div class="sublabel">Take number</div><input type="text" id="renB" maxlength="12" autocomplete="off"></div>
+    <div class="sublabel" id="renL1">Take number</div><input type="text" id="renA" maxlength="12" autocomplete="off">
+    <div id="renBWrap"><div class="sublabel">Notes</div><input type="text" id="renB" maxlength="120" autocomplete="off"></div>
   </div>
   <p class="small" id="renNote"></p>
   <div class="row"><button class="b" id="renSave">Save</button></div>
@@ -1719,8 +1718,9 @@ class DemoTransport {
       }
       case "wm_takes": return this.wmResult(o, { takes: this.takes.map(t => ({ ...t })) });
       case "wm_take": { const t = this.takes[o.which === "next" ? 0 : 1]; if (!t) return this.wmFail(o, "No take");
-        if (rec && o.field !== "notes") return this.wmFail(o, "The name and number cannot be changed while recording");
-        t[{ name: "name", number: "number", notes: "notes" }[o.field]] = o.value; if (o.field === "name") this.wmDelta(o.which === "next" ? { next_file: o.value } : { file: o.value }); return this.wmResult(o); }
+        if (o.field === "name") return this.wmFail(o, "take edit refused (reply code 1)");
+        if (rec && o.field !== "notes") return this.wmFail(o, "The take number cannot be changed while recording");
+        t[o.field] = o.value; if (o.field === "number") { t.name = "Audio-" + o.value + ".WAV"; this.wmDelta(o.which === "next" ? { next_file: t.name } : { file: t.name }); } return this.wmResult(o); }
       case "wm_undo": { if (rec) return this.wmFail(o, "Undo is not possible while recording"); const k = this.takes.findIndex(t => t.i === 1); if (k < 0) return this.wmFail(o, "No current take");
         this.takes.splice(k, 1); this.takes.forEach(t => { if (t.i > 1) t.i--; }); this.wmDelta({ file: (this.takes.find(t => t.i === 1) || { name: "" }).name }); return this.wmResult(o); }
       case "wm_track_name": { const names = u.names.slice(); names[o.track - 1] = o.name; this.wmDelta({ names }); return this.wmResult(o); }
@@ -2318,7 +2318,7 @@ function renderTakes() {
     row.innerHTML = `<div class="tk1"><b>${escapeHtml(t.name)}</b>${tag ? `<span class="tag">${tag}</span>` : ""}</div>`
       + `<div class="tk2">${t.number ? "Take " + escapeHtml(t.number) : ""}${t.tc ? " · " + escapeHtml(t.tc) : ""}${t.notes ? " · " + escapeHtml(t.notes) : ""}</div>`;
     if (t.i <= 1) { row.classList.add("edit"); row.onclick = () => { takeEdit = t; $("takeForm").hidden = false; $("takeFormTitle").textContent = (t.i === 0 ? "Next take: " : "Current take: ") + t.name;
-      $("tkName").value = t.name; $("tkNum").value = t.number || ""; $("tkNotes").value = t.notes || ""; $("tkName").disabled = $("tkNum").disabled = rec; }; }
+      $("tkNum").value = t.number || ""; $("tkNotes").value = t.notes || ""; $("tkNum").disabled = rec; }; }
     box.append(row);
   });
   $("takeUndo").disabled = rec || !list.some(t => t.i === 1);
@@ -2326,7 +2326,7 @@ function renderTakes() {
 function saveTake() {
   const t = takeEdit; if (!t) return;
   const which = t.i === 0 ? "next" : "current";
-  const jobs = [["name", $("tkName").value, t.name], ["number", $("tkNum").value, t.number || ""], ["notes", $("tkNotes").value, t.notes || ""]].filter(([, v, old]) => v !== old);
+  const jobs = [["number", $("tkNum").value, t.number || ""], ["notes", $("tkNotes").value, t.notes || ""]].filter(([, v, old]) => v !== old);
   let left = jobs.length, bad = null;
   if (!left) { $("takeForm").hidden = true; return; }
   for (const [field, value] of jobs) wmOp("wm_take", { which, field, value }, r => { if (!r.ok) bad = r.error; if (!--left) { if (bad) toast(bad, 3500); else toast("Saved"); $("takeForm").hidden = true; setTimeout(loadTakes, 400); } });
@@ -2341,7 +2341,7 @@ function openRenameFile() {
   if (!wmFresh()) return;
   if (wmRecording()) return toast("A take can't be renamed while recording");
   ren = { kind: "file", which: "next" };
-  $("renTitle").textContent = "Rename take"; $("renL1").textContent = "File name"; $("renBWrap").hidden = false; $("renWhich").hidden = false;
+  $("renTitle").textContent = "Rename take"; $("renL1").textContent = "Take number (the file name follows it)"; $("renBWrap").hidden = false; $("renWhich").hidden = false; $("renA").maxLength = 12;
   openWmSheet("renSheet"); renFill();
   wmOp("wm_takes", {}, r => { if (r.ok) { W.takes = r.takes; renFill(); } });
 }
@@ -2349,16 +2349,16 @@ function renFill() {
   if (!ren || ren.kind !== "file") return;
   document.querySelectorAll("#renWhich button").forEach(b => b.classList.toggle("on", b.dataset.v === ren.which));
   const t = (W.takes || []).find(x => x.i === (ren.which === "next" ? 0 : 1));
-  $("renA").value = t ? t.name : (ren.which === "next" ? W.d.next_file : W.d.file) || ""; $("renB").value = t ? t.number || "" : "";
+  $("renA").value = t ? t.number || "" : ""; $("renB").value = t ? t.notes || "" : "";
   ren.t = t || null;
   $("renNote").textContent = t ? "" : "Loading…";
 }
 function openRenameTrack(i) {
   if (!wmFresh()) return;
   ren = { kind: "track", i };
-  $("renTitle").textContent = "Track name · input " + (i + 1); $("renL1").textContent = "Name"; $("renBWrap").hidden = true; $("renWhich").hidden = true;
+  $("renTitle").textContent = "Track name · input " + (i + 1); $("renL1").textContent = "Name"; $("renBWrap").hidden = true; $("renWhich").hidden = true; $("renA").maxLength = 30;
   $("renNote").textContent = "Renames the track on the next take.";
-  openWmSheet("renSheet"); $("renA").value = wmName(i); $("renA").maxLength = 30;
+  openWmSheet("renSheet"); $("renA").value = wmName(i);
   setTimeout(() => { $("renA").focus(); $("renA").select(); }, 50);
 }
 function saveRename() {
@@ -2368,7 +2368,7 @@ function saveRename() {
     return closeWmSheets();
   }
   const t = ren.t; if (!t) return toast("Still loading, try again");
-  const jobs = [["name", $("renA").value.trim(), t.name], ["number", $("renB").value.trim(), t.number || ""]].filter(([, v, old]) => v && v !== old);
+  const jobs = [["number", $("renA").value.trim(), t.number || ""], ["notes", $("renB").value.trim(), t.notes || ""]].filter(([, v, old]) => v !== old && (v || old));
   if (!jobs.length) return closeWmSheets();
   let left = jobs.length, bad = null;
   for (const [field, value] of jobs) wmOp("wm_take", { which: ren.which, field, value }, r => { if (!r.ok) bad = r.error; if (!--left) toast(bad || "Renamed", 3000); });
