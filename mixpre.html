@@ -519,7 +519,7 @@ body.metering .amet{display:flex}
 .lhome-s[data-tr=rec] .ltop,.lhome-s[data-tr=rec] .lbig{color:var(--lcd-file-rec)}
 .lhome-s[data-tr=play] .ltop,.lhome-s[data-tr=play] .lbig{color:var(--lcd-file-play)}
 button.ltop,button.lq{font-family:inherit;border:0}
-.lscale{min-width:0;position:relative;display:flex;flex-direction:column;color:#7f8a90;background:linear-gradient(#d8e0dc,#d8e0dc) 17.4% 0/calc(var(--u)*.35) 100% no-repeat,linear-gradient(#d8e0dc,#d8e0dc) 34.8% 0/calc(var(--u)*.35) 100% no-repeat,linear-gradient(#d8e0dc,#d8e0dc) 52% 0/calc(var(--u)*.35) 100% no-repeat,linear-gradient(#d8e0dc,#d8e0dc) 66% 0/calc(var(--u)*.35) 100% no-repeat,linear-gradient(#d8e0dc,#d8e0dc) 87% 0/calc(var(--u)*.35) 100% no-repeat,#000}
+.lscale{min-width:0;position:relative;display:flex;flex-direction:column;color:#7f8a90;background:linear-gradient(rgba(216,224,220,.5),rgba(216,224,220,.5)) 17.4% 0/calc(var(--u)*.35) 100% no-repeat,linear-gradient(rgba(216,224,220,.5),rgba(216,224,220,.5)) 34.8% 0/calc(var(--u)*.35) 100% no-repeat,linear-gradient(rgba(216,224,220,.5),rgba(216,224,220,.5)) 52% 0/calc(var(--u)*.35) 100% no-repeat,linear-gradient(rgba(216,224,220,.5),rgba(216,224,220,.5)) 66% 0/calc(var(--u)*.35) 100% no-repeat,linear-gradient(rgba(216,224,220,.5),rgba(216,224,220,.5)) 87% 0/calc(var(--u)*.35) 100% no-repeat,#000}
 .lbar{display:flex;align-items:center;line-height:1;justify-content:space-between;background:#7c878b;color:#eef2ee;font-size:calc(var(--u)*4.4);padding:0 calc(var(--u)*1.4)}
 .lfoot{flex-direction:row!important;justify-content:space-between!important;padding:0 calc(var(--u)*2);font-size:calc(var(--u)*4.6)!important;color:var(--lcd-text)}
 .lfoot .lsd{display:flex;align-items:center;gap:calc(var(--u)*1.2)}
@@ -530,6 +530,8 @@ button.ltop,button.lq{font-family:inherit;border:0}
 .lfoot .lsd[data-act=rec] svg path,.lfoot .lsd[data-act=play] svg path{fill:#f2c40b}   /* the yellow file icon while recording / playing */
 .lfoot .lsd[data-act=rec] b{color:var(--lcd-file-rec)}
 .lfoot .lsd[data-act=play] b{color:var(--lcd-file-play)}
+.lfoot .lsd b.lsdr,.lfoot .lsd[data-act] b.lsdr{color:var(--lcd-text);font-weight:400}
+.lfoot .lsd b.lsdr:empty{display:none}
 .lfoot .lsd svg{width:calc(var(--u)*4.4);height:calc(var(--u)*5.6)}
 .lfoot .lhpn{display:flex;align-items:center;gap:calc(var(--u)*1.2)}
 .lfoot svg{width:calc(var(--u)*5);height:calc(var(--u)*5)}
@@ -689,7 +691,8 @@ body.wmtc .rbar .rtime{font-size:18px}
 .btline[hidden]{display:none}
 .btline.pick{background:rgba(255,159,10,.16);color:#FFC46B;cursor:pointer}
 body.btonly .tabbar [data-tab="menu"],body.btonly .tabbar [data-tab="sc"],body.btonly .rpills .rp[data-tr],body.btonly .irow .fx,body.btonly .irow .smr .b.s,body.btonly .irow .smr .b.m,
-body.btonly .sknobrow,body.btonly #sBack,body.btonly #sHome,body.btonly #sHelp,body.btonly #sscreen .lhmenu,body.btonly #sscreen .lq,body.btonly #sscreen .lscale [data-act=meters]{opacity:.32;pointer-events:none}
+body.btonly .sknobrow,body.btonly #sBack,body.btonly #sHome,body.btonly #sHelp,body.btonly #sscreen .lhmenu,body.btonly #sscreen .lq{opacity:.32;pointer-events:none}
+body.btonly #sscreen .lscale [data-act=meters]{pointer-events:none}   /* F3 needs the keyboard: no tap, but the meters themselves stay bright */
 body.btonly .irow .keys{display:none}
 body.btonly.ctl main{display:flex;flex-direction:column}
 body.btonly.ctl #control,body.btonly.ctl #simple{flex:1;min-height:0;height:auto}
@@ -2767,6 +2770,8 @@ function tickTimer() {
     const running = v !== "—";
     if (!running && card) v = fmtLeft(card.rec_left_s);   // stopped: time left on the card
     if (sd.textContent !== v) sd.textContent = v;
+    const rem = running && card ? fmtLeft(card.rec_left_s) : "";   // while running the card's time left goes to the LEFT of the elapsed time, as on the unit
+    const lr = sd.parentElement.querySelector(".lsdr"); if (lr && lr.textContent !== rem) lr.textContent = rem;
     const act = running ? (isRecording() ? "rec" : "play") : "";
     if (sd.parentElement.dataset.act !== act) sd.parentElement.dataset.act = act;
     sd.classList.toggle("low", !running && !!card && card.rec_left_s < LOW_SPACE_S);
@@ -3023,7 +3028,7 @@ function simHeader(sc) {
   const home = `<button class="lcell lhome" data-act="home" aria-label="Home">${SIM_ICON.home}</button><div class="lbatt" aria-hidden="true">${SIM_ICON.usb}</div>`;
   const title = sc.title;
   if (sc.headphone)   // Menu: headphone | title + dots | home
-    return `<div class="lhead menu"><button class="lcell lhp" data-act="hp" aria-label="Headphones">LR Stereo${SIM_ICON.head}</button><div class="lcell ltitle"><b>${escapeHtml(title)}</b><div class="ldots">${dots}</div></div>${home}</div>`;
+    return `<div class="lhead menu"><button class="lcell lhp" data-act="hp" aria-label="Headphones">${simFormat()}${SIM_ICON.head}</button><div class="lcell ltitle"><b>${escapeHtml(title)}</b><div class="ldots">${dots}</div></div>${home}</div>`;
   if (sc.channel) {   // channel: "n: Ch n", the small channel meter (no levels, so empty), page dots, home. Page 1 has Gain pre-selected, with the ↓ — ↑ editor row (manual p19-p20)
     const strip = `<div class="lcell lstrip"><i class="lsm"></i><i>-40 -20 0 L</i></div>`, ttl = `<div class="lcell ltitle"><b>${sim.ch + 1}: ${escapeHtml((wmFresh() && wmName(sim.ch)) || "Ch " + (sim.ch + 1))}</b></div>`;
     const dotc = `<div class="lcell ldots">${dots}</div>`;
@@ -3135,6 +3140,12 @@ const simFileBase = () => { const f = wmFresh() ? (W.d.file || "") : ""; return 
 const simTrkCls = (i, inputs) => wmFresh() ? (wmIsArmed(i) ? " arm" : i < inputs && !wmIsOn(i) ? " off" : "") : (S.arm & (1 << i) ? " arm" : "");
 const simMixCls = k => wmFresh() ? (wmMixArmed(k) ? " arm" : " idle") : "";
 const simName = i => wmFresh() ? wmName(i) : "";
+// the unit's recording format over Bluetooth ("48 kHz · 32f"); blank without it: the headphone preset is not something we can read
+const simFormat = () => {
+  if (!wmFresh()) return "";
+  const rate = WM_LABEL.rate[W.d.sample_rate_idx], bits = { 0: "16", 1: "24", 2: "32f" }[W.d.bit_depth];
+  return [rate, bits].filter(Boolean).join(" · ");
+};
 const simExt = () => wmFresh() && (W.d.tc_mode_idx || 0) >= 7;
 function simHomeTop() {
   const batt = simExt() ? '<div class="lbatt ext" aria-hidden="true">EXT</div>' : `<div class="lbatt" aria-hidden="true">${SIM_ICON.usb}</div>`;
@@ -3142,7 +3153,7 @@ function simHomeTop() {
       <button class="lcdtile lhmenu" data-act="menu" aria-label="Menu">${SIM_ICON.menu}</button>${batt}</div>`;
 }
 const SIM_SCALE = '<div class="lbar"><span>-50</span><span>-40</span><span>-30</span><span>-20</span><span>-12</span><span>0</span><span>L</span></div>';
-const SIM_FOOT = `<div class="lfoot lcdtile"><span class="lsd">${SIM_ICON.sd}<b class="lsdt">—</b></span><span class="lhpn">${SIM_ICON.head}LR Stereo</span></div>`;
+const SIM_FOOT = `<div class="lfoot lcdtile"><span class="lsd">${SIM_ICON.sd}<b class="lsdr"></b><b class="lsdt">—</b></span><span class="lhpn">${simFormat()}</span></div>`;
 function simHome() { return effModel() === 10 ? simHome10() : simHome6(); }
 function simHome6() {
   const inputs = hwInputs(), count = channelCount();                      // 3 II: 5 rows, 6 II: 6 rows (3 or 4 inputs, then the software channels)
@@ -3363,6 +3374,7 @@ function updateSimpleHome() {
   document.querySelectorAll("#sscreen .lr").forEach((b, k) => { const c = simMixCls(b.dataset.b === "2" ? 1 : 0); b.classList.toggle("arm", c === " arm"); b.classList.toggle("idle", c === " idle"); });
   document.querySelectorAll("#sscreen [data-act=trname]").forEach(e => { const t = simName(+e.dataset.i); if (e.textContent !== t) e.textContent = t; });
   simFitName();
+  const hf = document.querySelector("#sscreen .lhpn"), ft = simFormat(); if (hf && hf.textContent !== ft) hf.textContent = ft;
   const inputs = channelCount();
   document.querySelectorAll("#sscreen .ltrk").forEach((b, i) => { const c = simTrkCls(i, inputs); b.classList.toggle("arm", c === " arm"); b.classList.toggle("off", c === " off"); });
 }
