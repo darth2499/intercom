@@ -1598,12 +1598,12 @@ class CloudTransport {
       this.softOffline(null, "Pi presence went offline");
     }
   }
-  // a short blip (relay socket or Pi presence) shows "Reconnecting…" and keeps the controls; only 10 s of it tears down
+  // a short blip (relay socket or Pi presence) shows "Reconnecting…" and keeps the controls; only 15 s of it tears down
   softOffline(text, reason) {
     if (!this.online || this.graceTimer) return;
-    linkLog("cloud: " + reason + ", waiting up to 10 s");
+    linkLog("cloud: " + reason + ", waiting up to 15 s");
     setConn("warn", "Reconnecting…"); setRecon(true);
-    this.graceTimer = setTimeout(() => { this.graceTimer = null; linkLog("cloud: offline (" + reason + ")"); this.setOnline(false, text); }, 10000);
+    this.graceTimer = setTimeout(() => { this.graceTimer = null; linkLog("cloud: offline (" + reason + ")"); this.setOnline(false, text); }, 15000);
   }
   // back in the foreground: keep the last view, probe relay socket and data channel, replace dead ones at once
   resume(why) {
