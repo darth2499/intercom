@@ -672,7 +672,7 @@ body.wmtc .rbar .rtime{font-size:18px}
 .l10m .lscale{gap:calc(var(--u)*.5)}
 .l10m .lgap{margin-top:0}
 .lvt{display:grid;grid-template-rows:minmax(0,1fr) auto;min-height:0;margin-top:calc(var(--u)*.6)}
-.lvbars,.lnums{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));column-gap:calc(var(--u)*1.1)}
+.lvbars,.lnums{display:grid;grid-template-columns:repeat(var(--nch,10),minmax(0,1fr));column-gap:calc(var(--u)*1.1)}
 .lvbars{min-height:0;padding:0 calc(var(--u)*.2)}
 .vtk{position:relative;display:block;overflow:hidden;font-style:normal;width:46%;margin:0 auto;height:100%}
 .vtk u{position:absolute;inset:0;background:linear-gradient(0deg,var(--lcd-mg) 0 60%,var(--lcd-my) 60% 94%,var(--lcd-mr) 94% 100%);clip-path:inset(100% 0 0 0);text-decoration:none}
@@ -687,6 +687,7 @@ body.wmtc .rbar .rtime{font-size:18px}
 /* Bluetooth only (link up, USB to the MixPre not connected) */
 .btline{flex:none;margin:0 0 var(--s2);padding:8px 12px;border-radius:var(--r1);background:rgba(10,132,255,.14);color:#9CC9FF;font-size:var(--t2);text-align:center}
 .btline[hidden]{display:none}
+.btline.pick{background:rgba(255,159,10,.16);color:#FFC46B;cursor:pointer}
 body.btonly .tabbar [data-tab="menu"],body.btonly .tabbar [data-tab="sc"],body.btonly .rpills .rp[data-tr],body.btonly .irow .fx,body.btonly .irow .smr .b.s,body.btonly .irow .smr .b.m,
 body.btonly .sknobrow,body.btonly #sBack,body.btonly #sHome,body.btonly #sHelp,body.btonly #sscreen .lhmenu,body.btonly #sscreen .lq,body.btonly #sscreen .lscale [data-act=meters]{opacity:.32;pointer-events:none}
 body.btonly .irow .keys{display:none}
@@ -754,6 +755,7 @@ button.lr{border:0;font-family:inherit;cursor:pointer;padding:0}
 
 <main>
   <div class="btline" id="btLine" hidden></div>
+  <div class="btline pick" id="wmPrompt" hidden></div>
   <!-- CONNECT / REMOTE LIST -->
   <section id="connect" class="connect">
     <div class="card">
@@ -1057,9 +1059,9 @@ button.lr{border:0;font-family:inherit;cursor:pointer;padding:0}
 
   <div class="group">
     <h4>MixPre model</h4>
-    <p>Sets how many channels are shown.</p>
+    <p>Sets the channels and the Simple screen. Auto follows the MixPre linked over Bluetooth; pick one by hand for when it isn't linked.</p>
     <div class="seg" id="modelSeg">
-      <button data-v="3">MixPre‑3 II</button><button data-v="6">MixPre‑6 II</button><button data-v="10">MixPre‑10 II</button>
+      <button data-v="auto">Auto</button><button data-v="3">MixPre‑3 II</button><button data-v="6">MixPre‑6 II</button><button data-v="10">MixPre‑10 II</button>
     </div>
   </div>
 
@@ -1217,6 +1219,7 @@ const store = {
 };
 let CC = Object.assign({}, DEFAULT_CC, store.get("ccmap", {}));
 let model = store.get("model", 6);
+let modelAuto = store.get("modelAuto", true);   // follow the MixPre linked over Bluetooth
 let starStyle = store.get("star", "kp");
 let labels = store.get("labels", ["U1","U2","U3","U4","U5"]);
 let remote = store.get("remote", null);       // {code, relay, name} - remembered after first connection
@@ -1671,9 +1674,9 @@ class DemoTransport {
   }
   // ---- the pretend Bluetooth link (what the Pi's `wm` messages carry)
   wmStart() {
-    const ten = this.wm === 10, n = ten ? 10 : 4;
-    this.u = { link: "linked", error: "", model: ten ? "MixPre-10 II" : "MixPre-6 II", serial: ten ? "TJ0120170013" : "TH0621091534", fw: ten ? "9.01" : "9.02", unit_mode: "advanced",
-      fps: "23.98", fps_idx: 0, drop: false, transport: "stop", arms: [1, 2], inputs_on: ten ? [1, 2, 3, 4, 5, 6, 7, 8] : [1, 2, 3, 4], linking: { outputs: 0, inputs: 0, ms: 0 },
+    const ten = this.wm === 10, three = this.wm === 3, n = CH_COUNT[this.wm] || 6;
+    this.u = { link: "linked", error: "", model: ten ? "MixPre-10 II" : three ? "MixPre-3 II" : "MixPre-6 II", serial: ten ? "TJ0120170013" : three ? "TG0320000001" : "TH0621091534", fw: ten ? "9.01" : "9.02", unit_mode: "advanced",
+      fps: "23.98", fps_idx: 0, drop: false, transport: "stop", arms: [1, 2], inputs_on: ten ? [1, 2, 3, 4, 5, 6, 7, 8] : three ? [1, 2, 3] : [1, 2, 3, 4], linking: { outputs: 0, inputs: 0, ms: 0 },
       sample_rate: 48000, sample_rate_idx: 3, bit_depth: 2, tc_mode: "external auto-rec", tc_mode_idx: 8, ballistics: "peak+vu", ballistics_idx: 3, peak_hold: 3,
       file: "Audio-004.WAV", next_file: "Audio-005.WAV", file_time: "00:00:00:00", tc: "07:38:44:07",
       drive: { sd: { status: 0, size_kb: 124966912, free_kb: 76636160, rec_left_s: 199573 } },
@@ -2189,8 +2192,10 @@ const wmFresh = () => wmLinked() && !!transport && (transport.kind === "Bluetoot
 const wmRecording = () => REC_STATES.includes(W.d.transport);
 const wmPlaying = () => ["play", "rec_play"].includes(W.d.transport);
 const wmTen = () => /10/.test(W.d.model || "");
-// the model the page copies: the linked unit's own name, else the MixPre model setting
-const unitModel = () => W.d.model && wmLinked() ? (/10/.test(W.d.model) ? 10 : /3/.test(W.d.model) ? 3 : 6) : model;
+// the model the page copies: with "Auto" the linked unit's own name, else the MixPre model chosen by hand
+const unitModel = () => modelAuto && W.d.model && wmLinked() ? (/10/.test(W.d.model) ? 10 : /3/.test(W.d.model) ? 3 : 6) : model;
+const effModel = unitModel;
+const hwInputs = () => effModel() === 10 ? 8 : effModel() === 3 ? 3 : 4;      // inputs with a front knob; the rest are software channels
 let wmSeq = 0; const wmCb = {}, wmMine = new Set();
 const wmClient = Math.random().toString(36).slice(2, 7);
 function wmOp(op, args = {}, cb) {
@@ -2265,7 +2270,8 @@ const wmMixArmed = k => (W.d.arms || []).includes(k + 1);     // k: 0 = L, 1 = R
 const btOnly = () => wmFresh() && !S.usb;
 const BT_ONLY_LINE = "USB not connected · Bluetooth controls only";
 const WM_LABEL = {
-  link: { off: "Off", connecting: "Connecting…", authenticating: "Authenticating…", linked: "Linked", retrying: "Not found, retrying…" },
+  link: { off: "Off", connecting: "Connecting…", authenticating: "Authenticating…", linked: "Linked", retrying: "Looking for the MixPre…", choose: "Several MixPres found: pick one",
+    password: "Needs the Wingman password", nokey: "Needs the Bluetooth key" },
   rate: { 0: "44.1 kHz", 1: "47.952 kHz", 2: "47.952 kHz (F)", 3: "48 kHz", 4: "48.048 kHz", 5: "48.048 kHz (F)", 6: "88.2 kHz", 7: "96 kHz", 8: "192 kHz" },
   fps: { 0: "23.98", 1: "24", 2: "25", 3: "29.97", 4: "29.97 DF", 5: "30", 6: "30 DF" },
   tcMode: { 0: "Off", 1: "Rec Run", 2: "Free Run", 3: "Free Run, auto-mute", 4: "Free Run, jam once", 5: "24 hour", 6: "24 hour, auto-mute", 7: "EXT", 8: "EXT, auto-rec", 9: "EXT, continuous", 10: "EXT, auto-rec continuous" },
@@ -2296,7 +2302,7 @@ function renderWmSettings() {
   $("wmScan").disabled = W.scanning;
   $("wmScan").textContent = W.scanning ? "Scanning…" : "Scan for MixPres";
   const box = $("wmList"); box.innerHTML = "";
-  for (const u of W.units) {
+  for (const u of (W.units.length ? W.units : W.d.units || [])) {
     const b = document.createElement("div"); b.className = "netrow";
     b.innerHTML = `<div class="top"><span class="nm">${escapeHtml(u.model || u.name || "MixPre")} · ${escapeHtml(u.serial || u.address)}</span><span class="meta">${u.address === S.clinkAddr ? "selected · " : ""}${u.rssi} dBm</span></div>`;
     b.querySelector(".top").onclick = () => { sendJson({ op: "wm_pick", address: u.address }); toast("Using " + (u.serial || u.address)); };
@@ -2314,6 +2320,7 @@ function wireWm() {
   $("sTakes").onclick = openTakes; $("btTakes").onclick = openTakes; $("btRecSet").onclick = openRecSettings;
   $("wmScrim").onclick = closeWmSheets;
   $("btLine").textContent = BT_ONLY_LINE;
+  $("wmPrompt").onclick = () => { $("sheet").hidden = false; $("scrim").hidden = false; $("wmGroup").scrollIntoView({ block: "start" }); };
   document.querySelectorAll(".rfile").forEach(e => e.onclick = openRenameFile);
   $("renSave").onclick = saveRename;
   document.querySelectorAll("#renWhich button").forEach(b => b.onclick = () => { if (ren) { ren.which = b.dataset.v; renFill(); } });
@@ -2568,15 +2575,18 @@ function pressSMR(i, k) {
 const isLit = (i, k) => k === "r" && wmFresh() ? wmIsArmed(i) : !!((viaMidi(i) ? SMR[k].state() : kbLit[SMR[k].lit]) & (1 << i));
 // "Show this input on the MixPre"
 function openOnMixPre(i) { if (viaMidi(i)) tapCC(CC.open + i); else if (needs("kb")) tapKey(0, DIGIT(i + 1)); }
-const channelCount = () => CH_COUNT[model] || model;
+// how many channels: the unit's own meter groups when linked (Auto), else the model's table
+const channelCount = () => modelAuto && wmFresh() && W.m && W.m.in && W.m.in.length ? W.m.in.length : (CH_COUNT[effModel()] || effModel());
+let builtKey = "";
 
 function updateQuad() {   // MixPre-10 II has 6 menu quad buttons (3 per row); the 3 II and 6 II have 4
-  const ten = model === 10;
+  const ten = effModel() === 10;
   $("quad").classList.toggle("two", !ten); $("quad").classList.toggle("is10", ten);
   $("qW").textContent = ten ? "Top centre" : "Top right";
   $("qS").textContent = ten ? "Bottom centre" : "Bottom right";
 }
 function buildInputs() {
+  builtKey = channelCount() + ":" + effModel();
   updateQuad();
   const box = $("inputs"); box.innerHTML = ""; rows = [];
   const total = channelCount();
@@ -2794,6 +2804,8 @@ function render() {
   const btOn = wmFresh(), only = btOnly();
   document.body.classList.toggle("btonly", only);
   $("btLine").hidden = !only;
+  const prompt = !S.wmLink ? "" : W.d.link === "choose" ? `${(W.d.units || []).length} MixPres found — pick one` : W.d.link === "password" ? "The MixPre needs its Wingman password" : "";
+  $("wmPrompt").hidden = !prompt; $("wmPrompt").textContent = prompt;
   if (only) {
     if (store.get("tab", "rec") !== "rec") setTab("rec");
     if (view === "simple" && sim.id !== "home") { sim.id = "home"; sim.page = 0; renderSimple(); }
@@ -2816,7 +2828,8 @@ function render() {
   $("scNote").hidden = kb && midi;
   $("scNote").textContent = !kb ? "Screen buttons and headphones need Keyboard or Both mode." : "Your shortcuts need MIDI or Both mode.";
   document.querySelectorAll("#modeSeg button").forEach(b => b.classList.toggle("on", MODES[b.dataset.v] === S.mode));
-  document.querySelectorAll("#modelSeg button").forEach(b => b.classList.toggle("on", +b.dataset.v === model));
+  document.querySelectorAll("#modelSeg button").forEach(b => b.classList.toggle("on", b.dataset.v === "auto" ? modelAuto : !modelAuto && +b.dataset.v === model));
+  if (builtKey !== channelCount() + ":" + effModel()) buildInputs();   // the linked unit is another model, or has another channel count
   document.querySelectorAll("#starSeg button").forEach(b => b.classList.toggle("on", b.dataset.v === starStyle));
   renderStatus();
   renderSheet();
@@ -2912,7 +2925,7 @@ const MENU_6II = {
   channel: { kind: "tiles", channel: true, title: "Channel", back: "home", pagesFor: ch => {
     const smr = [{ label: "Solo", icon: "head", smr: "s" }, { label: "Mute", icon: "mute", smr: "m" }, { label: "Arm", icon: "arm", smr: "r" }];
     const gain = { label: "Gain", icon: "knob", on: true, stay: true }, pan = { label: "Pan", icon: "knob", to: "chPan", local: true };
-    return ch >= (unitModel() === 10 ? 8 : 4)
+    return ch >= hwInputs()
       ? [[...smr, gain, { label: "Fader", to: "chFader", local: true }, pan], [sT("Low Cut"), sT("Input"), sT("N.Asst"), sT("Linking")]]
       : [[...smr, gain, pan, sT("Low Cut")], [sT("Input"), sT("Phantom"), sT("Phase"), sT("Delay"), sT("N.Asst"), sT("Linking")]];
   } },
@@ -2974,7 +2987,10 @@ for (const [i, n] of REPORT_PAGES.flat().entries()) MENU_6II["rep:" + n] = sKb(n
 MENU_6II.home = { kind: "home" };
 
 const sim = { id: "home", page: 0, armed: false, ch: 0, kbLower: false };
-const simScreen = () => MENU_6II[sim.id] || MENU_6II.notMapped;
+// The menu copy (MENU_6II) is the MixPre-6 II's. The 10 II and 3 II keep Home and the channel screens, and show a placeholder elsewhere
+const SIM_ANY_MODEL = ["home", "channel", "chFader", "chPan", "notMapped"];
+const simScreen = () => effModel() === 6 || SIM_ANY_MODEL.includes(sim.id) ? (MENU_6II[sim.id] || MENU_6II.notMapped)
+  : { kind: "unmapped", title: "MixPre-" + effModel() + " II menus", back: "home", msg: "The MixPre-" + effModel() + " II menus aren't mapped yet." };
 function simGo(id, page = 0) { sim.id = id; sim.page = page; sim.armed = false; renderSimple(); simPublish(); }
 const simAfter = (rule, sc) => simGo(rule === "back" ? (sc.back || "home") : "home");
 const simKeys = (...keys) => needs("kb") && (tapKey(0, ...keys), true);
@@ -3056,7 +3072,7 @@ function simBody(sc) {
     case "filelist":   // we don't know the files, so only the "[next]" row; ENTER opens Edit on the recorder
       return `<div class="lbody"><div class="lfl"><div class="lflrow top"><span>[next]</span><span>—</span></div></div><p class="lhint">▶ = Play, HP Knob = Edit</p><div class="lrow"><button class="lcdtile" data-act="up">${SIM_ICON.up.replace("<svg", '<svg class="ico"')}</button><button class="lcdtile" data-act="down">${SIM_ICON.down.replace("<svg", '<svg class="ico"')}</button><button class="lcdtile lsel" data-act="fedit">Edit</button></div></div>`;
     case "unmapped":
-      return `<div class="lbody"><div class="llist"><p class="lhint">This screen isn't mapped yet.<br>Use Home to re-sync with the recorder.</p></div></div>`;
+      return `<div class="lbody"><div class="llist"><p class="lhint">${escapeHtml(sc.msg || "This screen isn't mapped yet.")}<br>Use the arrows, Enter, Back and Home under the screen, then Home to re-sync.</p></div></div>`;
     default: return "";
   }
 }
@@ -3122,24 +3138,24 @@ function simHomeTop() {
 }
 const SIM_SCALE = '<div class="lbar"><span>-50</span><span>-40</span><span>-30</span><span>-20</span><span>-12</span><span>0</span><span>L</span></div>';
 const SIM_FOOT = `<div class="lfoot lcdtile"><span class="lsd">${SIM_ICON.sd}<b class="lsdt">—</b></span><span class="lhpn">${SIM_ICON.head}LR Stereo</span></div>`;
-function simHome() { return unitModel() === 10 ? simHome10() : simHome6(); }
+function simHome() { return effModel() === 10 ? simHome10() : simHome6(); }
 function simHome6() {
-  const inputs = Math.min(4, wmLinked() ? (W.d.names || []).length - 2 || 4 : 4);
-  const tr = [1, 2, 3, 4, 5, 6].map(n => `<button class="ltrk${simTrkCls(n - 1, inputs)}" data-act="track" data-n="${n}" aria-label="Channel ${n}">${n}</button>`).join("");
-  return `<div class="lhome-s" data-tr="${simTr()}" data-m="6">${simHomeTop()}
+  const inputs = hwInputs(), count = channelCount();                      // 3 II: 5 rows, 6 II: 6 rows (3 or 4 inputs, then the software channels)
+  const tr = Array.from({ length: count }, (_, i) => i + 1).map(n => `<button class="ltrk${simTrkCls(n - 1, inputs)}" data-act="track" data-n="${n}" aria-label="Channel ${n}">${n}</button>`).join("");
+  return `<div class="lhome-s" data-tr="${simTr()}" data-m="${effModel()}" data-n="${channelCount()}">${simHomeTop()}
     <div class="lmeters"><div class="ltrks"><button class="lr${simMixCls(0)}" data-act="mix" data-b="1" aria-label="Arm mix L">L</button><button class="lr${simMixCls(1)}" data-act="mix" data-b="2" aria-label="Arm mix R">R</button><span class="lgap"></span>${tr}</div>
       <div class="lscale"><div class="lrow2" data-act="meters"><i class="lmb"><u></u><s></s></i><i class="lmb"><u></u><s></s></i></div><div data-act="meters">${SIM_SCALE}</div>
-        <div class="lt6">${[0, 1, 2, 3, 4, 5].map(i => `<i class="lht" data-i="${i}"><u></u><s></s>${i < inputs ? `<em data-act="trname" data-i="${i}">${escapeHtml(simName(i))}</em>` : ""}</i>`).join("")}</div></div></div>
+        <div class="lt6">${Array.from({ length: count }, (_, i) => i).map(i => `<i class="lht" data-i="${i}"><u></u><s></s>${i < count ? `<em data-act="trname" data-i="${i}">${escapeHtml(simName(i))}</em>` : ""}</i>`).join("")}</div></div></div>
     ${SIM_FOOT}</div>`;
 }
 // MixPre-10 II Home (Yuki's photo): L over the scale band over R, ten vertical track bars rising over the numbered boxes
 function simHome10() {
-  const nums = Array.from({ length: 10 }, (_, i) => `<button class="ltrk${simTrkCls(i, 10)}" data-act="track" data-n="${i + 1}" aria-label="Channel ${i + 1}">${i + 1}</button>`).join("");
-  const vt = Array.from({ length: 10 }, (_, i) => `<div class="vcol"><b class="vnm" data-act="trname" data-i="${i}">${escapeHtml(simName(i))}</b><i class="vtk"><u></u><s></s></i></div>`).join("");
-  return `<div class="lhome-s l10" data-tr="${simTr()}" data-m="10">${simHomeTop()}
+  const nums = Array.from({ length: channelCount() }, (_, i) => `<button class="ltrk${simTrkCls(i, 10)}" data-act="track" data-n="${i + 1}" aria-label="Channel ${i + 1}">${i + 1}</button>`).join("");
+  const vt = Array.from({ length: channelCount() }, (_, i) => `<div class="vcol"><b class="vnm" data-act="trname" data-i="${i}">${escapeHtml(simName(i))}</b><i class="vtk"><u></u><s></s></i></div>`).join("");
+  return `<div class="lhome-s l10" data-tr="${simTr()}" data-m="${effModel()}" data-n="${channelCount()}">${simHomeTop()}
     <div class="lmeters l10m"><div class="ltrks"><button class="lr${simMixCls(0)}" data-act="mix" data-b="1" aria-label="Arm mix L">L</button><span class="lgap"></span><button class="lr${simMixCls(1)}" data-act="mix" data-b="2" aria-label="Arm mix R">R</button></div>
       <div class="lscale" data-act="meters"><div class="lrow2"><i class="lmb"><u></u><s></s></i></div>${SIM_SCALE}<div class="lrow2"><i class="lmb"><u></u><s></s></i></div></div></div>
-    <div class="lvt"><div class="lvbars">${vt}</div><div class="lnums">${nums}</div></div>
+    <div class="lvt" style="--nch:${channelCount()}"><div class="lvbars">${vt}</div><div class="lnums">${nums}</div></div>
     ${SIM_FOOT}</div>`;
 }
 let simSlider = null;
@@ -3189,7 +3205,7 @@ let simKnob = null;
 function simUpdateCtl() {
   const cap = sim.id === "home" ? "HP vol" : inChannelPage() ? "Value" : "Scroll";
   $("sKnobL").textContent = "↶ " + cap; $("sKnobR").textContent = cap + " ↷";
-  const box = $("sKnobFader"), show = inChannelPage() && sim.ch < (unitModel() === 10 ? 8 : 4);
+  const box = $("sKnobFader"), show = inChannelPage() && sim.ch < hwInputs();
   box.hidden = !show;
   if (!show) { simKnob = null; return; }
   if (simKnob && simKnob.ch === sim.ch) return;
@@ -3306,14 +3322,14 @@ function simScale() {
 function updateSimpleHome() {
   if (sim.id !== "home") return;
   const hs = document.querySelector("#sscreen .lhome-s");
-  if (hs && hs.dataset.m !== String(unitModel() === 10 ? 10 : 6)) return renderSimple();   // the linked unit is the other model
+  if (hs && hs.dataset.m + ":" + hs.dataset.n !== effModel() + ":" + channelCount()) return renderSimple();   // another model or channel count
   if (hs) hs.dataset.tr = simTr();
   const ext = simExt(), has = !!document.querySelector("#sscreen .lbatt.ext");
   if (ext !== has && hs) return renderSimple();
   document.querySelectorAll("#sscreen .lr").forEach((b, k) => { const c = simMixCls(b.dataset.b === "2" ? 1 : 0); b.classList.toggle("arm", c === " arm"); b.classList.toggle("idle", c === " idle"); });
   document.querySelectorAll("#sscreen [data-act=trname]").forEach(e => { const t = simName(+e.dataset.i); if (e.textContent !== t) e.textContent = t; });
   const fn = document.querySelector("#sscreen .fn"); if (fn && fn.textContent !== simFileBase()) fn.textContent = simFileBase();
-  const inputs = unitModel() === 10 ? 10 : 4;
+  const inputs = channelCount();
   document.querySelectorAll("#sscreen .ltrk").forEach((b, i) => { const c = simTrkCls(i, inputs); b.classList.toggle("arm", c === " arm"); b.classList.toggle("off", c === " off"); });
 }
 /* view switch: Advanced (the tabs) or Simple (the screen copy) */
@@ -3425,7 +3441,10 @@ function wire() {
   document.querySelectorAll("#tabbar button[data-tab]").forEach(b => b.onclick = () => setTab(b.dataset.tab));
   if (window.ResizeObserver) new ResizeObserver(redrawSliders).observe($("inputs"));
   $("disconnectBtn").onclick = () => { Aud.reset(); setSearching(false); if (transport) transport.disconnect(); transport = null; S.name = ""; setConn("", "Offline"); showControl(false); openSheet(false); render(); };
-  document.querySelectorAll("#modelSeg button").forEach(b => b.onclick = () => { model = +b.dataset.v; store.set("model", model); buildInputs(); });
+  document.querySelectorAll("#modelSeg button").forEach(b => b.onclick = () => {
+    if (b.dataset.v === "auto") modelAuto = true; else { modelAuto = false; model = +b.dataset.v; store.set("model", model); }
+    store.set("modelAuto", modelAuto); buildInputs();
+  });
   document.querySelectorAll("#modeSeg button").forEach(b => b.onclick = () => {
     if (!transport) return toast("Connect first");
     send(OP.MODE, +b.dataset.v); toast("Switching USB mode… (MixPre will re-detect the device)", 3500);
@@ -3698,7 +3717,8 @@ if (!PI_SERVED) {
 if (params.has("wmdemo")) {
   // ?wmdemo=10 (or 6): the page against a pretend MixPre that is linked over Bluetooth (screenshots, trying the UI)
   $("choices").hidden = true;
-  transport = new DemoTransport(params.get("wmdemo") === "6" ? 6 : 10);
+  const dm = +(params.get("model") || params.get("wmdemo"));
+  transport = new DemoTransport([3, 6, 10].includes(dm) ? dm : 10);
   transport.connect();
 } else if (PI_SERVED) {
   // Opened from the Pi itself (hotspot / mixpre.local) -> plain WebSocket, works in every browser
