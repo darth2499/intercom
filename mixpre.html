@@ -1316,6 +1316,7 @@ window.addEventListener("online", () => linkResume("online"));
 function handleServerMsg(m) {
   if (!m || typeof m !== "object") return;
   lastMsgAt = performance.now();
+  if (m.t && (m.type === "hb" || m.type === "time")) tState.off = m.t - Date.now();   // calibrate op timestamps to the Pi's clock
   if (m.type === "hb") return;
   if (m.type === "state") applyState(m);
   else if (m.type === "log") addLog(m.line);
@@ -1327,6 +1328,8 @@ function handleServerMsg(m) {
   else if (m.type === "simple") simRemote(m);
   else if (m.type === "wm") applyWm(m);
   else if (m.type === "wm_result") onWmResult(m);
+  else if (m.type === "tnonce") onTnonce(m);
+  else if (m.type === "transport_result") onTransportResult(m);
   else if (m.type === "wm_scan") { W.units = m.units || []; W.scanning = false; renderWmSettings(); }
 }
 function applyNet(n) {
@@ -1373,6 +1376,7 @@ class WsTransport {
         ws.onopen = () => { this.ws = ws; this.quiet = false; closedAt = null; lastMsgAt = performance.now(); setOffline(false); setConn("ok", "Wi‑Fi"); showControl(true); resolve(); setTimeout(() => Aud.hello(), 300); };
         ws.onmessage = e => { try { handleServerMsg(JSON.parse(e.data)); } catch {} };
         ws.onclose = e => {
+          tReset();
           if (this.ws === ws) this.ws = null;
           if (this.closed) return;
           if (closedAt === null) closedAt = performance.now();
@@ -1465,6 +1469,7 @@ class BleTransport {
     applyState({ levels: lv });
   }
   async onDisconnect() {
+    this.q = []; this.busy = false; tReset();      // nothing queued before the drop may be sent after it
     if (this.userClosed) return;
     setConn("bad", "Reconnecting…");
     for (let i = 0; i < 30 && !this.userClosed; i++) {
@@ -1530,6 +1535,7 @@ class CloudTransport {
       else if (m.t === "bcast" && !this.dcOpen()) { try { handleServerMsg(JSON.parse(m.d)); } catch {} }
     };
     ws.onclose = e => {
+      tReset();
       clearInterval(this.ping); if (this.ws === ws) this.ws = null;
       if (this.closed) return;
       this.softOffline("Can't reach the cloud — retrying…", `relay socket closed (code ${e.code})`);
@@ -1586,6 +1592,7 @@ class CloudTransport {
     };
     dc.onmessage = e => { if (typeof e.data === "string") { try { handleServerMsg(JSON.parse(e.data)); } catch {} } };
     dc.onclose = () => {
+      tReset();
       if (this.dc !== dc) return;
       this.peerGone();
       if (this.online && !this.closed) setTimeout(() => { if (!this.pc && this.online) this.startP2P(); }, 5000);
@@ -1786,6 +1793,19 @@ class DemoTransport {
   }
   sendJson(o) {
     const n = this.net;
+    if (o.op === "transport_intent") {   // the Pi's two-step confirm, simulated
+      const nonce = Math.random().toString(36).slice(2); this.tn = { a: o.action, n: nonce };
+      setTimeout(() => handleServerMsg({ type: "tnonce", sid: o.sid, action: o.action, nonce, ttl: 5 }), 30); return;
+    }
+    if (o.op === "transport") {
+      const rec = this.wm ? this.u.transport === "record" : !!this.leds[CC.rec];
+      if (rec && !(this.tn && this.tn.a === o.action && this.tn.n === o.nonce)) {
+        setTimeout(() => handleServerMsg({ type: "transport_result", sid: o.sid, seq: o.seq, action: o.action, ok: false, error: o.action + " while recording without confirm", confirm: true }), 30); return;
+      }
+      this.tn = null;
+      if (this.wm) return this.wmOp({ op: "wm_transport", action: o.action });
+      return this.press({ stop: CC.stop, play: CC.play, pause: CC.play, rec: CC.rec }[o.action]);
+    }
     if (this.wm && o.op && o.op.startsWith("wm_") && !["wm_link", "wm_pick", "wm_scan", "wm_probe"].includes(o.op)) return this.wmOp(o);
     switch (o.op) {
       case "wm_scan": setTimeout(() => handleServerMsg({ type: "wm_scan", units: [{ name: "", address: "B8:D7:AF:CF:D4:0F", rssi: -48, model: "MixPre-10 II", firmware: "9.01", serial: "TJ0120170013" }, { name: "", address: "B8:D7:AF:11:22:33", rssi: -80, model: "MixPre-6 II", firmware: "9.02", serial: "TH0621091534" }] }), 700); break;
@@ -2198,6 +2218,39 @@ const effModel = unitModel;
 const hwInputs = () => effModel() === 10 ? 8 : effModel() === 3 ? 3 : 4;      // inputs with a front knob; the rest are software channels
 let wmSeq = 0; const wmCb = {}, wmMine = new Set();
 const wmClient = Math.random().toString(36).slice(2, 7);
+/* ---- Recording safety (frozen rule, CODE.MD Task 33): the Pi decides. Stop / record / play go out as `transport` ops carrying this page session's id,
+   a sequence number and a timestamp. While the MixPre is recording (or that is unknown) the Pi refuses them unless they carry a one-time nonce it issued
+   to this page after a first-tap `transport_intent`, valid 5 s. Nonces live in memory only: never stored, never kept across a reload or a reconnect. */
+const tState = { sid: Math.random().toString(36).slice(2, 10), seq: 0, off: 0, nonces: {} };
+const tNow = () => Date.now() + tState.off;
+const tSend = (action, nonce) => sendJson({ op: "transport", action, sid: tState.sid, seq: ++tState.seq, ts: tNow(), nonce: nonce || null });
+const tIntent = action => sendJson({ op: "transport_intent", action, sid: tState.sid });
+const T_ASK = { rec: "Tap again: new take", stop: "Tap again to stop", play: "Tap again to play", pause: "Tap again" };
+function tShowAsk(action, on) {
+  document.querySelectorAll(`[data-tr="${action === "pause" ? "play" : action}"]`).forEach(el => {
+    clearTimeout(el._askT); el._ask = false; el.classList.toggle("ask", on);
+    if (on) { el.setAttribute("data-ask", T_ASK[action] || "Tap again"); el._askT = setTimeout(() => { el.classList.remove("ask"); el.removeAttribute("data-ask"); }, 5000); }
+    else el.removeAttribute("data-ask");
+  });
+}
+function tPress(action) {
+  const have = tState.nonces[action];
+  if (have && performance.now() < have.until) { delete tState.nonces[action]; tShowAsk(action, false); return tSend(action, have.nonce); }   // the second tap
+  delete tState.nonces[action];
+  if (isRecording()) { tIntent(action); tShowAsk(action, true); return; }      // we know it is recording: ask first, send nothing
+  tSend(action);                                                                // otherwise the Pi decides (it asks us to confirm when it must)
+}
+function onTnonce(m) {
+  if (m.sid !== tState.sid) return;                                              // a relay answer meant for another viewer
+  tState.nonces[m.action] = { nonce: m.nonce, until: performance.now() + (m.ttl || 5) * 1000 - 300 };
+}
+function onTransportResult(m) {
+  if (m.sid !== tState.sid) return;
+  if (m.ok) return;
+  if (m.confirm) { tIntent(m.action); tShowAsk(m.action, true); return; }        // the Pi wants a deliberate second tap
+  if (m.error !== "duplicate") toast(m.error || "The MixPre refused", 3500);
+}
+const tReset = () => { tState.nonces = {}; ["rec", "stop", "play"].forEach(a => tShowAsk(a, false)); };
 function wmOp(op, args = {}, cb) {
   const id = wmClient + (++wmSeq);
   wmMine.add(id); if (cb) wmCb[id] = cb;
@@ -2233,10 +2286,6 @@ function applyWm(m) {
   W.at = performance.now();
   if (state || m.full) { if (!wmRaf) wmRaf = setTimeout(() => { wmRaf = 0; render(); }, 30); /* not requestAnimationFrame: it pauses in a hidden tab and would block later renders */ }
   else { tickTimer(); drawLevelMeters(); }
-}
-function wmTransport(k) {
-  const action = k === "play" && W.d.transport === "play" ? "pause" : k;   // REC while recording starts a new take on the unit (the page asks first)
-  wmOp("wm_transport", { action });
 }
 // arm / disarm a track by its bit number (1 = mix L, 2 = mix R, 3 = input 1 ...) through Bluetooth: the whole bitmap is sent; the unit decides what it accepts
 function wmArm(n) {
@@ -3424,21 +3473,12 @@ function sendText(t) {   // typed on the MixPre's USB keyboard, 18 bytes per mes
   for (let i = 0; i < bytes.length; i += 18) send(OP.TYPE, [...bytes.slice(i, i + 18)]);
 }
 function wireRecorder() {
-  const tbtn = (el, ccName, kbMods, kbKey) => bindHold(el,
-    () => {
-      const k = el.dataset.tr;
-      if (!el._held) {   // first call of this press: REC or Stop while recording needs a second tap (REC starts a new take)
-        el._held = true; el._skip = false;
-        if (isRecording() && (k === "rec" || k === "stop") && !askAgain(el, k === "rec" ? "Tap again: new take" : "Tap again to stop")) { el._skip = true; return true; }
-      }
-      if (el._skip) return true;
-      if (wmFresh()) { if (!el._bt) { el._bt = true; wmTransport(k); } return true; }   // Bluetooth first
-      if (hasMidi()) return send(OP.HOLD_CC, CC[ccName]); if (!el._sent && needs("kb")) { el._sent = true; tapKey(kbMods, kbKey); } return true; },
-    () => { el._held = false; if (el._skip) { el._skip = false; return; } if (el._bt) { el._bt = false; return; } if (hasMidi()) send(OP.REL_CC, CC[ccName]); el._sent = false; });
-  const plain = { stop: ["stop", MOD.CTRL, KEY.S], play: ["play", 0, KEY.SPACE], rec: ["rec", MOD.CTRL, KEY.R] };
+  // stop / record / play: one tap per press, through the Pi's recording-safety guard (see tPress). Rewind / fast forward below stay held buttons.
+  const tbtn = (el, action) => bindHold(el, () => { if (!el._held) { el._held = true; tPress(el.dataset.tr === "play" && W.d.transport === "play" && wmFresh() ? "pause" : action); } return true; },
+    () => { el._held = false; });
   document.querySelectorAll("[data-tr]").forEach(el => {
     const k = el.dataset.tr;
-    if (plain[k]) tbtn(el, ...plain[k]);
+    if (k === "stop" || k === "play" || k === "rec") tbtn(el, k);
     else if (k === "rew") holdCC(el, () => CC.rew, { start: () => needs("kb") && send(OP.HOLD_KEY, 0, KEY.LEFT), end: () => send(OP.REL_KEY) });
     else if (k === "ff") holdCC(el, () => CC.ff, { start: () => needs("kb") && send(OP.HOLD_KEY, 0, KEY.RIGHT), end: () => send(OP.REL_KEY) });
     else if (k === "cue") el.onclick = cueMark;
