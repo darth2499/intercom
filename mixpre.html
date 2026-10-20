@@ -3326,11 +3326,23 @@ function simScale() {
   if (!simScale.again) { simScale.again = true; requestAnimationFrame(() => { simScale.again = false; if (el.clientWidth !== w) simScale(); }); }   // the width can settle a frame later (rotation, resizing)
 }
 // File name on Home: one line inside the panel. Shrink to 70% at most, then cut the middle with an ellipsis and keep the end (take number) visible.
+// The embedded Ubuntu loads lazily: a name measured in the fallback font is too narrow, so measure again once the fonts are in
+let simFontGen = 0;
+if (document.fonts) {
+  const refit = () => { simFontGen++; simFitName(); };
+  document.fonts.addEventListener("loadingdone", refit);
+  document.fonts.ready.then(refit);
+}
 function simFitName() {
   const top = document.querySelector("#sscreen .ltop"), fn = top && top.querySelector(".fn"), wav = top && top.querySelector(".wav");
   if (!fn) return;
-  const full = simFileBase(), avail = top.clientWidth - 2 * parseFloat(getComputedStyle(top).paddingLeft || 0), key = full + "|" + avail;
+  const full = simFileBase(), avail = top.clientWidth - 2 * parseFloat(getComputedStyle(top).paddingLeft || 0), key = full + "|" + avail + "|" + simFontGen;
   if (simFitName.key === key && top.isConnected && simFitName.el === top) return;
+  if (simFitName.el !== top && window.ResizeObserver) {   // the panel's width changes with rotation / resizing, without any other event for us
+    if (simFitName.ro) simFitName.ro.disconnect();
+    simFitName.ro = new ResizeObserver(() => simFitName());
+    simFitName.ro.observe(top);
+  }
   simFitName.key = key; simFitName.el = top;
   wav.style.fontSize = ""; fn.textContent = full;
   if (!avail || wav.offsetWidth <= avail) return;
