@@ -1000,6 +1000,10 @@ html,body{overflow-x:clip}
       <div class="sublabel">Install updates</div>
       <div class="seg" id="swAuto"><button data-v="0">When I tap Install</button><button data-v="1">At start‑up</button></div>
       <p class="small" style="margin-top:6px">Automatic installs only happen right after the Pi starts, never while recording.</p>
+      <div class="sublabel">GitHub token (for a private repo)</div>
+      <input id="swToken" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste a read-only token">
+      <div class="row"><button class="b" id="swTokenSave">Save</button><button class="b" id="swTokenClear">Clear</button></div>
+      <p class="small" id="swTokenState" style="margin-top:6px"></p>
     </div>
 
     <div class="group">
@@ -1196,6 +1200,7 @@ function renderSoftware(u) {
   $("swRollback").hidden = !u.can_rollback;
   $("swCheck").disabled = ["checking", "downloading", "installing"].includes(u.status);
   document.querySelectorAll("#swAuto button").forEach(b => b.classList.toggle("on", (b.dataset.v === "1") === !!u.auto));
+  $("swTokenState").textContent = u.token_set ? "A token is saved on the Pi (it is never shown again)." : "No token saved.";
 }
 const sendJson = obj => transport && transport.sendJson && transport.sendJson(obj);
 
@@ -2910,6 +2915,12 @@ function wireSoftware() {
   confirmTap($("swRollback"), () => sendJson({ op: "update_rollback" }));
   document.querySelectorAll("#swAuto button").forEach(b => b.onclick = () => sendJson({ op: "update_settings", auto: b.dataset.v === "1" }));
   $("swNotice").onclick = () => sendJson({ op: "update_dismiss" });
+  $("swTokenSave").onclick = () => {
+    const t = $("swToken").value.trim();
+    if (!t) return toast("Paste a token first");
+    sendJson({ op: "set_update_token", token: t }); $("swToken").value = ""; toast("Token sent to the Pi");
+  };
+  $("swTokenClear").onclick = () => { sendJson({ op: "set_update_token", token: "" }); $("swToken").value = ""; toast("Token cleared"); };
 }
 function wireNet() {
   $("wifiScan").onclick = () => { sendJson({ op: "wifi_scan" }); toast("Scanning…"); };
