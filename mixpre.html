@@ -552,10 +552,7 @@ body.simple .tabbar [data-tab]{display:none}
   .sscreen-wrap{width:min(62%,calc((100dvh - 20px) * 1.3));margin:0}
   .sctl{flex:1;min-width:0;width:auto;margin:0}
   .sctl .b{height:44px}
-  .sbar{height:52px}
-  .sbar{padding:0 6px 0 10px;gap:6px}
   .sbar .rtime{font-size:13px;min-width:0}
-  .sbar .rbtn{width:38px;height:38px;flex:none}
 }
 @media (min-width:900px) and (min-height:501px){
   #simple{flex-direction:row;align-items:flex-start;justify-content:center;gap:var(--s5)}
@@ -680,6 +677,56 @@ body.wmtc .rbar .rtime{font-size:18px}
 .lnums .ltrk.off{background:none;color:#fff}
 .ltrk.off{background:none;color:#fff}
 .sbtnrow.has4{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) 52px}
+
+/* Bluetooth only (link up, USB to the MixPre not connected) */
+.btline{flex:none;margin:0 0 var(--s2);padding:8px 12px;border-radius:var(--r1);background:rgba(10,132,255,.14);color:#9CC9FF;font-size:var(--t2);text-align:center}
+.btline[hidden]{display:none}
+body.btonly .tabbar [data-tab="menu"],body.btonly .tabbar [data-tab="sc"],body.btonly .rpills .rp[data-tr],body.btonly .irow .fx,body.btonly .irow .smr .b.s,body.btonly .irow .smr .b.m,
+body.btonly .sknobrow,body.btonly #sBack,body.btonly #sHome,body.btonly #sHelp,body.btonly #sscreen .lhmenu,body.btonly #sscreen .lq,body.btonly #sscreen .lscale [data-act=meters]{opacity:.32;pointer-events:none}
+body.btonly .irow .keys{display:none}
+body.btonly.ctl main{display:flex;flex-direction:column}
+body.btonly.ctl #control,body.btonly.ctl #simple{flex:1;min-height:0;height:auto}
+body.btonly.ctl #control .tab.active{height:100%}
+body.btonly .sctl{gap:6px}
+body.btonly .sctl .b{height:34px;font-size:13px}   /* inert in this mode, so they give their height to the recorder bar */
+body.btonly .btline{padding:5px 10px;margin-bottom:6px}
+body.btonly .irow.btarm .n{color:var(--text);text-decoration:underline dotted}
+.irow .inm{cursor:pointer}
+.rsub .rfn{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
+/* Simple home: arm boxes for L / R, track name labels */
+button.lr{border:0;font-family:inherit;cursor:pointer;padding:0}
+.ltrks .lr.idle{background:var(--lcd-trk);color:#3a4347}
+.ltrk.off{background:none;color:#fff}
+.lt6{flex:1;min-height:0;display:flex;flex-direction:column;gap:calc(var(--u)*.5);margin-top:calc(var(--u)*.5)}
+.lht{flex:1;min-height:0;position:relative;display:block;overflow:hidden;font-style:normal}
+.lht u{position:absolute;inset:0;background:linear-gradient(90deg,var(--lcd-mg) 0 52.2%,var(--lcd-my) 52.2% 81.8%,var(--lcd-mr) 81.8% 100%);clip-path:inset(0 100% 0 0);text-decoration:none}
+.lht s{position:absolute;top:10%;bottom:10%;left:0;width:calc(var(--u)*1.1);margin-left:calc(var(--u)*-.5);background:var(--lcd-mpeak);opacity:0;text-decoration:none;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
+.lht em{position:absolute;left:calc(var(--u)*1.2);top:50%;transform:translateY(-50%);font-style:normal;font-size:calc(var(--u)*3);color:#fff;text-shadow:0 0 calc(var(--u)*.6) #000;white-space:nowrap;cursor:pointer;max-width:90%;overflow:hidden;text-overflow:ellipsis}
+.vcol{display:flex;align-items:stretch;justify-content:center;gap:calc(var(--u)*.4);min-width:0;height:100%}
+.vcol .vtk{width:42%;margin:0;flex:none}
+.vnm{flex:1;min-width:0;writing-mode:vertical-rl;transform:rotate(180deg);font-weight:400;font-size:calc(var(--u)*2.9);color:#c9d3d0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left;cursor:pointer;line-height:1.1}
+/* recorder bars: TC and file name on top, four evenly spaced 44px+ buttons below */
+.rbar{height:auto;flex-direction:column;align-items:stretch;gap:8px;padding:10px var(--s3) 10px var(--s4)}
+.rbar .rbtop{display:flex;align-items:center;gap:10px;min-width:0}
+.rbar .rtime{flex:1;font-size:22px;white-space:nowrap}
+.rbar .rfile{max-width:46%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--t1);color:var(--muted);cursor:pointer}
+.rbar .rbbtns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;justify-items:center}
+.rbar .rbbtns.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+.rbar .rbtn{width:100%;max-width:92px;height:48px;border-radius:24px}
+.rbar .rbtn[hidden]{display:none}
+.rbar .rbtn.rec{border-radius:24px}
+.rbtn{position:relative}
+.rbtn:disabled{opacity:.35}
+.rbtn.ask{outline:2px solid var(--amber,#FFB340)}
+.rbtn.ask::after{content:attr(data-ask);position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);white-space:nowrap;background:var(--panel2);color:var(--text);padding:5px 10px;border-radius:8px;font-size:12px;font-weight:600;z-index:6;box-shadow:0 2px 10px rgba(0,0,0,.5)}
+#rCtl.four{gap:16px}
+.sbar{height:auto}
+@media (orientation:landscape) and (max-height:500px){
+  .rbar{padding:6px 10px;gap:6px}
+  .rbar .rbtn{height:44px;max-width:72px}
+  .sbar{height:auto}
+  .sbar .rtime{font-size:15px}
+}
 </style>
 </head>
 <body>
@@ -699,6 +746,7 @@ body.wmtc .rbar .rtime{font-size:18px}
 </header>
 
 <main>
+  <div class="btline" id="btLine" hidden></div>
   <!-- CONNECT / REMOTE LIST -->
   <section id="connect" class="connect">
     <div class="card">
@@ -748,10 +796,11 @@ body.wmtc .rbar .rtime{font-size:18px}
         <div class="rstate"><span class="rdot"></span><span class="rstext">STOPPED</span></div>
         <div class="rtime">--:--:--</div>
         <div class="rsub" id="rSub"></div>
-        <div class="rctl">
+        <div class="rctl" id="rCtl">
           <button class="rbtn sm" data-tr="stop" aria-label="Stop"><svg width="20" height="20" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2.5" fill="currentColor"/></svg></button>
           <button class="rbtn rec" data-tr="rec" aria-label="Record"><i></i></button>
           <button class="rbtn sm play" data-tr="play" aria-label="Play"><svg width="22" height="22" viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5z" fill="currentColor"/></svg></button>
+          <button class="rbtn sm" data-tr="undo" aria-label="Undo last take" hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
         </div>
         <div class="rpills">
           <button class="rp" data-tr="rew">Rewind</button>
@@ -913,6 +962,16 @@ body.wmtc .rbar .rtime{font-size:18px}
   <div class="row"><button class="b danger" id="takeUndo" data-confirm>Undo last take</button></div>
   <p class="small">Undo moves the current take to the MixPre's trash. It asks twice.</p>
 </aside>
+<aside class="sheet wmsheet" id="renSheet" hidden>
+  <h3><span id="renTitle">Rename</span> <button class="iconbtn wmclose" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></h3>
+  <div class="seg" id="renWhich"><button data-v="next">Next take</button><button data-v="current">Current take</button></div>
+  <div class="group" style="margin-top:var(--s3)">
+    <div class="sublabel" id="renL1">File name</div><input type="text" id="renA" maxlength="40" autocomplete="off">
+    <div id="renBWrap"><div class="sublabel">Take number</div><input type="text" id="renB" maxlength="12" autocomplete="off"></div>
+  </div>
+  <p class="small" id="renNote"></p>
+  <div class="row"><button class="b" id="renSave">Save</button></div>
+</aside>
 <aside class="sheet wmsheet" id="recSheet" hidden>
   <h3>Recorder settings <button class="iconbtn wmclose" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></h3>
   <p class="small" id="recSetNote"></p>
@@ -1008,6 +1067,7 @@ body.wmtc .rbar .rtime{font-size:18px}
     <h4>Recording timer</h4>
     <p>Pre-roll (0&ndash;10 s) the timer starts at when you press Record.</p>
     <div class="typer"><input type="number" id="preRoll" min="0" max="10" step="1" value="0" aria-label="Pre-roll seconds"><button class="b" id="preRollSave">Set</button></div>
+    <p class="small" id="preNote" hidden style="margin-top:var(--s2)">The timer now comes from the MixPre over Bluetooth, so pre-roll doesn't apply. It still applies to the MIDI LED timer when the link is off.</p>
   </div>
 
   <div class="group">
@@ -1630,7 +1690,7 @@ class DemoTransport {
     for (let i = 0; i < n; i++) {
       const on = u.inputs_on.includes(i + 1);
       let pk = -122;
-      if (on) pk = -64 + 38 * (0.5 + 0.5 * Math.sin(t * (0.9 + i * 0.37) + i)) + (armed.includes(i + 1) ? 6 : 0) * Math.sin(t * 3 + i) - (rec ? 0 : 8);
+      if (on) pk = -64 + 38 * (0.5 + 0.5 * Math.sin(t * (0.9 + i * 0.37) + i)) + (armed.includes(i + 3) ? 6 : 0) * Math.sin(t * 3 + i) - (rec ? 0 : 8);
       inm.push([null, Math.round(pk), pk > -2 ? 1 : 0]);
     }
     const l = inm.length ? Math.max(...inm.slice(0, 2).map(x => x[1])) : -122;
@@ -1646,6 +1706,8 @@ class DemoTransport {
       case "wm_transport": {
         const a = o.action, nt = a === "rec" ? "record" : a === "stop" ? "stop" : a === "play" ? "play" : "pause";
         this.log("wm_transport " + a);
+        if (a === "rec" && rec) { this.takes.forEach(t => t.i++); const k = this.takes.length + 5; this.takes.unshift({ h: k, i: 0, name: "Audio-" + String(k).padStart(3, "0") + ".WAV", number: String(k).padStart(3, "0"), tc: u.tc, notes: "" });
+          this.wmDelta({ file: this.takes[1].name, next_file: this.takes[0].name, file_time: "00:00:00:00" }); return this.wmResult(o); }
         if (nt === "stop" && rec) { this.takes.forEach(t => t.i++); const k = this.takes.length + 5; this.takes.unshift({ h: k, i: 0, name: "Audio-" + String(k).padStart(3, "0") + ".WAV", number: String(k).padStart(3, "0"), tc: "", notes: "" });
           this.takes[1].tc = u.tc; this.wmDelta({ transport: "stop", file: this.takes[1].name, next_file: this.takes[0].name, file_time: "00:00:00:00" }); }
         else this.wmDelta({ transport: nt });
@@ -1661,7 +1723,7 @@ class DemoTransport {
         t[{ name: "name", number: "number", notes: "notes" }[o.field]] = o.value; if (o.field === "name") this.wmDelta(o.which === "next" ? { next_file: o.value } : { file: o.value }); return this.wmResult(o); }
       case "wm_undo": { if (rec) return this.wmFail(o, "Undo is not possible while recording"); const k = this.takes.findIndex(t => t.i === 1); if (k < 0) return this.wmFail(o, "No current take");
         this.takes.splice(k, 1); this.takes.forEach(t => { if (t.i > 1) t.i--; }); this.wmDelta({ file: (this.takes.find(t => t.i === 1) || { name: "" }).name }); return this.wmResult(o); }
-      case "wm_track_name": { const names = u.names.slice(); names[o.track + 1] = o.name; this.wmDelta({ names }); return this.wmResult(o); }
+      case "wm_track_name": { const names = u.names.slice(); names[o.track - 1] = o.name; this.wmDelta({ names }); return this.wmResult(o); }
       case "wm_setting": { if (rec) return this.wmFail(o, "Changing recorder settings is not possible while recording or playing");
         const map = { sample_rate: "sample_rate_idx", bit_depth: "bit_depth", tc_mode: "tc_mode_idx", fps: "fps_idx", ballistics: "ballistics_idx", peak_hold: "peak_hold" };
         const d = { [map[o.name]]: o.value }; if (o.name === "fps") d.fps = WM_LABEL.fps[o.value]; if (o.name === "tc_mode") d.tc_mode = WM_LABEL.tcMode[o.value]; this.wmDelta(d); return this.wmResult(o); }
@@ -1677,7 +1739,8 @@ class DemoTransport {
       if (this.leds[CC.solo + i]) solo |= 1 << i;
     }
     const tr = (this.leds[CC.play] ? 1 : 0) | (this.leds[CC.stop] ? 2 : 0) | (this.leds[CC.rec] ? 16 : 0);
-    handleServerMsg({ type: "state", mode: this.mode, midi: this.mode !== "keyboard", hid: this.mode !== "midi", usb: true,
+    const usb = !params.has("nousb");   // ?wmdemo=10&nousb: the MixPre is not on the Pi's USB, so only Bluetooth works
+    handleServerMsg({ type: "state", mode: this.mode, midi: usb && this.mode !== "keyboard", hid: usb && this.mode !== "midi", usb,
       arm, mute, solo, transport: tr, levels: this.levels.slice(), name: "Demo MixPre", version: "demo",
       wm_link: !!this.wm, clink_key_set: true, clink_pw_set: false, clink_addr: "B8:D7:AF:CF:D4:0F" });
   }
@@ -2155,26 +2218,32 @@ function applyWm(m) {
     else { W.d[k] = m[k]; if (k !== "tc" && k !== "file_time") state = true; }
   }
   W.at = performance.now();
-  if (state || m.full) { if (!wmRaf) wmRaf = requestAnimationFrame(() => { wmRaf = 0; render(); }); }
+  if (state || m.full) { if (!wmRaf) wmRaf = setTimeout(() => { wmRaf = 0; render(); }, 30); /* not requestAnimationFrame: it pauses in a hidden tab and would block later renders */ }
   else { tickTimer(); drawLevelMeters(); }
 }
 function wmTransport(k) {
-  const action = k === "rec" && wmRecording() ? "stop" : k === "play" && W.d.transport === "play" ? "pause" : k;
+  const action = k === "play" && W.d.transport === "play" ? "pause" : k;   // REC while recording starts a new take on the unit (the page asks first)
   wmOp("wm_transport", { action });
 }
-// arm / disarm input n (1-based) through Bluetooth: the whole bitmap is sent; the unit decides what it accepts
+// arm / disarm a track by its bit number (1 = mix L, 2 = mix R, 3 = input 1 ...) through Bluetooth: the whole bitmap is sent; the unit decides what it accepts
 function wmArm(n) {
   const cur = new Set(W.d.arms || []), want = !cur.has(n);
   want ? cur.add(n) : cur.delete(n);
+  const what = n <= 2 ? "mix " + "LR"[n - 1] : "input " + (n - 2);
   wmOp("wm_arm", { tracks: [...cur].sort((a, b) => a - b) }, r => {
     if (!r.ok) return toast(r.error, 3500);
-    setTimeout(() => { if ((W.d.arms || []).includes(n) !== want) toast(`The MixPre did not ${want ? "arm" : "disarm"} input ${n}`, 3000); }, 900);
+    setTimeout(() => { if ((W.d.arms || []).includes(n) !== want) toast(`The MixPre did not ${want ? "arm" : "disarm"} ${what}`, 3000); }, 900);
   });
 }
 const wmName = i => ((W.d.names || [])[i + 2] || "");   // the list starts with the two mix tracks, then the inputs
 const wmClock = () => W.d.tc_mode_idx === 0 ? W.d.file_time : W.d.tc;   // timecode off: show the file's elapsed time
 const wmIsOn = i => (W.d.inputs_on || []).includes(i + 1);
-const wmIsArmed = i => (W.d.arms || []).includes(i + 1);
+// RECORD_TRACK_ARMS as the Wingman app maps a MixPre: bit 1 = mix L, bit 2 = mix R, then one bit per input
+const wmIsArmed = i => (W.d.arms || []).includes(i + 3);
+const wmMixArmed = k => (W.d.arms || []).includes(k + 1);     // k: 0 = L, 1 = R
+// Bluetooth only: the link is up and the MixPre is not connected to the Pi by USB, so there is no MIDI and no keyboard
+const btOnly = () => wmFresh() && !S.usb;
+const BT_ONLY_LINE = "USB not connected · Bluetooth controls only";
 const WM_LABEL = {
   link: { off: "Off", connecting: "Connecting…", authenticating: "Authenticating…", linked: "Linked", retrying: "Not found, retrying…" },
   rate: { 0: "44.1 kHz", 1: "47.952 kHz", 2: "47.952 kHz (F)", 3: "48 kHz", 4: "48.048 kHz", 5: "48.048 kHz (F)", 6: "88.2 kHz", 7: "96 kHz", 8: "192 kHz" },
@@ -2218,12 +2287,17 @@ function wireWm() {
   $("wmMsgSend").onclick = () => { const t = $("wmMsg").value.trim(); if (t) wmOp("wm_message", { text: t, seconds: 5 }, r => toast(r.ok ? "Shown on the MixPre" : r.error)); };
   $("sTakes").onclick = openTakes; $("btTakes").onclick = openTakes; $("btRecSet").onclick = openRecSettings;
   $("wmScrim").onclick = closeWmSheets;
+  $("btLine").textContent = BT_ONLY_LINE;
+  document.querySelectorAll(".rfile").forEach(e => e.onclick = openRenameFile);
+  $("renSave").onclick = saveRename;
+  document.querySelectorAll("#renWhich button").forEach(b => b.onclick = () => { if (ren) { ren.which = b.dataset.v; renFill(); } });
+  $("rSub").addEventListener("click", e => { if (e.target.closest(".rfn")) openRenameFile(); });
   document.querySelectorAll(".wmclose").forEach(b => b.onclick = closeWmSheets);
   confirmTap($("takeUndo"), undoTake);
   $("takeSave").onclick = saveTake;
   document.addEventListener("keydown", e => { if (e.key === "Escape") closeWmSheets(); });
 }
-function closeWmSheets() { $("takesSheet").hidden = true; $("recSheet").hidden = true; $("wmScrim").hidden = true; }
+function closeWmSheets() { $("takesSheet").hidden = true; $("recSheet").hidden = true; $("renSheet").hidden = true; $("wmScrim").hidden = true; }
 function openWmSheet(id) { $(id).hidden = false; $("wmScrim").hidden = false; }
 /* ---- Takes */
 let takeEdit = null;
@@ -2260,6 +2334,59 @@ function undoTake() {
   const cur = (W.takes || []).find(t => t.i === 1); if (!cur) return;
   wmOp("wm_undo", { handle: cur.h }, r => { toast(r.ok ? "Last take moved to the trash" : r.error, 3500); setTimeout(loadTakes, 500); });
 }
+/* ---- Rename (file name / take number, and track names) */
+let ren = null;
+function openRenameFile() {
+  if (!wmFresh()) return;
+  if (wmRecording()) return toast("A take can't be renamed while recording");
+  ren = { kind: "file", which: "next" };
+  $("renTitle").textContent = "Rename take"; $("renL1").textContent = "File name"; $("renBWrap").hidden = false; $("renWhich").hidden = false;
+  openWmSheet("renSheet"); renFill();
+  wmOp("wm_takes", {}, r => { if (r.ok) { W.takes = r.takes; renFill(); } });
+}
+function renFill() {
+  if (!ren || ren.kind !== "file") return;
+  document.querySelectorAll("#renWhich button").forEach(b => b.classList.toggle("on", b.dataset.v === ren.which));
+  const t = (W.takes || []).find(x => x.i === (ren.which === "next" ? 0 : 1));
+  $("renA").value = t ? t.name : (ren.which === "next" ? W.d.next_file : W.d.file) || ""; $("renB").value = t ? t.number || "" : "";
+  ren.t = t || null;
+  $("renNote").textContent = t ? "" : "Loading…";
+}
+function openRenameTrack(i) {
+  if (!wmFresh()) return;
+  ren = { kind: "track", i };
+  $("renTitle").textContent = "Track name · input " + (i + 1); $("renL1").textContent = "Name"; $("renBWrap").hidden = true; $("renWhich").hidden = true;
+  $("renNote").textContent = "Renames the track on the next take.";
+  openWmSheet("renSheet"); $("renA").value = wmName(i); $("renA").maxLength = 30;
+  setTimeout(() => { $("renA").focus(); $("renA").select(); }, 50);
+}
+function saveRename() {
+  if (!ren) return;
+  if (ren.kind === "track") {
+    wmOp("wm_track_name", { track: ren.i + 3, name: $("renA").value.trim() }, r => { toast(r.ok ? "Track renamed" : r.error, 3000); });
+    return closeWmSheets();
+  }
+  const t = ren.t; if (!t) return toast("Still loading, try again");
+  const jobs = [["name", $("renA").value.trim(), t.name], ["number", $("renB").value.trim(), t.number || ""]].filter(([, v, old]) => v && v !== old);
+  if (!jobs.length) return closeWmSheets();
+  let left = jobs.length, bad = null;
+  for (const [field, value] of jobs) wmOp("wm_take", { which: ren.which, field, value }, r => { if (!r.ok) bad = r.error; if (!--left) toast(bad || "Renamed", 3000); });
+  closeWmSheets();
+}
+/* ---- second-tap confirm for the recorder buttons (REC while recording starts a new take; Stop; Undo) */
+function askAgain(el, text) {
+  if (el._ask) { clearTimeout(el._askT); el._ask = false; el.classList.remove("ask"); el.removeAttribute("data-ask"); return true; }
+  el._ask = true; el.classList.add("ask"); el.setAttribute("data-ask", text);
+  el._askT = setTimeout(() => { el._ask = false; el.classList.remove("ask"); el.removeAttribute("data-ask"); }, 2500);
+  return false;
+}
+const RBAR_HTML = `<div class="rbtop"><span class="rdot"></span><span class="rtime">--:--:--</span><span class="rfile"></span></div>
+  <div class="rbbtns">
+    <button class="rbtn" data-tr="stop" aria-label="Stop"><svg width="16" height="16" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3" fill="currentColor"/></svg></button>
+    <button class="rbtn rec" data-tr="rec" aria-label="Record"><i></i></button>
+    <button class="rbtn play" data-tr="play" aria-label="Play"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5z" fill="currentColor"/></svg></button>
+    <button class="rbtn" data-tr="undo" aria-label="Undo last take" hidden><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
+  </div>`;
 /* ---- Recorder settings */
 const REC_SET = [
   ["sample_rate", "sample_rate_idx", "Sample rate", WM_LABEL.rate],
@@ -2289,12 +2416,13 @@ function renderRecSettings() {
 }
 
 /* ============================================================ send helpers */
-const send = (...bytes) => transport && transport.send(new Uint8Array(bytes.flat()));
+const send = (...bytes) => !btOnly() && transport && transport.send(new Uint8Array(bytes.flat()));   // never a key or CC in Bluetooth-only mode
 const tapKey = (mods, ...keys) => send(OP.TAP_KEY, mods, keys);
 const tapCC = cc => send(OP.TAP_CC, cc);
 const combo = (mod, cc) => send(OP.COMBO, mod, cc);
 
 function needs(kind) {
+  if (btOnly()) { toast(BT_ONLY_LINE); return false; }
   if (kind === "midi" && !hasMidi()) { toast(wantsMidi() ? "MIDI not connected to the MixPre yet" : "Needs MIDI mode — switch USB mode in Settings"); return false; }
   if (kind === "kb" && !hasKb()) { toast("Needs Keyboard mode — switch USB mode in Settings"); return false; }
   return true;
@@ -2407,7 +2535,7 @@ const SMR = {
 const viaMidi = i => hasMidi() && i < MIDI_STRIPS;
 function pressSMR(i, k) {
   const d = SMR[k];
-  if (k === "r" && wmFresh()) return wmArm(i + 1);
+  if (k === "r" && wmFresh()) return wmArm(i + 3);
   if (viaMidi(i)) return tapCC(d.cc() + i);
   if (needs("kb")) { tapKey(d.mods, DIGIT(i + 1)); kbToggle(d.lit, i); }
 }
@@ -2444,7 +2572,12 @@ function buildInputs() {
       smr.append(b); btns[k] = b;
     }
     row.append(smr);
-    row.onclick = e => { if (!e.target.closest(".slider, .smr")) openChannel(i); };
+    row.onclick = e => {
+      if (e.target.closest(".slider, .smr")) return;
+      if (e.target.closest(".inm") && wmFresh()) return openRenameTrack(i);
+      if (btOnly()) { if (e.target.closest(".n")) wmArm(i + 3); return; }   // no channel sheet without USB: the number arms
+      openChannel(i);
+    };
     box.append(row);
     rows.push({ fader, btns, kbOnly, nm, row, imet });
   }
@@ -2528,6 +2661,7 @@ function setConn(cls, text) { conn = { cls, text }; renderStatus(); }
 function statusInfo() {
   if (conn.cls === "bad") return { cls: "bad", short: "Offline", long: conn.text === "Offline" ? "Pi offline" : conn.text };
   if (conn.cls === "warn") return { cls: "warn", short: conn.text, long: conn.text };
+  if (btOnly()) return { cls: "ok", short: "Bluetooth only", long: "MixPre · Bluetooth only (USB not connected)" };
   if (!S.usb) return { cls: "bad", short: "No MixPre", long: "MixPre not detected" };
   if (S.mode === "both" && S.role === "keyboard") return { cls: "warn", short: "MIDI waiting", long: "MixPre · keyboard (MIDI returns when you use S/M/R, a fader or transport)" };
   if (wantsMidi() && !S.midi) return { cls: "warn", short: "MIDI waiting", long: "USB ok · MIDI waiting" };
@@ -2602,17 +2736,30 @@ function renderRecorder() {
     const f = recording || playing ? W.d.file : W.d.next_file;
     if (f) sub.push((recording || playing ? "" : "Next: ") + f);
   }
-  $("rSub").innerHTML = sub.map(x => `<span>${escapeHtml(x)}</span>`).join("");
+  $("rSub").innerHTML = sub.map((x, k) => `<span${k === 1 ? ' class="rfn" title="Rename"' : ""}>${escapeHtml(x)}${k === 1 ? " ✎" : ""}</span>`).join("");
   $("wmPills").hidden = !bt;
+  const canUndo = bt && !recording && !playing && !!W.d.file;
+  document.querySelectorAll('[data-tr="undo"]').forEach(b => { b.hidden = !bt; b.disabled = !canUndo; });
+  $("rCtl").classList.toggle("four", bt);
+  document.querySelectorAll(".rbbtns").forEach(e => e.classList.toggle("four", bt));
+  document.querySelectorAll(".rfile").forEach(e => { e.textContent = bt ? (recording || playing ? W.d.file : W.d.next_file) || "" : ""; });
   document.querySelectorAll('[data-tr="play"]').forEach(b => b.classList.toggle("on", playing));
   tickTimer();
 }
 function render() {
   renderRecorder();
   $("brand").textContent = $("lname").textContent = S.name || "MixPre Remote";
-  const btOn = wmFresh();
+  const btOn = wmFresh(), only = btOnly();
+  document.body.classList.toggle("btonly", only);
+  $("btLine").hidden = !only;
+  if (only) {
+    if (store.get("tab", "rec") !== "rec") setTab("rec");
+    if (view === "simple" && sim.id !== "home") { sim.id = "home"; sim.page = 0; renderSimple(); }
+    closeChannel();
+  }
+  $("preRoll").disabled = $("preRollSave").disabled = btOn; $("preNote").hidden = !btOn;
   rows.forEach((r, i) => {
-    r.nm.textContent = btOn ? wmName(i) : "";
+    r.nm.textContent = btOn ? wmName(i) : ""; r.row.classList.toggle("btarm", only);
     r.row.classList.toggle("off", btOn && !wmIsOn(i));
     const stale = viaMidi(i) && S.mode === "both" && S.role === "keyboard";   // MIDI is off while the Pi acts as a keyboard
     for (const k of ["s", "m", "r"]) { r.btns[k].classList.toggle("on", isLit(i, k)); r.btns[k].classList.toggle("stale", stale); }
@@ -2903,6 +3050,11 @@ function drawLevelMeters() {
   rows.forEach((r, i) => { const on = bt && r.imet; if (!on) { r.imet.style.opacity = 0; return; } r.imet.style.opacity = 1;
     r.imet.firstChild.style.clipPath = `inset(0 ${((1 - levelFrac(W.pk["i" + i] ?? -120) / 0.87) * 100).toFixed(1)}% 0 0)`;
     r.imet.classList.toggle("lim", !!W.lim["i" + i]); });
+  document.querySelectorAll("#sscreen .lht").forEach((el, i) => {
+    const f = bt ? levelFrac(W.pk["i" + i] ?? -120) / 0.87 : 0, h = bt ? levelFrac(W.hd["i" + i] ?? -120) / 0.87 : 0;
+    el.firstChild.style.clipPath = `inset(0 ${((1 - Math.min(1, f)) * 100).toFixed(1)}% 0 0)`;
+    el.querySelector("s").style.left = (Math.min(1, h) * 100).toFixed(1) + "%"; el.querySelector("s").style.opacity = bt && (W.hd["i" + i] ?? -120) > -50 ? 1 : 0;
+  });
   const sm = document.querySelector("#sscreen .lsm");   // the channel screen's small meter (-40 .. 0)
   if (sm) { const p = bt ? Math.max(0, Math.min(1, ((W.pk["i" + sim.ch] ?? -120) + 40) / 40)) * 100 : 0; sm.style.background = `linear-gradient(90deg,var(--lcd-mg) ${p.toFixed(0)}%,#000 ${p.toFixed(0)}%)`; }
   document.querySelectorAll("#sscreen .vtk").forEach((el, i) => {
@@ -2918,6 +3070,8 @@ const simTr = () => !(ctlOn && (hasMidi() || wmFresh())) ? "stop" : isRecording(
 // the file name on Home: the unit's current take when linked over Bluetooth, else dashes (as on the recorder with no take)
 const simFileBase = () => { const f = wmFresh() ? (W.d.file || "") : ""; return f.replace(/\.wav$/i, "") || "--------"; };
 const simTrkCls = (i, inputs) => wmFresh() ? (wmIsArmed(i) ? " arm" : i < inputs && !wmIsOn(i) ? " off" : "") : (S.arm & (1 << i) ? " arm" : "");
+const simMixCls = k => wmFresh() ? (wmMixArmed(k) ? " arm" : " idle") : "";
+const simName = i => wmFresh() ? wmName(i) : "";
 const simExt = () => wmFresh() && (W.d.tc_mode_idx || 0) >= 7;
 function simHomeTop() {
   const batt = simExt() ? '<div class="lbatt ext" aria-hidden="true">EXT</div>' : `<div class="lbatt" aria-hidden="true">${SIM_ICON.usb}</div>`;
@@ -2931,16 +3085,17 @@ function simHome6() {
   const inputs = Math.min(4, wmLinked() ? (W.d.names || []).length - 2 || 4 : 4);
   const tr = [1, 2, 3, 4, 5, 6].map(n => `<button class="ltrk${simTrkCls(n - 1, inputs)}" data-act="track" data-n="${n}" aria-label="Channel ${n}">${n}</button>`).join("");
   return `<div class="lhome-s" data-tr="${simTr()}" data-m="6">${simHomeTop()}
-    <div class="lmeters"><div class="ltrks"><span class="lr">L</span><span class="lr">R</span><span class="lgap"></span>${tr}</div>
-      <div class="lscale" data-act="meters"><div class="lrow2"><i class="lmb"><u></u><s></s></i><i class="lmb"><u></u><s></s></i></div>${SIM_SCALE}</div></div>
+    <div class="lmeters"><div class="ltrks"><button class="lr${simMixCls(0)}" data-act="mix" data-b="1" aria-label="Arm mix L">L</button><button class="lr${simMixCls(1)}" data-act="mix" data-b="2" aria-label="Arm mix R">R</button><span class="lgap"></span>${tr}</div>
+      <div class="lscale"><div class="lrow2" data-act="meters"><i class="lmb"><u></u><s></s></i><i class="lmb"><u></u><s></s></i></div><div data-act="meters">${SIM_SCALE}</div>
+        <div class="lt6">${[0, 1, 2, 3, 4, 5].map(i => `<i class="lht" data-i="${i}"><u></u><s></s>${i < inputs ? `<em data-act="trname" data-i="${i}">${escapeHtml(simName(i))}</em>` : ""}</i>`).join("")}</div></div></div>
     ${SIM_FOOT}</div>`;
 }
 // MixPre-10 II Home (Yuki's photo): L over the scale band over R, ten vertical track bars rising over the numbered boxes
 function simHome10() {
   const nums = Array.from({ length: 10 }, (_, i) => `<button class="ltrk${simTrkCls(i, 10)}" data-act="track" data-n="${i + 1}" aria-label="Channel ${i + 1}">${i + 1}</button>`).join("");
-  const vt = Array.from({ length: 10 }, () => '<i class="vtk"><u></u><s></s></i>').join("");
+  const vt = Array.from({ length: 10 }, (_, i) => `<div class="vcol"><b class="vnm" data-act="trname" data-i="${i}">${escapeHtml(simName(i))}</b><i class="vtk"><u></u><s></s></i></div>`).join("");
   return `<div class="lhome-s l10" data-tr="${simTr()}" data-m="10">${simHomeTop()}
-    <div class="lmeters l10m"><div class="ltrks"><span class="lr">L</span><span class="lgap"></span><span class="lr">R</span></div>
+    <div class="lmeters l10m"><div class="ltrks"><button class="lr${simMixCls(0)}" data-act="mix" data-b="1" aria-label="Arm mix L">L</button><span class="lgap"></span><button class="lr${simMixCls(1)}" data-act="mix" data-b="2" aria-label="Arm mix R">R</button></div>
       <div class="lscale" data-act="meters"><div class="lrow2"><i class="lmb"><u></u><s></s></i></div>${SIM_SCALE}<div class="lrow2"><i class="lmb"><u></u><s></s></i></div></div></div>
     <div class="lvt"><div class="lvbars">${vt}</div><div class="lnums">${nums}</div></div>
     ${SIM_FOOT}</div>`;
@@ -3039,14 +3194,17 @@ function simAct(e) {
   switch (act) {
     case "unm": toast("Not mapped yet"); break;
     case "hp": toast("No key for this: touch the recorder"); break;
-    case "files": if (simKeys(SIMPLE_KEYS.files)) simGo("fileList"); break;
+    case "files": if (btOnly()) openRenameFile(); else if (simKeys(SIMPLE_KEYS.files)) simGo("fileList"); break;
     case "fedit": if (simKeys(SIMPLE_KEYS.select)) simGo("fileEdit"); break;
     case "meters": if (simKeys(SIMPLE_KEYS.meters)) toast("Meter view changed on the MixPre; this copy stays on L/R", 2800); break;
     case "cue": if (hasMidi()) tapCC(CC.set); else if (needs("kb")) tapKey(...SIMPLE_KEYS.cue); break;
     case "home": simHomeKey(); break;
     case "back": simBack(); break;
     case "menu": if (simKeys(SIMPLE_KEYS.menu)) simGo("menu"); break;
+    case "mix": if (wmFresh()) wmArm(+b.dataset.b); else toast("Needs the Bluetooth link"); break;
+    case "trname": if (wmFresh()) openRenameTrack(+b.dataset.i); break;
     case "track": {   // open the channel on the recorder (verified CC, or the digit key) and in the copy
+      if (wmFresh() && btOnly()) { wmArm(+b.dataset.n + 2); break; }   // Bluetooth only: the number arms the track
       const n = +b.dataset.n - 1;
       if (!viaMidi(n) && !needs("kb")) break;
       openOnMixPre(n); enterChannel(n); break;
@@ -3110,6 +3268,8 @@ function updateSimpleHome() {
   if (hs) hs.dataset.tr = simTr();
   const ext = simExt(), has = !!document.querySelector("#sscreen .lbatt.ext");
   if (ext !== has && hs) return renderSimple();
+  document.querySelectorAll("#sscreen .lr").forEach((b, k) => { const c = simMixCls(b.dataset.b === "2" ? 1 : 0); b.classList.toggle("arm", c === " arm"); b.classList.toggle("idle", c === " idle"); });
+  document.querySelectorAll("#sscreen [data-act=trname]").forEach(e => { const t = simName(+e.dataset.i); if (e.textContent !== t) e.textContent = t; });
   const fn = document.querySelector("#sscreen .fn"); if (fn && fn.textContent !== simFileBase()) fn.textContent = simFileBase();
   const inputs = unitModel() === 10 ? 10 : 4;
   document.querySelectorAll("#sscreen .ltrk").forEach((b, i) => { const c = simTrkCls(i, inputs); b.classList.toggle("arm", c === " arm"); b.classList.toggle("off", c === " off"); });
@@ -3161,9 +3321,16 @@ function sendText(t) {   // typed on the MixPre's USB keyboard, 18 bytes per mes
 }
 function wireRecorder() {
   const tbtn = (el, ccName, kbMods, kbKey) => bindHold(el,
-    () => { if (wmFresh()) { if (!el._bt) { el._bt = true; wmTransport(el.dataset.tr); } return true; }   // Bluetooth first
+    () => {
+      const k = el.dataset.tr;
+      if (!el._held) {   // first call of this press: REC or Stop while recording needs a second tap (REC starts a new take)
+        el._held = true; el._skip = false;
+        if (isRecording() && (k === "rec" || k === "stop") && !askAgain(el, k === "rec" ? "Tap again: new take" : "Tap again to stop")) { el._skip = true; return true; }
+      }
+      if (el._skip) return true;
+      if (wmFresh()) { if (!el._bt) { el._bt = true; wmTransport(k); } return true; }   // Bluetooth first
       if (hasMidi()) return send(OP.HOLD_CC, CC[ccName]); if (!el._sent && needs("kb")) { el._sent = true; tapKey(kbMods, kbKey); } return true; },
-    () => { if (el._bt) { el._bt = false; return; } if (hasMidi()) send(OP.REL_CC, CC[ccName]); el._sent = false; });
+    () => { el._held = false; if (el._skip) { el._skip = false; return; } if (el._bt) { el._bt = false; return; } if (hasMidi()) send(OP.REL_CC, CC[ccName]); el._sent = false; });
   const plain = { stop: ["stop", MOD.CTRL, KEY.S], play: ["play", 0, KEY.SPACE], rec: ["rec", MOD.CTRL, KEY.R] };
   document.querySelectorAll("[data-tr]").forEach(el => {
     const k = el.dataset.tr;
@@ -3171,9 +3338,11 @@ function wireRecorder() {
     else if (k === "rew") holdCC(el, () => CC.rew, { start: () => needs("kb") && send(OP.HOLD_KEY, 0, KEY.LEFT), end: () => send(OP.REL_KEY) });
     else if (k === "ff") holdCC(el, () => CC.ff, { start: () => needs("kb") && send(OP.HOLD_KEY, 0, KEY.RIGHT), end: () => send(OP.REL_KEY) });
     else if (k === "cue") el.onclick = () => hasMidi() ? tapCC(CC.set) : needs("kb") && tapKey(MOD.CTRL, KEY.M);
+    else if (k === "undo") el.onclick = () => { if (el.disabled || !wmFresh()) return; if (askAgain(el, "Tap again to undo")) wmOp("wm_undo", {}, r => toast(r.ok ? "Last take moved to the trash" : r.error, 3500)); };
   });
 }
 function wire() {
+  document.querySelectorAll(".rbar").forEach(el => { el.innerHTML = RBAR_HTML; });
   wireRecorder();
   wireWm();
 
