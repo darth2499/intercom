@@ -1097,8 +1097,16 @@ function toast(msg, ms = 2200) {
 /* ============================================================ transports */
 let transport = null;
 
-// Pi offline detection (Wi-Fi): the Pi sends a heartbeat every 3 s; silence for 9 s = offline, keep retrying
-let lastMsgAt = performance.now(), offlineSince = null;
+// Pi offline detection (Wi-Fi): the Pi sends a heartbeat every 3 s. A quiet spell is not "offline":
+//  >6 s silent: probe the Pi ({"op":"ping"} -> hb); >9 s: quiet "Reconnecting\u2026" (controls stay);
+//  >20 s: red "Pi offline" banner; only >30 s of unanswered probes closes an OPEN socket (and logs why).
+// Timers freeze while the page is hidden, so coming back to the foreground restarts the clock.
+let lastMsgAt = performance.now(), offlineSince = null, closedAt = null, lastProbeAt = 0;
+const SILENT_PROBE_MS = 6000, SILENT_RECONNECTING_MS = 9000, SILENT_BANNER_MS = 20000, SILENT_CLOSE_MS = 30000, CLOSED_BANNER_MS = 15000;
+function linkLog(text) {
+  console.log("[link] " + text);
+  try { addLog("page: " + text); } catch {}
+}
 function setOffline(off) {
   let b = document.getElementById("offBanner");
   if (!b) { b = document.createElement("div"); b.id = "offBanner"; document.body.prepend(b); }
@@ -1107,15 +1115,46 @@ function setOffline(off) {
   b.classList.toggle("show", off);
   if (off) b.textContent = "Pi offline \u2013 waiting for it to reconnect (" + fmtRec((performance.now() - offlineSince) / 1000) + ")";
 }
-setInterval(() => {
-  if (!transport || transport.kind !== "Wi\u2011Fi") return;
-  const flowing = performance.now() - lastMsgAt < 9000 && transport.ws && transport.ws.readyState === 1;
-  if (flowing) { if (offlineSince !== null) setOffline(false); }
-  else if (ctlOn || offlineSince !== null) {
-    setConn("bad", "Offline"); setOffline(true);
-    try { if (transport.ws && transport.ws.readyState === 1) transport.ws.close(); } catch {}
+function linkCheck() {
+  if (!transport || transport.kind !== "Wi\u2011Fi" || document.hidden) return;
+  const now = performance.now(), ws = transport.ws;
+  if (ws && ws.readyState === 1) {
+    closedAt = null;
+    const silent = now - lastMsgAt;
+    if (silent < SILENT_RECONNECTING_MS) {
+      if (offlineSince !== null || transport.quiet) { setOffline(false); transport.quiet = false; setConn("ok", "Wi\u2011Fi"); linkLog("link back after " + Math.round(silent / 1000) + " s quiet"); }
+      return;
+    }
+    if (now - lastProbeAt >= 3000) { lastProbeAt = now; try { ws.send(JSON.stringify({ op: "ping" })); } catch {} }
+    if (silent >= SILENT_CLOSE_MS) {
+      linkLog("offline: no reply to probes for " + Math.round(silent / 1000) + " s, reconnecting");
+      try { ws.close(); } catch {}
+    } else if (silent >= SILENT_BANNER_MS) {
+      if (offlineSince === null) linkLog("offline: silent for " + Math.round(silent / 1000) + " s (timer)");
+      setConn("bad", "Offline"); setOffline(true);
+    } else {
+      if (!transport.quiet) linkLog("quiet for " + Math.round(silent / 1000) + " s, probing");
+      transport.quiet = true; setConn("warn", "Reconnecting\u2026");
+    }
+  } else if (closedAt !== null) {
+    if (now - closedAt >= CLOSED_BANNER_MS) { setConn("bad", "Offline"); setOffline(true); }
+    else setConn("warn", "Reconnecting\u2026");
   }
-}, 1000);
+}
+setInterval(linkCheck, 1000);
+function linkResume(why) {
+  if (document.hidden) return;
+  const now = performance.now();
+  lastMsgAt = now; if (closedAt !== null) closedAt = now;
+  if (transport && transport.kind === "Wi\u2011Fi") {
+    linkLog("page " + why + ", restarting the quiet timer");
+    if (transport.ws && transport.ws.readyState === 1) { lastProbeAt = now; try { transport.ws.send(JSON.stringify({ op: "ping" })); } catch {} }
+  } else if (transport && transport.resume) transport.resume(why);
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden) linkResume("visible"); });
+window.addEventListener("pageshow", () => linkResume("shown"));
+window.addEventListener("focus", () => linkResume("focused"));
+window.addEventListener("online", () => linkResume("online"));
 function handleServerMsg(m) {
   if (!m || typeof m !== "object") return;
   lastMsgAt = performance.now();
@@ -1169,9 +1208,15 @@ class WsTransport {
         setConn("warn", "Connecting…");
         const ws = new WebSocket(`ws://${location.host}/ws`);
         ws.binaryType = "arraybuffer";
-        ws.onopen = () => { this.ws = ws; lastMsgAt = performance.now(); setOffline(false); setConn("ok", "Wi‑Fi"); showControl(true); resolve(); setTimeout(() => Aud.hello(), 300); };
+        ws.onopen = () => { this.ws = ws; this.quiet = false; closedAt = null; lastMsgAt = performance.now(); setOffline(false); setConn("ok", "Wi‑Fi"); showControl(true); resolve(); setTimeout(() => Aud.hello(), 300); };
         ws.onmessage = e => { try { handleServerMsg(JSON.parse(e.data)); } catch {} };
-        ws.onclose = () => { this.ws = null; if (!this.closed) { setConn("bad", "Reconnecting…"); setOffline(true); setTimeout(open, 1500); } };
+        ws.onclose = e => {
+          if (this.ws === ws) this.ws = null;
+          if (this.closed) return;
+          if (closedAt === null) closedAt = performance.now();
+          linkLog("socket closed (code " + e.code + "), reconnecting");
+          setConn("warn", "Reconnecting…"); setTimeout(open, 1500);
+        };
       };
       open();
     });
@@ -1322,10 +1367,10 @@ class CloudTransport {
       else if (m.t === "answer") this.onAnswer(m.sdp);
       else if (m.t === "bcast" && !this.dcOpen()) { try { handleServerMsg(JSON.parse(m.d)); } catch {} }
     };
-    ws.onclose = () => {
-      clearInterval(this.ping); this.ws = null;
+    ws.onclose = e => {
+      clearInterval(this.ping); if (this.ws === ws) this.ws = null;
       if (this.closed) return;
-      this.setOnline(false, "Can't reach the cloud — retrying…");
+      this.softOffline("Can't reach the cloud — retrying…", `relay socket closed (code ${e.code})`);
       setTimeout(() => this.open(), 4000);
     };
   }
@@ -1336,12 +1381,26 @@ class CloudTransport {
       if (!this.pc) this.startP2P();
     } else {
       this.closePeer();
-      this.setOnline(false);
+      this.softOffline(null, "Pi presence went offline");
     }
+  }
+  // a short blip (relay socket or Pi presence) shows "Reconnecting…" and keeps the controls; only 10 s of it tears down
+  softOffline(text, reason) {
+    if (!this.online || this.graceTimer) return;
+    linkLog("cloud: " + reason + ", waiting up to 10 s");
+    setConn("warn", "Reconnecting…");
+    this.graceTimer = setTimeout(() => { this.graceTimer = null; linkLog("cloud: offline (" + reason + ")"); this.setOnline(false, text); }, 10000);
+  }
+  resume(why) {
+    linkLog("cloud: page " + why);
+    if (this.graceTimer) { clearTimeout(this.graceTimer); this.graceTimer = null; this.softOffline(null, "still offline after page " + why); }
+    if (this.ws && this.ws.readyState === 1) { try { this.ws.send("ping"); } catch {} }
+    else if (!this.ws) this.open();
   }
   setOnline(on, text) {
     const was = this.online;
     this.online = on;
+    if (on && this.graceTimer) { clearTimeout(this.graceTimer); this.graceTimer = null; }
     if (on) { setSearching(false); showControl(true); this.refreshLabel(); if (!was) Aud.hello(); }
     else {
       showControl(false);
