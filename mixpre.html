@@ -2263,7 +2263,7 @@ function undoTake() {
 /* ---- Recorder settings */
 const REC_SET = [
   ["sample_rate", "sample_rate_idx", "Sample rate", WM_LABEL.rate],
-  ["bit_depth", "bit_depth", "Bit depth", null],
+  ["bit_depth", "bit_depth", "Bit depth", { 0: "16-bit", 1: "24-bit", 2: "32-bit float" }],   // 2 = 32 float confirmed on Yuki's unit; 0 and 1 follow the unit's own order
   ["tc_mode", "tc_mode_idx", "Timecode mode", WM_LABEL.tcMode],
   ["fps", "fps_idx", "Frame rate", WM_LABEL.fps],
   ["ballistics", "ballistics_idx", "Meter ballistics", WM_LABEL.ballistics],
@@ -2281,7 +2281,7 @@ function renderRecSettings() {
     let el;
     if (table) { el = document.createElement("select"); const vals = Object.keys(table).map(Number); if (cur !== undefined && !vals.includes(cur)) vals.push(cur);
       vals.forEach(v => { const o = document.createElement("option"); o.value = v; o.textContent = table[v] || "Value " + v; el.append(o); }); }
-    else { el = document.createElement("input"); el.type = "number"; el.min = 0; el.max = name === "bit_depth" ? 32 : 59; }
+    else { el = document.createElement("input"); el.type = "number"; el.min = 0; el.max = 59; }
     el.value = cur === undefined ? "" : cur; el.disabled = locked;
     el.onchange = () => wmOp("wm_setting", { name, value: +el.value }, r => { toast(r.ok ? "Changed on the MixPre" : r.error, 3000); });
     row.append(el); box.append(row);
