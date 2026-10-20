@@ -2275,7 +2275,8 @@ const WM_LABEL = {
 const wmCard = () => wmFresh() && W.d.drive && W.d.drive.sd;
 const LOW_SPACE_S = 600;
 const fmtLeft = sec => sec >= 3600 ? `${Math.floor(sec / 3600)}h${String(Math.floor(sec % 3600 / 60)).padStart(2, "0")}` : `${Math.floor(sec / 60)}min`;
-const fmtGB = kb => { const g = kb * 1024 / 1e9; return (g >= 100 ? Math.round(g) : g.toFixed(1)) + " GB"; };
+const fmtGB = kb => Math.floor(kb / 1e6) + "GB";   // the unit's "GB": KiB / 1,000,000, truncated (124,966,912 -> 124GB)
+const fmtHR = sec => Math.floor(sec / 3600) + " HR";
 const tcBadge = () => { const m = W.d.tc_mode_idx; return m === 0 ? "TC off" : m >= 7 ? "EXT" : m === undefined ? "" : "INT"; };
 
 function renderWmSettings() {
@@ -2699,7 +2700,7 @@ function renderStatus() {
   $("statusHead").className = "headline " + st.cls; $("statusHeadText").textContent = st.long;
   $("devInfo").innerHTML = [
     ["Name", S.name || "—"], ["Link", transport ? transport.label() : "—"], ["USB to MixPre", S.usb ? "connected" : "not detected"],
-    ["USB mode", S.mode], ["MIDI", S.midi ? "ready" : "—"], ["SD card", wmCard() ? `${fmtGB(wmCard().free_kb)} free of ${fmtGB(wmCard().size_kb)} · ${fmtLeft(wmCard().rec_left_s)} left` : "—"], ["MixPre Bluetooth", !S.wmLink ? "off" : wmFresh() ? "linked ✓" : (WM_LABEL.link[W.d.link] || "waiting").toLowerCase()], ["Keyboard", S.hid ? "ready" : "—"], ["Bridge version", S.version || "—"],
+    ["USB mode", S.mode], ["MIDI", S.midi ? "ready" : "—"], ["SD card", wmCard() ? `${fmtGB(wmCard().free_kb)} / ${fmtHR(wmCard().rec_left_s)} free · ${fmtGB(wmCard().size_kb)}` : "—"], ["MixPre Bluetooth", !S.wmLink ? "off" : wmFresh() ? "linked ✓" : (WM_LABEL.link[W.d.link] || "waiting").toLowerCase()], ["Keyboard", S.hid ? "ready" : "—"], ["Bridge version", S.version || "—"],
   ].map(([k, v]) => `<span>${k}</span><span>${escapeHtml(v)}</span>`).join("");
   $("devLine").textContent = (S.name || "Not connected") + (transport ? " · " + transport.label() : "");
 }
