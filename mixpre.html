@@ -1070,7 +1070,7 @@ button.lr{border:0;font-family:inherit;cursor:pointer;padding:0}
     <h4>Recording timer</h4>
     <p>Pre-roll (0&ndash;10 s) the timer starts at when you press Record.</p>
     <div class="typer"><input type="number" id="preRoll" min="0" max="10" step="1" value="0" aria-label="Pre-roll seconds"><button class="b" id="preRollSave">Set</button></div>
-    <p class="small" id="preNote" hidden style="margin-top:var(--s2)">The timer now comes from the MixPre over Bluetooth, so pre-roll doesn't apply. It still applies to the MIDI LED timer when the link is off.</p>
+    <p class="small" id="preNote" hidden style="margin-top:var(--s2)">With the Bluetooth link the timer is the MixPre's own record time. The unit counts its pre-roll too but doesn't report it, so set this to the same number as on the MixPre.</p>
   </div>
 
   <div class="group">
@@ -2244,7 +2244,14 @@ function wmArm(n) {
   });
 }
 const wmName = i => ((W.d.names || [])[i + 2] || "");   // the list starts with the two mix tracks, then the inputs
-const wmClock = () => W.d.tc_mode_idx === 0 ? W.d.file_time : W.d.tc;   // timecode off: show the file's elapsed time
+// timecode off: the file's elapsed time, plus the pre-roll the unit counts while recording (HH:MM:SS:FF)
+const wmClock = () => {
+  if (W.d.tc_mode_idx !== 0) return W.d.tc;
+  const t = W.d.file_time, pre = wmRecording() ? S.pre || 0 : 0;
+  if (!t || !pre) return t;
+  const [h, m, s, f] = t.split(":").map(Number), T = h * 3600 + m * 60 + s + pre, p = n => String(n).padStart(2, "0");
+  return `${p(Math.floor(T / 3600))}:${p(Math.floor(T % 3600 / 60))}:${p(T % 60)}:${p(f)}`;
+};
 const wmIsOn = i => (W.d.inputs_on || []).includes(i + 1);
 // RECORD_TRACK_ARMS as the unit does (checked on a MixPre-10 II): bit 1 = mix L, bit 2 = mix R, bits 3-4 = X1 / X2 (the unit won't arm them), bit 5 = input 1 ...
 const ARM_INPUT0 = 5;
@@ -2715,6 +2722,7 @@ function applyState(m) {
   for (const k of ["mode","role","midi","hid","usb","arm","mute","solo","transport","name","version"]) if (m[k] !== undefined) S[k] = m[k];
   if (m.levels) S.levels = m.levels;
   if (m.wm_link !== undefined) { S.wmLink = m.wm_link; S.clinkKey = m.clink_key_set; S.clinkPw = m.clink_pw_set; S.clinkAddr = m.clink_addr; }
+  if (m.pre_roll !== undefined) S.pre = m.pre_roll;
   if (m.pre_roll !== undefined && document.activeElement !== $("preRoll")) $("preRoll").value = m.pre_roll;
   if (m.rec_s !== undefined) { S.rec_s = m.rec_s; S.rec_at = performance.now(); }
   render();
@@ -2722,7 +2730,7 @@ function applyState(m) {
 // Recording timer: counted from when the MixPre's Rec LED came on (the MixPre doesn't send its own clock)
 function fmtRec(sec) { sec = Math.max(0, Math.floor(sec)); const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60; return (h ? h + ":" : "") + String(m).padStart(h ? 2 : 1, "0") + ":" + String(s).padStart(2, "0"); }
 // "HH:MM:SS:FF" from the unit -> "MM:SS" (or "H:MM:SS" past an hour), as the status bar shows it
-const fmtFileTime = t => { const [h, m, sec] = String(t).split(":").map(Number); return h ? `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}` : `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`; };
+const fmtFileTime = (t, plus = 0) => { let [h, m, sec] = String(t).split(":").map(Number); let T = h * 3600 + m * 60 + sec + plus; h = Math.floor(T / 3600); m = Math.floor(T % 3600 / 60); sec = T % 60; return h ? `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}` : `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`; };
 const fmtClock = sec => { sec = Math.max(0, Math.floor(sec)); const p = n => String(n).padStart(2, "0"); return `${p(Math.floor(sec / 3600))}:${p(Math.floor(sec % 3600 / 60))}:${p(sec % 60)}`; };
 const isRecording = () => ctlOn && (wmFresh() ? wmRecording() : hasMidi() && !!(S.transport & 16));
 const isPlaying = () => ctlOn && !isRecording() && (wmFresh() ? wmPlaying() : hasMidi() && !!(S.transport & 1));
@@ -2733,7 +2741,7 @@ function tickTimer() {
   const sd = document.querySelector("#sscreen .lsdt");   // Simple home status bar (manual p20): while recording / playing the file's elapsed time with a yellow file icon, else the SD icon and "—" (time left is unknown)
   if (sd) {
     const live = wmFresh() && (isRecording() || isPlaying()) && W.d.file_time;   // the unit's own file time over Bluetooth, else our REC timer
-    const v = live ? fmtFileTime(W.d.file_time) : !bt && isRecording() && S.rec_s != null && S.rec_at != null ? fmtRec(S.rec_s + (performance.now() - S.rec_at) / 1000) : "—";
+    const v = live ? fmtFileTime(W.d.file_time, isRecording() ? S.pre || 0 : 0) : !bt && isRecording() && S.rec_s != null && S.rec_at != null ? fmtRec(S.rec_s + (performance.now() - S.rec_at) / 1000) : "—";
     if (sd.textContent !== v) sd.textContent = v;
     const act = v === "—" ? "" : isRecording() ? "rec" : "play";
     if (sd.parentElement.dataset.act !== act) sd.parentElement.dataset.act = act;
@@ -2774,7 +2782,7 @@ function render() {
     if (view === "simple" && sim.id !== "home") { sim.id = "home"; sim.page = 0; renderSimple(); }
     closeChannel();
   }
-  $("preRoll").disabled = $("preRollSave").disabled = btOn; $("preNote").hidden = !btOn;
+  $("preNote").hidden = !btOn;
   rows.forEach((r, i) => {
     r.nm.textContent = btOn ? wmName(i) : ""; r.row.classList.toggle("btarm", only);
     r.row.classList.toggle("off", btOn && !wmIsOn(i));
