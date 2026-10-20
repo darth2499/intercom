@@ -635,6 +635,51 @@ body.simple .tabbar [data-tab]{display:none}
 .pill{flex:0 1 auto;min-width:0;max-width:40%;overflow:hidden;text-overflow:ellipsis}
 .homelink,.iconbtn{flex:none}
 html,body{overflow-x:clip}
+
+/* MixPre Bluetooth (wm) */
+.rsub{display:flex;gap:var(--s3);flex-wrap:wrap;justify-content:center;font-size:var(--t2);color:var(--muted);min-height:1.2em;margin-top:-6px}
+.rsub span:first-child{color:var(--text);font-weight:600}
+body.wmtc .rcard .rtime{font-size:40px}
+body.wmtc .rbar .rtime{font-size:18px}
+@media (max-height:760px){body.wmtc .rcard .rtime{font-size:31px}}
+@media (max-height:520px){body.wmtc .rcard .rtime{font-size:26px}}
+.irow{position:relative}
+.irow .inm{max-width:74px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--t1);color:var(--muted)}
+.irow .inm:empty{display:none}
+.irow.off{opacity:.45}
+.imet{position:absolute;left:34px;right:4px;bottom:1px;height:3px;border-radius:2px;background:rgba(255,255,255,.06);overflow:hidden;opacity:0;pointer-events:none;display:block}
+.imet u{position:absolute;inset:0;background:linear-gradient(90deg,#79d444 0 66%,#e6c93f 66% 82.3%,#e0382d 82.3% 100%);clip-path:inset(0 100% 0 0);text-decoration:none}
+.imet s{display:none}
+.imet.lim{box-shadow:0 0 0 1px #e6c93f}
+.wmsheet .take{padding:var(--s3);border-radius:var(--r1);background:var(--panel);margin-bottom:var(--s2)}
+.wmsheet .take.edit{cursor:pointer}
+.wmsheet .take.cur{outline:1px solid var(--faint)}
+.wmsheet .tk1{display:flex;gap:var(--s2);align-items:center;font-family:var(--mono)}
+.wmsheet .tag{font-size:var(--t1);padding:1px 6px;border-radius:6px;background:var(--panel2);color:var(--muted);font-family:inherit}
+.wmsheet .tk2{font-size:var(--t2);color:var(--muted);margin-top:2px}
+.wmsheet input[type=text],.wmsheet input[type=number],.wmsheet select{width:100%;min-height:44px;box-sizing:border-box}
+.wmsheet .rsrow{display:flex;flex-direction:column;gap:4px;margin-bottom:var(--s3);font-size:var(--t2);color:var(--muted)}
+.wmsheet button.b.danger.confirm{background:var(--red)}
+#wmScrim{z-index:23}
+.wmsheet{z-index:24}
+
+/* MixPre-10 II Home */
+.lbatt.ext{display:grid;place-items:center;background:linear-gradient(#5fd54a,#2f9d22);color:#14400f;font-weight:700;font-size:calc(var(--u)*4);line-height:1;overflow:hidden;letter-spacing:.04em}
+.lhome-s.l10{grid-template-rows:minmax(0,30fr) auto minmax(0,48fr) minmax(0,11fr)}
+.l10m .lscale{gap:calc(var(--u)*.5)}
+.l10m .lgap{margin-top:0}
+.lvt{display:grid;grid-template-rows:minmax(0,1fr) auto;min-height:0;margin-top:calc(var(--u)*.6)}
+.lvbars,.lnums{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));column-gap:calc(var(--u)*1.1)}
+.lvbars{min-height:0;padding:0 calc(var(--u)*.2)}
+.vtk{position:relative;display:block;overflow:hidden;font-style:normal;width:46%;margin:0 auto;height:100%}
+.vtk u{position:absolute;inset:0;background:linear-gradient(0deg,var(--lcd-mg) 0 60%,var(--lcd-my) 60% 94%,var(--lcd-mr) 94% 100%);clip-path:inset(100% 0 0 0);text-decoration:none}
+.vtk s{position:absolute;left:0;right:0;bottom:0;height:calc(var(--u)*.9);background:var(--lcd-mpeak);opacity:0;text-decoration:none;transform:translateY(50%)}
+.vtk.lim u{filter:saturate(1.3)}
+.lnums{margin-top:calc(var(--u)*1.2)}
+.lnums .ltrk{flex:none;height:calc(var(--u)*7.2);font-size:calc(var(--u)*4.8);border-radius:calc(var(--u)*.3)}
+.lnums .ltrk.off{background:none;color:#fff}
+.ltrk.off{background:none;color:#fff}
+.sbtnrow.has4{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) 52px}
 </style>
 </head>
 <body>
@@ -702,6 +747,7 @@ html,body{overflow-x:clip}
         <div class="lname" id="lname"></div>
         <div class="rstate"><span class="rdot"></span><span class="rstext">STOPPED</span></div>
         <div class="rtime">--:--:--</div>
+        <div class="rsub" id="rSub"></div>
         <div class="rctl">
           <button class="rbtn sm" data-tr="stop" aria-label="Stop"><svg width="20" height="20" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2.5" fill="currentColor"/></svg></button>
           <button class="rbtn rec" data-tr="rec" aria-label="Record"><i></i></button>
@@ -712,6 +758,7 @@ html,body{overflow-x:clip}
           <button class="rp" data-tr="cue">Mark</button>
           <button class="rp" data-tr="ff">Forward</button>
         </div>
+        <div class="rpills" id="wmPills" hidden><button class="rp" id="btTakes">Takes</button><button class="rp" id="btRecSet">Recorder settings</button></div>
         <div class="amet" aria-hidden="true"><i class="ab"><u></u><s></s></i><i class="ab"><u></u><s></s></i></div>
       </section>
       <section class="inputs" aria-label="Inputs">
@@ -802,7 +849,7 @@ html,body{overflow-x:clip}
         <button class="b knob" id="sKnob" aria-label="Knob press">Press</button>
         <button class="b knob" id="sKnobR" data-hold="UP" aria-label="Headphone knob right">HP vol ↷</button>
       </div>
-      <div class="sbtnrow"><button class="b" id="sBack">↰ Back</button><button class="b" id="sHome">Home</button><button class="b" id="sHelp" aria-label="About this screen">?</button></div>
+      <div class="sbtnrow" id="sBtnRow"><button class="b" id="sBack">↰ Back</button><button class="b" id="sHome">Home</button><button class="b" id="sTakes" hidden>Takes</button><button class="b" id="sHelp" aria-label="About this screen">?</button></div>
       <div class="rbar sbar" aria-label="Recorder">
         <span class="rdot"></span><span class="rtime">--:--:--</span>
         <button class="rbtn" data-tr="stop" aria-label="Stop"><svg width="16" height="16" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3" fill="currentColor"/></svg></button>
@@ -852,6 +899,26 @@ html,body{overflow-x:clip}
   <div class="kv" id="devInfo"></div>
 </div>
 
+<div class="scrim" id="wmScrim" hidden></div>
+<aside class="sheet wmsheet" id="takesSheet" hidden>
+  <h3>Takes <button class="iconbtn wmclose" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></h3>
+  <div id="takeList"></div>
+  <div class="group" id="takeForm" hidden>
+    <h4 id="takeFormTitle">Edit take</h4>
+    <div class="sublabel">File name</div><input type="text" id="tkName" maxlength="40" autocomplete="off">
+    <div class="sublabel">Take number</div><input type="text" id="tkNum" maxlength="12" autocomplete="off">
+    <div class="sublabel">Notes</div><input type="text" id="tkNotes" maxlength="120" autocomplete="off">
+    <div class="row"><button class="b" id="takeSave">Save</button></div>
+  </div>
+  <div class="row"><button class="b danger" id="takeUndo" data-confirm>Undo last take</button></div>
+  <p class="small">Undo moves the current take to the MixPre's trash. It asks twice.</p>
+</aside>
+<aside class="sheet wmsheet" id="recSheet" hidden>
+  <h3>Recorder settings <button class="iconbtn wmclose" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></h3>
+  <p class="small" id="recSetNote"></p>
+  <div class="group" id="recSetBox"></div>
+</aside>
+
 <aside class="sheet" id="sheet" hidden>
   <h3>Settings <button class="iconbtn" id="closeSheet" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></h3>
 
@@ -899,10 +966,27 @@ html,body{overflow-x:clip}
     <p class="small">Device address: <code id="macVal">—</code></p>
   </div>
 
+  <div class="group" id="wmGroup">
+    <h4>MixPre Bluetooth</h4>
+    <p>Reads the MixPre over Bluetooth like the Wingman app: real timecode, file names, meters, takes. Close Wingman on other phones first: the MixPre takes one connection.</p>
+    <div class="seg" id="wmSeg"><button data-v="0">Off</button><button data-v="1">On</button></div>
+    <div class="wifistatus" id="wmState" style="margin-top:var(--s3)">—</div>
+    <div class="kv" id="wmInfo"></div>
+    <div class="row"><button class="b" id="wmScan">Scan for MixPres</button></div>
+    <div class="netlist" id="wmList"></div>
+    <div class="sublabel">Wingman password (only if you set one on the MixPre)</div>
+    <div class="typer"><input type="password" id="wmPw" placeholder="Password" autocomplete="off"><button class="b" id="wmPwSave">Save</button><button class="b" id="wmPwClear">Clear</button></div>
+    <p class="small" id="wmKeyState" style="margin-top:var(--s2)"></p>
+    <div id="wmGo" hidden>
+      <div class="sublabel">Show on the MixPre</div>
+      <div class="typer"><input type="text" id="wmMsg" maxlength="60" placeholder="A short message for its screen" autocomplete="off"><button class="b" id="wmMsgSend">Show</button></div>
+    </div>
+  </div>
+
   <div class="sech">MixPre</div>
   <div class="group">
     <h4>View</h4>
-    <p>Simple copies the recorder's own screen (MixPre-6 II). Advanced is the full remote.</p>
+    <p>Simple copies the recorder's own screen (MixPre-6 II or 10 II). Advanced is the full remote.</p>
     <div class="seg" id="viewSeg"><button data-v="simple">Simple</button><button data-v="advanced">Advanced</button></div>
   </div>
 
@@ -1171,6 +1255,9 @@ function handleServerMsg(m) {
   else if (m.type === "pair") onPair(m);
   else if (m.type === "peer") Aud.onPeer(m.from, m.d || {});
   else if (m.type === "simple") simRemote(m);
+  else if (m.type === "wm") applyWm(m);
+  else if (m.type === "wm_result") onWmResult(m);
+  else if (m.type === "wm_scan") { W.units = m.units || []; W.scanning = false; renderWmSettings(); }
 }
 function applyNet(n) {
   S.net = n;
@@ -1501,7 +1588,8 @@ class CloudTransport {
 /* ============================================================ demo mode (hidden: tap the version 5 times)
    A pretend MixPre inside the page, so every control can be tried without hardware. */
 class DemoTransport {
-  constructor() {
+  constructor(wm) {
+    this.wm = wm || 0;   // ?wmdemo=10 (or 6): also pretend to be a MixPre linked over Bluetooth, with live timecode, meters and takes
     this.kind = "Demo"; this.mode = "both"; this.leds = {}; this.held = {}; this.heldKey = false;
     this.levels = new Array(16).fill(255);
     this.net = { type: "net", name: "Demo MixPre", version: "demo", code: "DEMO2345", relay_url: "", cloud: false,
@@ -1513,6 +1601,72 @@ class DemoTransport {
     setSearching(false); showControl(true); setConn("ok", "Demo mode");
     handleServerMsg({ type: "logs", lines: ["Demo mode — nothing is sent to a MixPre. Disconnect in Settings to leave."] });
     this.emit(); this.emitNet();
+    if (this.wm) this.wmStart();
+  }
+  // ---- the pretend Bluetooth link (what the Pi's `wm` messages carry)
+  wmStart() {
+    const ten = this.wm === 10, n = ten ? 10 : 4;
+    this.u = { link: "linked", error: "", model: ten ? "MixPre-10 II" : "MixPre-6 II", serial: ten ? "TJ0120170013" : "TH0621091534", fw: ten ? "9.01" : "9.02", unit_mode: "advanced",
+      fps: "23.98", fps_idx: 0, drop: false, transport: "stop", arms: [1, 2], inputs_on: ten ? [1, 2, 3, 4, 5, 6, 7, 8] : [1, 2, 3, 4], linking: { outputs: 0, inputs: 0, ms: 0 },
+      sample_rate: 48000, sample_rate_idx: 3, bit_depth: 2, tc_mode: "external auto-rec", tc_mode_idx: 8, ballistics: "peak+vu", ballistics_idx: 3, peak_hold: 3,
+      file: "Audio-004.WAV", next_file: "Audio-005.WAV", file_time: "00:00:00:00", tc: "07:38:44:07",
+      names: ["Boom Mix", "Lav Mix", "Boom", "Lav 1", "Lav 2", "Lav 3", "Lav 4", "Track 6", "Boom Left", "Boom Right", "Ch 9", "Ch 10"].slice(0, n + 2) };
+    this.takes = [{ h: 6, i: 0, name: "Audio-005.WAV", number: "005", tc: "", notes: "" }, { h: 5, i: 1, name: "Audio-004.WAV", number: "004", tc: "07:36:10:12", notes: "good, plane" },
+      { h: 4, i: 2, name: "Audio-003.WAV", number: "003", tc: "07:31:02:00", notes: "" }, { h: 3, i: 3, name: "Audio-002.WAV", number: "002", tc: "07:20:41:08", notes: "wild" }];
+    this.lv = Array.from({ length: n }, (_, i) => -70 + i * 3); this.f = 0; this.fc = 0;
+    this.pub({ type: "wm", full: true, ...this.u });
+    this.wmTimer = setInterval(() => this.wmTick(n), 110);
+  }
+  pub(m) { handleServerMsg(m); }
+  wmTick(n) {
+    const u = this.u, rec = u.transport === "record";
+    this.f += 2.6;   // 23.98 fps timecode, 110 ms per tick
+    const adv = (t, k) => { const [h, m, s, f] = t.split(":").map(Number); let T = (((h * 60 + m) * 60 + s) * 24 + f) + k; T = Math.floor(T); const ff = T % 24, ss = Math.floor(T / 24) % 60, mm = Math.floor(T / 1440) % 60, hh = Math.floor(T / 86400) % 24; const p = x => String(x).padStart(2, "0"); return `${p(hh)}:${p(mm)}:${p(ss)}:${p(ff)}`; };
+    u.tc = adv(u.tc, 2.6); if (rec) u.file_time = adv(u.file_time, 2.6);
+    const t = Date.now() / 1000, up = { tc: u.tc };
+    if (rec) up.file_time = u.file_time;
+    // meters: peak dB per input, a slow wandering signal on the armed ones; [vu(none), peak, limiter]
+    const inm = [], armed = u.arms;
+    for (let i = 0; i < n; i++) {
+      const on = u.inputs_on.includes(i + 1);
+      let pk = -122;
+      if (on) pk = -64 + 38 * (0.5 + 0.5 * Math.sin(t * (0.9 + i * 0.37) + i)) + (armed.includes(i + 1) ? 6 : 0) * Math.sin(t * 3 + i) - (rec ? 0 : 8);
+      inm.push([null, Math.round(pk), pk > -2 ? 1 : 0]);
+    }
+    const l = inm.length ? Math.max(...inm.slice(0, 2).map(x => x[1])) : -122;
+    up.m = { in: inm, out: [[null, Math.round(l - 2), 0], [null, Math.round(l - 5), 0]], aux: [], trk: [], ret: [] };
+    this.pub({ type: "wm", ...up });
+  }
+  wmDelta(d) { Object.assign(this.u, d); this.pub({ type: "wm", ...d }); }
+  wmResult(o, extra) { this.pub({ type: "wm_result", op: o.op, id: o.id, ok: true, ...extra }); }
+  wmFail(o, error) { this.pub({ type: "wm_result", op: o.op, id: o.id, ok: false, error }); }
+  wmOp(o) {
+    const u = this.u, rec = u.transport === "record";
+    switch (o.op) {
+      case "wm_transport": {
+        const a = o.action, nt = a === "rec" ? "record" : a === "stop" ? "stop" : a === "play" ? "play" : "pause";
+        this.log("wm_transport " + a);
+        if (nt === "stop" && rec) { this.takes.forEach(t => t.i++); const k = this.takes.length + 5; this.takes.unshift({ h: k, i: 0, name: "Audio-" + String(k).padStart(3, "0") + ".WAV", number: String(k).padStart(3, "0"), tc: "", notes: "" });
+          this.takes[1].tc = u.tc; this.wmDelta({ transport: "stop", file: this.takes[1].name, next_file: this.takes[0].name, file_time: "00:00:00:00" }); }
+        else this.wmDelta({ transport: nt });
+        return this.wmResult(o);
+      }
+      case "wm_arm": {
+        const ok = o.tracks.filter(n => ![3, 4].includes(n));     // the real unit refused arming 3 and 4 in Yuki's setup
+        this.wmDelta({ arms: ok }); return this.wmResult(o);
+      }
+      case "wm_takes": return this.wmResult(o, { takes: this.takes.map(t => ({ ...t })) });
+      case "wm_take": { const t = this.takes[o.which === "next" ? 0 : 1]; if (!t) return this.wmFail(o, "No take");
+        if (rec && o.field !== "notes") return this.wmFail(o, "The name and number cannot be changed while recording");
+        t[{ name: "name", number: "number", notes: "notes" }[o.field]] = o.value; if (o.field === "name") this.wmDelta(o.which === "next" ? { next_file: o.value } : { file: o.value }); return this.wmResult(o); }
+      case "wm_undo": { if (rec) return this.wmFail(o, "Undo is not possible while recording"); const k = this.takes.findIndex(t => t.i === 1); if (k < 0) return this.wmFail(o, "No current take");
+        this.takes.splice(k, 1); this.takes.forEach(t => { if (t.i > 1) t.i--; }); this.wmDelta({ file: (this.takes.find(t => t.i === 1) || { name: "" }).name }); return this.wmResult(o); }
+      case "wm_track_name": { const names = u.names.slice(); names[o.track + 1] = o.name; this.wmDelta({ names }); return this.wmResult(o); }
+      case "wm_setting": { if (rec) return this.wmFail(o, "Changing recorder settings is not possible while recording or playing");
+        const map = { sample_rate: "sample_rate_idx", bit_depth: "bit_depth", tc_mode: "tc_mode_idx", fps: "fps_idx", ballistics: "ballistics_idx", peak_hold: "peak_hold" };
+        const d = { [map[o.name]]: o.value }; if (o.name === "fps") d.fps = WM_LABEL.fps[o.value]; if (o.name === "tc_mode") d.tc_mode = WM_LABEL.tcMode[o.value]; this.wmDelta(d); return this.wmResult(o); }
+      case "wm_message": this.log("Show on MixPre: " + o.text); return this.wmResult(o);
+    }
   }
   log(t) { handleServerMsg({ type: "log", line: new Date().toTimeString().slice(0, 8) + " " + t }); }
   emit() {
@@ -1524,7 +1678,8 @@ class DemoTransport {
     }
     const tr = (this.leds[CC.play] ? 1 : 0) | (this.leds[CC.stop] ? 2 : 0) | (this.leds[CC.rec] ? 16 : 0);
     handleServerMsg({ type: "state", mode: this.mode, midi: this.mode !== "keyboard", hid: this.mode !== "midi", usb: true,
-      arm, mute, solo, transport: tr, levels: this.levels.slice(), name: "Demo MixPre", version: "demo" });
+      arm, mute, solo, transport: tr, levels: this.levels.slice(), name: "Demo MixPre", version: "demo",
+      wm_link: !!this.wm, clink_key_set: true, clink_pw_set: false, clink_addr: "B8:D7:AF:CF:D4:0F" });
   }
   emitNet() { handleServerMsg(Object.assign({}, this.net)); }
   press(cc) {   // what a MixPre does with the controller LEDs
@@ -1556,7 +1711,10 @@ class DemoTransport {
   }
   sendJson(o) {
     const n = this.net;
+    if (this.wm && o.op && o.op.startsWith("wm_") && !["wm_link", "wm_pick", "wm_scan", "wm_probe"].includes(o.op)) return this.wmOp(o);
     switch (o.op) {
+      case "wm_scan": setTimeout(() => handleServerMsg({ type: "wm_scan", units: [{ name: "", address: "B8:D7:AF:CF:D4:0F", rssi: -48, model: "MixPre-10 II", firmware: "9.01", serial: "TJ0120170013" }, { name: "", address: "B8:D7:AF:11:22:33", rssi: -80, model: "MixPre-6 II", firmware: "9.02", serial: "TH0621091534" }] }), 700); break;
+      case "wm_pick": case "wm_link": case "set_clink_password": this.log(o.op); break;
       case "wifi_scan":
         setTimeout(() => { n.networks = [{ ssid: "Studio WiFi", signal: 82, secure: true }, { ssid: "Yuki's iPhone", signal: 70, secure: true }, { ssid: "Hotel Guest", signal: 41, secure: false }]; this.emitNet(); }, 600);
         break;
@@ -1580,7 +1738,7 @@ class DemoTransport {
       default: this.emitNet();
     }
   }
-  disconnect() {}
+  disconnect() { clearInterval(this.wmTimer); }
 }
 let verTaps = 0, verTimer = null;
 function verTap() {
@@ -1949,6 +2107,187 @@ function startCloud(r) {
   transport.connect();
 }
 
+/* ============================================================ MixPre Bluetooth link (the Pi's C.Link connection, "wm" messages)
+   The Pi publishes what the MixPre reports over Bluetooth: timecode, file names, transport, real meters, arm / on state, track names.
+   Control priority is Bluetooth > MIDI > keyboard: wmFresh() says whether the Bluetooth path is usable right now. */
+const W = { d: {}, at: 0, m: null, pk: {}, hd: {}, hdAt: {}, lim: {}, units: [], takes: null, scanning: false };
+const REC_STATES = ["record", "rec_play", "rec_pending"];
+const wmLinked = () => W.d.link === "linked";
+// fresh = linked and either heard from within 1.5 s (the Pi sends meters about 8 times a second) or on the Bluetooth page link, which gets no meters
+const wmFresh = () => wmLinked() && !!transport && (transport.kind === "Bluetooth" || performance.now() - W.at < 1500);
+const wmRecording = () => REC_STATES.includes(W.d.transport);
+const wmPlaying = () => ["play", "rec_play"].includes(W.d.transport);
+const wmTen = () => /10/.test(W.d.model || "");
+// the model the page copies: the linked unit's own name, else the MixPre model setting
+const unitModel = () => W.d.model && wmLinked() ? (/10/.test(W.d.model) ? 10 : /3/.test(W.d.model) ? 3 : 6) : model;
+let wmSeq = 0; const wmCb = {}, wmMine = new Set();
+const wmClient = Math.random().toString(36).slice(2, 7);
+function wmOp(op, args = {}, cb) {
+  const id = wmClient + (++wmSeq);
+  wmMine.add(id); if (cb) wmCb[id] = cb;
+  sendJson({ op, id, ...args });
+}
+function onWmResult(m) {
+  if (!wmMine.has(m.id)) return;            // another phone's op
+  wmMine.delete(m.id);
+  const cb = wmCb[m.id]; delete wmCb[m.id];
+  if (cb) cb(m);
+  else if (!m.ok) toast(m.error || "The MixPre refused", 3500);
+}
+function wmMeterUpdate(m) {
+  const now = performance.now();
+  const one = (key, a) => {
+    const pk = a && a[1] != null ? a[1] : -120;
+    W.pk[key] = pk; W.lim[key] = !!(a && a[2]);
+    if (pk >= (W.hd[key] ?? -120)) { W.hd[key] = pk; W.hdAt[key] = now; }
+    else if (now - (W.hdAt[key] || 0) > 1500) W.hd[key] = pk;   // the hold marker drops to the level after 1.5 s
+  };
+  (m.out || []).slice(0, 2).forEach((a, i) => one("o" + i, a));
+  (m.in || []).forEach((a, i) => one("i" + i, a));
+}
+let wmRaf = 0;
+function applyWm(m) {
+  if (m.full) W.d = {};
+  let state = false;
+  for (const k in m) {
+    if (k === "type" || k === "full") continue;
+    if (k === "m") { W.m = m.m; wmMeterUpdate(m.m); }
+    else { W.d[k] = m[k]; if (k !== "tc" && k !== "file_time") state = true; }
+  }
+  W.at = performance.now();
+  if (state || m.full) { if (!wmRaf) wmRaf = requestAnimationFrame(() => { wmRaf = 0; render(); }); }
+  else { tickTimer(); drawLevelMeters(); }
+}
+function wmTransport(k) {
+  const action = k === "rec" && wmRecording() ? "stop" : k === "play" && W.d.transport === "play" ? "pause" : k;
+  wmOp("wm_transport", { action });
+}
+// arm / disarm input n (1-based) through Bluetooth: the whole bitmap is sent; the unit decides what it accepts
+function wmArm(n) {
+  const cur = new Set(W.d.arms || []), want = !cur.has(n);
+  want ? cur.add(n) : cur.delete(n);
+  wmOp("wm_arm", { tracks: [...cur].sort((a, b) => a - b) }, r => {
+    if (!r.ok) return toast(r.error, 3500);
+    setTimeout(() => { if ((W.d.arms || []).includes(n) !== want) toast(`The MixPre did not ${want ? "arm" : "disarm"} input ${n}`, 3000); }, 900);
+  });
+}
+const wmName = i => ((W.d.names || [])[i + 2] || "");   // the list starts with the two mix tracks, then the inputs
+const wmClock = () => W.d.tc_mode_idx === 0 ? W.d.file_time : W.d.tc;   // timecode off: show the file's elapsed time
+const wmIsOn = i => (W.d.inputs_on || []).includes(i + 1);
+const wmIsArmed = i => (W.d.arms || []).includes(i + 1);
+const WM_LABEL = {
+  link: { off: "Off", connecting: "Connecting…", authenticating: "Authenticating…", linked: "Linked", retrying: "Not found, retrying…" },
+  rate: { 0: "44.1 kHz", 1: "47.952 kHz", 2: "47.952 kHz (F)", 3: "48 kHz", 4: "48.048 kHz", 5: "48.048 kHz (F)", 6: "88.2 kHz", 7: "96 kHz", 8: "192 kHz" },
+  fps: { 0: "23.98", 1: "24", 2: "25", 3: "29.97", 4: "29.97 DF", 5: "30", 6: "30 DF" },
+  tcMode: { 0: "Off", 1: "Rec Run", 2: "Free Run", 3: "Free Run, auto-mute", 4: "Free Run, jam once", 5: "24 hour", 6: "24 hour, auto-mute", 7: "EXT", 8: "EXT, auto-rec", 9: "EXT, continuous", 10: "EXT, auto-rec continuous" },
+  ballistics: { 0: "VU", 2: "Peak", 3: "Peak + VU" },
+};
+const tcBadge = () => { const m = W.d.tc_mode_idx; return m === 0 ? "TC off" : m >= 7 ? "EXT" : m === undefined ? "" : "INT"; };
+
+function renderWmSettings() {
+  const on = !!S.wmLink, st = W.d.link || "off";
+  document.querySelectorAll("#wmSeg button").forEach(b => b.classList.toggle("on", (b.dataset.v === "1") === on));
+  const keyOk = S.clinkKey;
+  let line = on ? (WM_LABEL.link[st] || st) : "Off";
+  if (on && W.d.error && st !== "linked") line += " · " + W.d.error;
+  if (on && !keyOk) line = "Needs the Bluetooth key (set on the Pi)";
+  $("wmState").textContent = line;
+  $("wmState").className = "wifistatus" + (st === "linked" ? " ok" : "");
+  const kv = [];
+  if (wmLinked()) kv.push(["Unit", W.d.model || "—"], ["Serial", W.d.serial || "—"], ["Firmware", W.d.fw || "—"], ["Mode", W.d.unit_mode || "—"]);
+  if (S.clinkAddr) kv.push(["Address", S.clinkAddr]);
+  $("wmInfo").innerHTML = kv.map(([k, v]) => `<span>${k}</span><span>${escapeHtml(v)}</span>`).join("");
+  $("wmKeyState").textContent = (keyOk ? "Key loaded ✓" : "Key not loaded ✗") + (S.clinkPw ? " · password saved" : "");
+  $("wmScan").disabled = W.scanning;
+  $("wmScan").textContent = W.scanning ? "Scanning…" : "Scan for MixPres";
+  const box = $("wmList"); box.innerHTML = "";
+  for (const u of W.units) {
+    const b = document.createElement("div"); b.className = "netrow";
+    b.innerHTML = `<div class="top"><span class="nm">${escapeHtml(u.model || u.name || "MixPre")} · ${escapeHtml(u.serial || u.address)}</span><span class="meta">${u.address === S.clinkAddr ? "selected · " : ""}${u.rssi} dBm</span></div>`;
+    b.querySelector(".top").onclick = () => { sendJson({ op: "wm_pick", address: u.address }); toast("Using " + (u.serial || u.address)); };
+    box.append(b);
+  }
+  $("wmGo").hidden = !wmFresh();
+  $("sTakes").hidden = !wmFresh(); $("sBtnRow").classList.toggle("has4", wmFresh());
+}
+function wireWm() {
+  document.querySelectorAll("#wmSeg button").forEach(b => b.onclick = () => sendJson({ op: "wm_link", on: b.dataset.v === "1" }));
+  $("wmScan").onclick = () => { W.scanning = true; W.units = []; renderWmSettings(); sendJson({ op: "wm_scan" }); setTimeout(() => { if (W.scanning) { W.scanning = false; renderWmSettings(); } }, 15000); };
+  $("wmPwSave").onclick = () => { const v = $("wmPw").value; if (!v) return toast("Type the password first"); sendJson({ op: "set_clink_password", password: v }); $("wmPw").value = ""; toast("Password sent to the Pi"); };
+  $("wmPwClear").onclick = () => { sendJson({ op: "set_clink_password", password: "" }); $("wmPw").value = ""; toast("Password cleared"); };
+  $("wmMsgSend").onclick = () => { const t = $("wmMsg").value.trim(); if (t) wmOp("wm_message", { text: t, seconds: 5 }, r => toast(r.ok ? "Shown on the MixPre" : r.error)); };
+  $("sTakes").onclick = openTakes; $("btTakes").onclick = openTakes; $("btRecSet").onclick = openRecSettings;
+  $("wmScrim").onclick = closeWmSheets;
+  document.querySelectorAll(".wmclose").forEach(b => b.onclick = closeWmSheets);
+  confirmTap($("takeUndo"), undoTake);
+  $("takeSave").onclick = saveTake;
+  document.addEventListener("keydown", e => { if (e.key === "Escape") closeWmSheets(); });
+}
+function closeWmSheets() { $("takesSheet").hidden = true; $("recSheet").hidden = true; $("wmScrim").hidden = true; }
+function openWmSheet(id) { $(id).hidden = false; $("wmScrim").hidden = false; }
+/* ---- Takes */
+let takeEdit = null;
+function openTakes() { openWmSheet("takesSheet"); $("takeForm").hidden = true; takeEdit = null; loadTakes(); }
+function loadTakes() {
+  $("takeList").innerHTML = '<p class="small">Loading…</p>';
+  wmOp("wm_takes", {}, r => { W.takes = r.ok ? r.takes : []; if (!r.ok) toast(r.error); renderTakes(); });
+}
+function renderTakes() {
+  const box = $("takeList"); box.innerHTML = "";
+  const list = W.takes || [];
+  if (!list.length) box.innerHTML = '<p class="small">No takes yet.</p>';
+  const rec = wmRecording();
+  list.forEach(t => {
+    const row = document.createElement("div"); row.className = "take" + (t.i === 1 ? " cur" : "");
+    const tag = t.i === 0 ? "NEXT" : t.i === 1 ? "CURRENT" : "";
+    row.innerHTML = `<div class="tk1"><b>${escapeHtml(t.name)}</b>${tag ? `<span class="tag">${tag}</span>` : ""}</div>`
+      + `<div class="tk2">${t.number ? "Take " + escapeHtml(t.number) : ""}${t.tc ? " · " + escapeHtml(t.tc) : ""}${t.notes ? " · " + escapeHtml(t.notes) : ""}</div>`;
+    if (t.i <= 1) { row.classList.add("edit"); row.onclick = () => { takeEdit = t; $("takeForm").hidden = false; $("takeFormTitle").textContent = (t.i === 0 ? "Next take: " : "Current take: ") + t.name;
+      $("tkName").value = t.name; $("tkNum").value = t.number || ""; $("tkNotes").value = t.notes || ""; $("tkName").disabled = $("tkNum").disabled = rec; }; }
+    box.append(row);
+  });
+  $("takeUndo").disabled = rec || !list.some(t => t.i === 1);
+}
+function saveTake() {
+  const t = takeEdit; if (!t) return;
+  const which = t.i === 0 ? "next" : "current";
+  const jobs = [["name", $("tkName").value, t.name], ["number", $("tkNum").value, t.number || ""], ["notes", $("tkNotes").value, t.notes || ""]].filter(([, v, old]) => v !== old);
+  let left = jobs.length, bad = null;
+  if (!left) { $("takeForm").hidden = true; return; }
+  for (const [field, value] of jobs) wmOp("wm_take", { which, field, value }, r => { if (!r.ok) bad = r.error; if (!--left) { if (bad) toast(bad, 3500); else toast("Saved"); $("takeForm").hidden = true; setTimeout(loadTakes, 400); } });
+}
+function undoTake() {
+  const cur = (W.takes || []).find(t => t.i === 1); if (!cur) return;
+  wmOp("wm_undo", { handle: cur.h }, r => { toast(r.ok ? "Last take moved to the trash" : r.error, 3500); setTimeout(loadTakes, 500); });
+}
+/* ---- Recorder settings */
+const REC_SET = [
+  ["sample_rate", "sample_rate_idx", "Sample rate", WM_LABEL.rate],
+  ["bit_depth", "bit_depth", "Bit depth", null],
+  ["tc_mode", "tc_mode_idx", "Timecode mode", WM_LABEL.tcMode],
+  ["fps", "fps_idx", "Frame rate", WM_LABEL.fps],
+  ["ballistics", "ballistics_idx", "Meter ballistics", WM_LABEL.ballistics],
+  ["peak_hold", "peak_hold", "Peak hold", null],
+];
+function openRecSettings() { openWmSheet("recSheet"); renderRecSettings(); }
+function renderRecSettings() {
+  const box = $("recSetBox"); if ($("recSheet").hidden) return;
+  const locked = wmRecording() || wmPlaying();
+  $("recSetNote").textContent = locked ? "Settings can't change while recording or playing." : "These change the MixPre itself. Values the page doesn't know are shown as the unit's own number.";
+  box.innerHTML = "";
+  for (const [name, key, label, table] of REC_SET) {
+    const cur = W.d[key];
+    const row = document.createElement("label"); row.className = "rsrow"; row.innerHTML = `<span>${label}</span>`;
+    let el;
+    if (table) { el = document.createElement("select"); const vals = Object.keys(table).map(Number); if (cur !== undefined && !vals.includes(cur)) vals.push(cur);
+      vals.forEach(v => { const o = document.createElement("option"); o.value = v; o.textContent = table[v] || "Value " + v; el.append(o); }); }
+    else { el = document.createElement("input"); el.type = "number"; el.min = 0; el.max = name === "bit_depth" ? 32 : 59; }
+    el.value = cur === undefined ? "" : cur; el.disabled = locked;
+    el.onchange = () => wmOp("wm_setting", { name, value: +el.value }, r => { toast(r.ok ? "Changed on the MixPre" : r.error, 3000); });
+    row.append(el); box.append(row);
+  }
+}
+
 /* ============================================================ send helpers */
 const send = (...bytes) => transport && transport.send(new Uint8Array(bytes.flat()));
 const tapKey = (mods, ...keys) => send(OP.TAP_KEY, mods, keys);
@@ -2068,10 +2407,11 @@ const SMR = {
 const viaMidi = i => hasMidi() && i < MIDI_STRIPS;
 function pressSMR(i, k) {
   const d = SMR[k];
+  if (k === "r" && wmFresh()) return wmArm(i + 1);
   if (viaMidi(i)) return tapCC(d.cc() + i);
   if (needs("kb")) { tapKey(d.mods, DIGIT(i + 1)); kbToggle(d.lit, i); }
 }
-const isLit = (i, k) => !!((viaMidi(i) ? SMR[k].state() : kbLit[SMR[k].lit]) & (1 << i));
+const isLit = (i, k) => k === "r" && wmFresh() ? wmIsArmed(i) : !!((viaMidi(i) ? SMR[k].state() : kbLit[SMR[k].lit]) & (1 << i));
 // "Show this input on the MixPre"
 function openOnMixPre(i) { if (viaMidi(i)) tapCC(CC.open + i); else if (needs("kb")) tapKey(0, DIGIT(i + 1)); }
 const channelCount = () => CH_COUNT[model] || model;
@@ -2090,7 +2430,9 @@ function buildInputs() {
     const kbOnly = i >= MIDI_STRIPS;
     const row = document.createElement("div"); row.className = "irow";
     const num = document.createElement("button"); num.className = "n"; num.textContent = i + 1; num.setAttribute("aria-label", "Input " + (i + 1) + " details");
-    row.append(num);
+    const nm = document.createElement("span"); nm.className = "inm";
+    row.append(num, nm);
+    const imet = document.createElement("i"); imet.className = "imet"; imet.innerHTML = "<u></u><s></s>"; row.append(imet);
     let fader = null;
     if (kbOnly) { const k = document.createElement("span"); k.className = "keys"; k.textContent = "Keys only"; row.append(k); }
     else { fader = makeSlider(() => CC.fader + i); const fx = document.createElement("div"); fx.className = "fx"; fx.append(fader.el); row.append(fx); }
@@ -2104,7 +2446,7 @@ function buildInputs() {
     row.append(smr);
     row.onclick = e => { if (!e.target.closest(".slider, .smr")) openChannel(i); };
     box.append(row);
-    rows.push({ fader, btns, kbOnly });
+    rows.push({ fader, btns, kbOnly, nm, row, imet });
   }
   if (chIdx !== null) { if (chIdx >= total) closeChannel(); else renderSheet(); }
   redrawSliders(); render();
@@ -2189,7 +2531,7 @@ function statusInfo() {
   if (!S.usb) return { cls: "bad", short: "No MixPre", long: "MixPre not detected" };
   if (S.mode === "both" && S.role === "keyboard") return { cls: "warn", short: "MIDI waiting", long: "MixPre · keyboard (MIDI returns when you use S/M/R, a fader or transport)" };
   if (wantsMidi() && !S.midi) return { cls: "warn", short: "MIDI waiting", long: "USB ok · MIDI waiting" };
-  return { cls: "ok", short: "Connected", long: "MixPre · " + S.mode };
+  return { cls: "ok", short: wmFresh() ? "Connected · Bluetooth" : "Connected", long: "MixPre · " + S.mode + (wmFresh() ? " · Bluetooth ✓" : "") };
 }
 function renderStatus() {
   const st = statusInfo();
@@ -2198,7 +2540,7 @@ function renderStatus() {
   $("statusHead").className = "headline " + st.cls; $("statusHeadText").textContent = st.long;
   $("devInfo").innerHTML = [
     ["Name", S.name || "—"], ["Link", transport ? transport.label() : "—"], ["USB to MixPre", S.usb ? "connected" : "not detected"],
-    ["USB mode", S.mode], ["MIDI", S.midi ? "ready" : "—"], ["Keyboard", S.hid ? "ready" : "—"], ["Bridge version", S.version || "—"],
+    ["USB mode", S.mode], ["MIDI", S.midi ? "ready" : "—"], ["MixPre Bluetooth", !S.wmLink ? "off" : wmFresh() ? "linked ✓" : (WM_LABEL.link[W.d.link] || "waiting").toLowerCase()], ["Keyboard", S.hid ? "ready" : "—"], ["Bridge version", S.version || "—"],
   ].map(([k, v]) => `<span>${k}</span><span>${escapeHtml(v)}</span>`).join("");
   $("devLine").textContent = (S.name || "Not connected") + (transport ? " · " + transport.label() : "");
 }
@@ -2229,6 +2571,7 @@ function setTab(t) {
 function applyState(m) {
   for (const k of ["mode","role","midi","hid","usb","arm","mute","solo","transport","name","version"]) if (m[k] !== undefined) S[k] = m[k];
   if (m.levels) S.levels = m.levels;
+  if (m.wm_link !== undefined) { S.wmLink = m.wm_link; S.clinkKey = m.clink_key_set; S.clinkPw = m.clink_pw_set; S.clinkAddr = m.clink_addr; }
   if (m.pre_roll !== undefined && document.activeElement !== $("preRoll")) $("preRoll").value = m.pre_roll;
   if (m.rec_s !== undefined) { S.rec_s = m.rec_s; S.rec_at = performance.now(); }
   render();
@@ -2236,27 +2579,41 @@ function applyState(m) {
 // Recording timer: counted from when the MixPre's Rec LED came on (the MixPre doesn't send its own clock)
 function fmtRec(sec) { sec = Math.max(0, Math.floor(sec)); const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60; return (h ? h + ":" : "") + String(m).padStart(h ? 2 : 1, "0") + ":" + String(s).padStart(2, "0"); }
 const fmtClock = sec => { sec = Math.max(0, Math.floor(sec)); const p = n => String(n).padStart(2, "0"); return `${p(Math.floor(sec / 3600))}:${p(Math.floor(sec % 3600 / 60))}:${p(sec % 60)}`; };
-const isRecording = () => ctlOn && hasMidi() && !!(S.transport & 16);
+const isRecording = () => ctlOn && (wmFresh() ? wmRecording() : hasMidi() && !!(S.transport & 16));
+const isPlaying = () => ctlOn && !isRecording() && (wmFresh() ? wmPlaying() : hasMidi() && !!(S.transport & 1));
 function tickTimer() {
-  const t = isRecording() && S.rec_s != null && S.rec_at != null ? fmtClock(S.rec_s + (performance.now() - S.rec_at) / 1000) : "--:--:--";
+  const bt = wmFresh() && wmClock();
+  const t = bt ? wmClock() : isRecording() && S.rec_s != null && S.rec_at != null ? fmtClock(S.rec_s + (performance.now() - S.rec_at) / 1000) : "--:--:--";
   document.querySelectorAll(".rtime").forEach(e => { if (e.textContent !== t) e.textContent = t; });
   const sd = document.querySelector("#sscreen .lsdt");   // Simple home status bar: our REC elapsed time, else "—" (remaining time is unknown)
-  if (sd) { const v = isRecording() && S.rec_s != null && S.rec_at != null ? fmtRec(S.rec_s + (performance.now() - S.rec_at) / 1000) : "—"; if (sd.textContent !== v) sd.textContent = v; }
+  if (sd) { const v = !bt && isRecording() && S.rec_s != null && S.rec_at != null ? fmtRec(S.rec_s + (performance.now() - S.rec_at) / 1000) : "—"; if (sd.textContent !== v) sd.textContent = v; }
 }
 setInterval(tickTimer, 250);
 function renderRecorder() {
-  const on = ctlOn && hasMidi();
-  const recording = isRecording(), playing = on && !recording && !!(S.transport & 1);
+  const recording = isRecording(), playing = isPlaying(), bt = wmFresh();
   document.body.classList.toggle("recording", recording);
+  document.body.classList.toggle("wmtc", bt && !!wmClock());
   document.querySelectorAll(".rcard, .rbar").forEach(e => { e.classList.toggle("rec-on", recording); e.classList.toggle("play-on", playing); });
-  document.querySelector(".rstext").textContent = recording ? "RECORDING" : playing ? "PLAYING" : "STOPPED";
+  document.querySelector(".rstext").textContent = recording ? "RECORDING" : playing ? "PLAYING" : bt && W.d.transport === "pause" ? "PAUSED" : "STOPPED";
+  const sub = [];
+  if (bt) {
+    const fr = (W.d.fps || "") + (W.d.fps && /DF/.test(W.d.fps) ? "" : ""), badge = tcBadge();
+    sub.push([fr, badge].filter(Boolean).join(" · "));
+    const f = recording || playing ? W.d.file : W.d.next_file;
+    if (f) sub.push((recording || playing ? "" : "Next: ") + f);
+  }
+  $("rSub").innerHTML = sub.map(x => `<span>${escapeHtml(x)}</span>`).join("");
+  $("wmPills").hidden = !bt;
   document.querySelectorAll('[data-tr="play"]').forEach(b => b.classList.toggle("on", playing));
   tickTimer();
 }
 function render() {
   renderRecorder();
   $("brand").textContent = $("lname").textContent = S.name || "MixPre Remote";
+  const btOn = wmFresh();
   rows.forEach((r, i) => {
+    r.nm.textContent = btOn ? wmName(i) : "";
+    r.row.classList.toggle("off", btOn && !wmIsOn(i));
     const stale = viaMidi(i) && S.mode === "both" && S.role === "keyboard";   // MIDI is off while the Pi acts as a keyboard
     for (const k of ["s", "m", "r"]) { r.btns[k].classList.toggle("on", isLit(i, k)); r.btns[k].classList.toggle("stale", stale); }
     if (r.fader) { r.fader.set(S.levels[i] ?? 255); r.fader.el.style.opacity = hasMidi() ? "" : ".3"; }
@@ -2274,6 +2631,9 @@ function render() {
   document.querySelectorAll("#starSeg button").forEach(b => b.classList.toggle("on", b.dataset.v === starStyle));
   renderStatus();
   renderSheet();
+  renderWmSettings();
+  renderRecSettings();
+  if (!$("takesSheet").hidden) renderTakes();
   updateSimpleHome();
   if (view === "simple") {
     $("snokb").hidden = hasKb();
@@ -2363,7 +2723,7 @@ const MENU_6II = {
   channel: { kind: "tiles", channel: true, title: "Channel", back: "home", pagesFor: ch => {
     const smr = [{ label: "Solo", icon: "head", smr: "s" }, { label: "Mute", icon: "mute", smr: "m" }, { label: "Arm", icon: "arm", smr: "r" }];
     const gain = { label: "Gain", icon: "knob", on: true, stay: true }, pan = { label: "Pan", icon: "knob", to: "chPan", local: true };
-    return ch >= 4
+    return ch >= (unitModel() === 10 ? 8 : 4)
       ? [[...smr, gain, { label: "Fader", to: "chFader", local: true }, pan], [sT("Low Cut"), sT("Input"), sT("N.Asst"), sT("Linking")]]
       : [[...smr, gain, pan, sT("Low Cut")], [sT("Input"), sT("Phantom"), sT("Phase"), sT("Delay"), sT("N.Asst"), sT("Linking")]];
   } },
@@ -2459,7 +2819,7 @@ function simHeader(sc) {
   if (sc.headphone)   // Menu: headphone | title + dots | home
     return `<div class="lhead menu"><button class="lcell lhp" data-act="hp" aria-label="Headphones">LR Stereo${SIM_ICON.head}</button><div class="lcell ltitle"><b>${escapeHtml(title)}</b><div class="ldots">${dots}</div></div>${home}</div>`;
   if (sc.channel) {   // channel: "n: Ch n", the small channel meter (no levels, so empty), page dots, home. Page 1 has Gain pre-selected, with the ↓ — ↑ editor row (manual p19-p20)
-    const strip = `<div class="lcell lstrip"><i class="lsm"></i><i>-40 -20 0 L</i></div>`, ttl = `<div class="lcell ltitle"><b>${sim.ch + 1}: Ch ${sim.ch + 1}</b></div>`;
+    const strip = `<div class="lcell lstrip"><i class="lsm"></i><i>-40 -20 0 L</i></div>`, ttl = `<div class="lcell ltitle"><b>${sim.ch + 1}: ${escapeHtml((wmFresh() && wmName(sim.ch)) || "Ch " + (sim.ch + 1))}</b></div>`;
     const dotc = `<div class="lcell ldots">${dots}</div>`;
     if (sim.page === 0) return `<div class="lhead chan gain">${strip}${ttl}<div class="lcell lgedit"><button data-act="down" aria-label="Down">${SIM_ICON.down}</button><span>—</span><button data-act="up" aria-label="Up">${SIM_ICON.up}</button></div>${dotc}${home}</div>`;
     return `<div class="lhead chan">${ttl}${strip}${dotc}${home}</div>`;
@@ -2522,7 +2882,8 @@ function simPopup(sc) {
 // Level meters: scale -50..0 dB drawn on the MixPre's own scale (0 dB at 87% of the width, as on the recorder); peak hold marker
 const levelFrac = db => Math.max(0, Math.min(1, (db + 50) / 50)) * 0.87;
 function drawLevelMeters() {
-  const live = !!Aud.analysers;
+  const bt = wmFresh() && !!W.m;
+  const live = bt || !!Aud.analysers;
   const bars = [];
   if (simMeter && simMeter[0].isConnected) bars.push(...simMeter);
   const adv = document.querySelectorAll(".amet .ab");
@@ -2531,24 +2892,58 @@ function drawLevelMeters() {
   const none = document.querySelector("#sscreen .lnone"); if (none) none.style.display = live ? "none" : "";
   bars.forEach((el, k) => {
     const i = k % 2, fill = el.firstChild, hold = el.lastChild;
-    const f = live ? levelFrac(Aud.peaks[i]) : 0, h = live ? levelFrac(Aud.holds[i]) : 0;
+    const pk = bt ? (W.pk["o" + i] ?? -120) : Aud.peaks[i], hd = bt ? (W.hd["o" + i] ?? -120) : Aud.holds[i];
+    const f = live ? levelFrac(pk) : 0, h = live ? levelFrac(hd) : 0;
     fill.style.clipPath = `inset(0 ${((1 - f) * 100).toFixed(1)}% 0 0)`;   // the fill grows with the level; the gradient stays put
     if (el.classList.contains("lmb")) hold.style.left = (h * 100).toFixed(1) + "%";   // Simple home: the marker sits at the peak-hold level
     else hold.style.transform = `translateX(${(h * 100).toFixed(1)}%)`;
-    hold.style.opacity = live && Aud.holds[i] > -50 ? 1 : 0;
+    hold.style.opacity = live && hd > -50 ? 1 : 0;
+  });
+  // the Advanced input rows and the Simple 10 II track bars follow the unit's own input meters
+  rows.forEach((r, i) => { const on = bt && r.imet; if (!on) { r.imet.style.opacity = 0; return; } r.imet.style.opacity = 1;
+    r.imet.firstChild.style.clipPath = `inset(0 ${((1 - levelFrac(W.pk["i" + i] ?? -120) / 0.87) * 100).toFixed(1)}% 0 0)`;
+    r.imet.classList.toggle("lim", !!W.lim["i" + i]); });
+  const sm = document.querySelector("#sscreen .lsm");   // the channel screen's small meter (-40 .. 0)
+  if (sm) { const p = bt ? Math.max(0, Math.min(1, ((W.pk["i" + sim.ch] ?? -120) + 40) / 40)) * 100 : 0; sm.style.background = `linear-gradient(90deg,var(--lcd-mg) ${p.toFixed(0)}%,#000 ${p.toFixed(0)}%)`; }
+  document.querySelectorAll("#sscreen .vtk").forEach((el, i) => {
+    const f = bt ? Math.max(0, Math.min(1, ((W.pk["i" + i] ?? -120) + 50) / 50)) : 0, h = bt ? Math.max(0, Math.min(1, ((W.hd["i" + i] ?? -120) + 50) / 50)) : 0;
+    el.firstChild.style.clipPath = `inset(${((1 - f) * 100).toFixed(1)}% 0 0 0)`;
+    el.lastChild.style.bottom = (h * 100).toFixed(1) + "%"; el.lastChild.style.opacity = bt && (W.hd["i" + i] ?? -120) > -50 ? 1 : 0;
+    el.classList.toggle("lim", !!W.lim["i" + i]);
   });
 }
 let simMeter = null;   // cached bar elements of the Simple home, filled by simHome()
 // transport state for the file-name / timer colours: stopped, recording (red), playing (green); needs MIDI state, else stopped
-const simTr = () => !(ctlOn && hasMidi()) ? "stop" : isRecording() ? "rec" : (S.transport & 1) ? "play" : "stop";
-function simHome() {
-  const tr = [1, 2, 3, 4, 5, 6].map(n => `<button class="ltrk${S.arm & (1 << (n - 1)) ? " arm" : ""}" data-act="track" data-n="${n}" aria-label="Channel ${n}">${n}</button>`).join("");
-  return `<div class="lhome-s" data-tr="${simTr()}">
-    <div class="lhtop"><div class="lhl"><button class="ltop" data-act="files" aria-label="File list"><span class="wav">${SIM_ICON.wave}--------WAV</span></button><div class="ltc"><span class="lbig rtime">--:--:--</span><button class="lq" data-act="cue" aria-label="Cue marker">Q</button></div></div>
-      <button class="lcdtile lhmenu" data-act="menu" aria-label="Menu">${SIM_ICON.menu}</button><div class="lbatt" aria-hidden="true">${SIM_ICON.usb}</div></div>
+const simTr = () => !(ctlOn && (hasMidi() || wmFresh())) ? "stop" : isRecording() ? "rec" : isPlaying() ? "play" : "stop";
+// the file name on Home: the unit's current take when linked over Bluetooth, else dashes (as on the recorder with no take)
+const simFileBase = () => { const f = wmFresh() ? (W.d.file || "") : ""; return f.replace(/\.wav$/i, "") || "--------"; };
+const simTrkCls = (i, inputs) => wmFresh() ? (wmIsArmed(i) ? " arm" : i < inputs && !wmIsOn(i) ? " off" : "") : (S.arm & (1 << i) ? " arm" : "");
+const simExt = () => wmFresh() && (W.d.tc_mode_idx || 0) >= 7;
+function simHomeTop() {
+  const batt = simExt() ? '<div class="lbatt ext" aria-hidden="true">EXT</div>' : `<div class="lbatt" aria-hidden="true">${SIM_ICON.usb}</div>`;
+  return `<div class="lhtop"><div class="lhl"><button class="ltop" data-act="files" aria-label="File list"><span class="wav">${SIM_ICON.wave}<span class="fn">${escapeHtml(simFileBase())}</span>WAV</span></button><div class="ltc"><span class="lbig rtime">--:--:--</span><button class="lq" data-act="cue" aria-label="Cue marker">Q</button></div></div>
+      <button class="lcdtile lhmenu" data-act="menu" aria-label="Menu">${SIM_ICON.menu}</button>${batt}</div>`;
+}
+const SIM_SCALE = '<div class="lbar"><span>-50</span><span>-40</span><span>-30</span><span>-20</span><span>-12</span><span>0</span><span>L</span></div>';
+const SIM_FOOT = `<div class="lfoot lcdtile"><span class="lsd">${SIM_ICON.sd}<b class="lsdt">—</b></span><span class="lhpn">${SIM_ICON.head}LR Stereo</span></div>`;
+function simHome() { return unitModel() === 10 ? simHome10() : simHome6(); }
+function simHome6() {
+  const inputs = Math.min(4, wmLinked() ? (W.d.names || []).length - 2 || 4 : 4);
+  const tr = [1, 2, 3, 4, 5, 6].map(n => `<button class="ltrk${simTrkCls(n - 1, inputs)}" data-act="track" data-n="${n}" aria-label="Channel ${n}">${n}</button>`).join("");
+  return `<div class="lhome-s" data-tr="${simTr()}" data-m="6">${simHomeTop()}
     <div class="lmeters"><div class="ltrks"><span class="lr">L</span><span class="lr">R</span><span class="lgap"></span>${tr}</div>
-      <div class="lscale" data-act="meters"><div class="lrow2"><i class="lmb"><u></u><s></s></i><i class="lmb"><u></u><s></s></i></div><div class="lbar"><span>-50</span><span>-40</span><span>-30</span><span>-20</span><span>-12</span><span>0</span><span>L</span></div></div></div>
-    <div class="lfoot lcdtile"><span class="lsd">${SIM_ICON.sd}<b class="lsdt">—</b></span><span class="lhpn">${SIM_ICON.head}LR Stereo</span></div></div>`;
+      <div class="lscale" data-act="meters"><div class="lrow2"><i class="lmb"><u></u><s></s></i><i class="lmb"><u></u><s></s></i></div>${SIM_SCALE}</div></div>
+    ${SIM_FOOT}</div>`;
+}
+// MixPre-10 II Home (Yuki's photo): L over the scale band over R, ten vertical track bars rising over the numbered boxes
+function simHome10() {
+  const nums = Array.from({ length: 10 }, (_, i) => `<button class="ltrk${simTrkCls(i, 10)}" data-act="track" data-n="${i + 1}" aria-label="Channel ${i + 1}">${i + 1}</button>`).join("");
+  const vt = Array.from({ length: 10 }, () => '<i class="vtk"><u></u><s></s></i>').join("");
+  return `<div class="lhome-s l10" data-tr="${simTr()}" data-m="10">${simHomeTop()}
+    <div class="lmeters l10m"><div class="ltrks"><span class="lr">L</span><span class="lgap"></span><span class="lr">R</span></div>
+      <div class="lscale" data-act="meters"><div class="lrow2"><i class="lmb"><u></u><s></s></i></div>${SIM_SCALE}<div class="lrow2"><i class="lmb"><u></u><s></s></i></div></div></div>
+    <div class="lvt"><div class="lvbars">${vt}</div><div class="lnums">${nums}</div></div>
+    ${SIM_FOOT}</div>`;
 }
 let simSlider = null;
 // The Pi keeps the one shared copy position (`simple` messages) and also moves it for MixPre-side solos
@@ -2597,7 +2992,7 @@ let simKnob = null;
 function simUpdateCtl() {
   const cap = sim.id === "home" ? "HP vol" : inChannelPage() ? "Value" : "Scroll";
   $("sKnobL").textContent = "↶ " + cap; $("sKnobR").textContent = cap + " ↷";
-  const box = $("sKnobFader"), show = inChannelPage() && sim.ch < 4;
+  const box = $("sKnobFader"), show = inChannelPage() && sim.ch < (unitModel() === 10 ? 8 : 4);
   box.hidden = !show;
   if (!show) { simKnob = null; return; }
   if (simKnob && simKnob.ch === sim.ch) return;
@@ -2710,8 +3105,14 @@ function simScale() {
 }
 function updateSimpleHome() {
   if (sim.id !== "home") return;
-  const hs = document.querySelector("#sscreen .lhome-s"); if (hs) hs.dataset.tr = simTr();
-  document.querySelectorAll("#sscreen .ltrk").forEach((b, i) => b.classList.toggle("arm", !!(S.arm & (1 << i))));
+  const hs = document.querySelector("#sscreen .lhome-s");
+  if (hs && hs.dataset.m !== String(unitModel() === 10 ? 10 : 6)) return renderSimple();   // the linked unit is the other model
+  if (hs) hs.dataset.tr = simTr();
+  const ext = simExt(), has = !!document.querySelector("#sscreen .lbatt.ext");
+  if (ext !== has && hs) return renderSimple();
+  const fn = document.querySelector("#sscreen .fn"); if (fn && fn.textContent !== simFileBase()) fn.textContent = simFileBase();
+  const inputs = unitModel() === 10 ? 10 : 4;
+  document.querySelectorAll("#sscreen .ltrk").forEach((b, i) => { const c = simTrkCls(i, inputs); b.classList.toggle("arm", c === " arm"); b.classList.toggle("off", c === " off"); });
 }
 /* view switch: Advanced (the tabs) or Simple (the screen copy) */
 let view = store.get("view", "advanced");
@@ -2760,8 +3161,9 @@ function sendText(t) {   // typed on the MixPre's USB keyboard, 18 bytes per mes
 }
 function wireRecorder() {
   const tbtn = (el, ccName, kbMods, kbKey) => bindHold(el,
-    () => { if (hasMidi()) return send(OP.HOLD_CC, CC[ccName]); if (!el._sent && needs("kb")) { el._sent = true; tapKey(kbMods, kbKey); } return true; },
-    () => { if (hasMidi()) send(OP.REL_CC, CC[ccName]); el._sent = false; });
+    () => { if (wmFresh()) { if (!el._bt) { el._bt = true; wmTransport(el.dataset.tr); } return true; }   // Bluetooth first
+      if (hasMidi()) return send(OP.HOLD_CC, CC[ccName]); if (!el._sent && needs("kb")) { el._sent = true; tapKey(kbMods, kbKey); } return true; },
+    () => { if (el._bt) { el._bt = false; return; } if (hasMidi()) send(OP.REL_CC, CC[ccName]); el._sent = false; });
   const plain = { stop: ["stop", MOD.CTRL, KEY.S], play: ["play", 0, KEY.SPACE], rec: ["rec", MOD.CTRL, KEY.R] };
   document.querySelectorAll("[data-tr]").forEach(el => {
     const k = el.dataset.tr;
@@ -2773,6 +3175,7 @@ function wireRecorder() {
 }
 function wire() {
   wireRecorder();
+  wireWm();
 
   // navigation keys
   document.querySelectorAll("[data-hold]").forEach(el => holdKey(el, 0, KEY[el.dataset.hold]));
@@ -3081,7 +3484,12 @@ if (!PI_SERVED) {
   const pm = location.hash.match(/pair=([A-Za-z0-9_-]+)/);
   if (pm) { addToken(pm[1]); try { history.replaceState(null, "", location.pathname + location.search); } catch {} setTimeout(() => toast("Phone paired"), 400); }
 }
-if (PI_SERVED) {
+if (params.has("wmdemo")) {
+  // ?wmdemo=10 (or 6): the page against a pretend MixPre that is linked over Bluetooth (screenshots, trying the UI)
+  $("choices").hidden = true;
+  transport = new DemoTransport(params.get("wmdemo") === "6" ? 6 : 10);
+  transport.connect();
+} else if (PI_SERVED) {
   // Opened from the Pi itself (hotspot / mixpre.local) -> plain WebSocket, works in every browser
   $("choices").hidden = true;
   setSearching(true, "Connecting over Wi‑Fi…");
