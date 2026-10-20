@@ -489,7 +489,7 @@ button.lcdtile:active{filter:brightness(.88)}
 .lmb u{background:linear-gradient(90deg,var(--lcd-mg) 0 52.2%,var(--lcd-my) 52.2% 81.8%,var(--lcd-mr) 81.8% 100%)}   /* yellow from -20, red from about -3 (0 dB is at 87%) */
 .lmb s,.ab s{position:absolute;left:0;top:10%;bottom:10%;width:calc(var(--u)*1.1);margin-left:calc(var(--u)*-.5);background:#7fa0ff;transform:translateX(0);opacity:0;text-decoration:none;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
 .lmb s{background:var(--lcd-mpeak)}
-.lgap{flex:none;height:calc(var(--u)*4.6)}
+.lgap{flex:none;height:calc(var(--u)*4.6);margin-top:calc(var(--u)*-.5);margin-right:calc(var(--u)*-1.2);background:#7c878b}   /* the scale band runs under the label column, level with .lbar */
 .lscale .lrow2{flex:none}
 .lscale .lbar{flex:none;height:calc(var(--u)*4.6)}
 .amet{display:none;width:100%;flex-direction:column;gap:3px}
@@ -520,8 +520,7 @@ body.metering .amet{display:flex}
 .lhome-s[data-tr=play] .ltop,.lhome-s[data-tr=play] .lbig{color:var(--lcd-file-play)}
 button.ltop,button.lq{font-family:inherit;border:0}
 .lscale{min-width:0;position:relative;display:flex;flex-direction:column;color:#7f8a90;background:linear-gradient(#d8e0dc,#d8e0dc) 17.4% 0/calc(var(--u)*.35) 100% no-repeat,linear-gradient(#d8e0dc,#d8e0dc) 34.8% 0/calc(var(--u)*.35) 100% no-repeat,linear-gradient(#d8e0dc,#d8e0dc) 52% 0/calc(var(--u)*.35) 100% no-repeat,linear-gradient(#d8e0dc,#d8e0dc) 66% 0/calc(var(--u)*.35) 100% no-repeat,linear-gradient(#d8e0dc,#d8e0dc) 87% 0/calc(var(--u)*.35) 100% no-repeat,#000}
-.lbar{display:flex;justify-content:space-between;background:#7c878b;color:#eef2ee;font-size:calc(var(--u)*4.4);padding:0 calc(var(--u)*1.4)}
-.lnone{margin:auto;font-size:calc(var(--u)*7)}
+.lbar{display:flex;align-items:center;line-height:1;justify-content:space-between;background:#7c878b;color:#eef2ee;font-size:calc(var(--u)*4.4);padding:0 calc(var(--u)*1.4)}
 .lfoot{flex-direction:row!important;justify-content:space-between!important;padding:0 calc(var(--u)*2);font-size:calc(var(--u)*4.6)!important;color:var(--lcd-text)}
 .lfoot .lsd{display:flex;align-items:center;gap:calc(var(--u)*1.2)}
 .lfoot .lsd b{font-weight:400}
@@ -2470,7 +2469,8 @@ function drawLevelMeters() {
     const i = k % 2, fill = el.firstChild, hold = el.lastChild;
     const f = live ? levelFrac(Aud.peaks[i]) : 0, h = live ? levelFrac(Aud.holds[i]) : 0;
     fill.style.clipPath = `inset(0 ${((1 - f) * 100).toFixed(1)}% 0 0)`;   // the fill grows with the level; the gradient stays put
-    hold.style.transform = `translateX(${(h * 100).toFixed(1)}%)`;
+    if (el.classList.contains("lmb")) hold.style.left = (h * 100).toFixed(1) + "%";   // Simple home: the marker sits at the peak-hold level
+    else hold.style.transform = `translateX(${(h * 100).toFixed(1)}%)`;
     hold.style.opacity = live && Aud.holds[i] > -50 ? 1 : 0;
   });
 }
@@ -2483,7 +2483,7 @@ function simHome() {
     <div class="lhtop"><div class="lhl"><button class="ltop" data-act="files" aria-label="File list"><span class="wav">${SIM_ICON.wave}--------WAV</span></button><div class="ltc"><span class="lbig rtime">--:--:--</span><button class="lq" data-act="cue" aria-label="Cue marker">Q</button></div></div>
       <button class="lcdtile lhmenu" data-act="menu" aria-label="Menu">${SIM_ICON.menu}</button><div class="lbatt" aria-hidden="true">${SIM_ICON.usb}</div></div>
     <div class="lmeters"><div class="ltrks"><span class="lr">L</span><span class="lr">R</span><span class="lgap"></span>${tr}</div>
-      <div class="lscale" data-act="meters"><div class="lrow2"><i class="lmb"><u></u><s></s></i><i class="lmb"><u></u><s></s></i></div><div class="lbar"><span>-50</span><span>-40</span><span>-30</span><span>-20</span><span>-12</span><span>0</span><span>L</span></div><span class="lnone">—</span></div></div>
+      <div class="lscale" data-act="meters"><div class="lrow2"><i class="lmb"><u></u><s></s></i><i class="lmb"><u></u><s></s></i></div><div class="lbar"><span>-50</span><span>-40</span><span>-30</span><span>-20</span><span>-12</span><span>0</span><span>L</span></div></div></div>
     <div class="lfoot lcdtile"><span class="lsd">${SIM_ICON.sd}<b class="lsdt">—</b></span><span class="lhpn">${SIM_ICON.head}LR Stereo</span></div></div>`;
 }
 let simSlider = null;
