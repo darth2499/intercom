@@ -741,6 +741,7 @@ button.lr{border:0;font-family:inherit;cursor:pointer;padding:0}
 }
 .rtime{transition:opacity .2s}
 body.tcstale .rtime{opacity:.45}
+.ltrk.pend,.lr.pend,.irow .smr .b.r.pend{outline:2px solid rgba(255,255,255,.55);outline-offset:1px}
 </style>
 </head>
 <body>
@@ -1809,6 +1810,15 @@ class DemoTransport {
         const ok = o.tracks.filter(n => ![3, 4].includes(n) && !(n >= 5 && !u.inputs_on.includes(n - 4)));     // the unit refuses X1/X2 and inputs that are off
         this.wmDelta({ arms: ok }); return this.wmResult(o);
       }
+      case "wm_arm_toggle": {   // the Pi's toggle: the unit applies it a moment later; refused for X1/X2 and for inputs that are off
+        const n = o.track, want = !u.arms.includes(n), inp = n - 4;
+        setTimeout(() => {
+          if (want && (n === 3 || n === 4)) return this.wmFail(o, `X${n - 2} can't be armed on the MixPre`);
+          if (want && n >= 5 && !u.inputs_on.includes(inp)) return this.wmFail(o, `Input ${inp} is off on the MixPre (pick its source in Menu › Inputs), so it can't be armed`);
+          this.wmDelta({ arms: want ? [...u.arms, n].sort((x, y) => x - y) : u.arms.filter(x => x !== n) }); this.wmResult(o, { armed: want });
+        }, 600);
+        return;
+      }
       case "wm_takes": return this.wmResult(o, { takes: this.takes.map(t => ({ ...t })) });
       case "wm_take": { const t = this.takes[o.which === "next" ? 0 : 1]; if (!t) return this.wmFail(o, "No take");
         if (o.field === "name") return this.wmFail(o, "take edit refused (reply code 1)");
@@ -2371,17 +2381,19 @@ function applyWm(m) {
   else { tickTimer(); drawLevelMeters(); }
 }
 // arm / disarm a track by its bit number (1 = mix L, 2 = mix R, 3 = input 1 ...) through Bluetooth: the whole bitmap is sent; the unit decides what it accepts
+const armPend = new Set();
+function armEls(bit) {   // the boxes for one track, wherever it is drawn
+  const out = [...document.querySelectorAll(`#sscreen .lr[data-b="${bit}"]`)];
+  if (bit >= ARM_INPUT0) { out.push(...document.querySelectorAll(`#sscreen .ltrk[data-n="${bit - ARM_INPUT0 + 1}"]`)); const r = rows[bit - ARM_INPUT0]; if (r) out.push(r.btns.r); }
+  return out;
+}
+// arm / disarm a track (bit 1 = mix L, 2 = mix R, 3-4 = X1 / X2, 5 = input 1 ...). The Pi toggles from the unit's own latest arms and waits for the unit to confirm,
+// so the page sends only which track was tapped, shows the box as pending meanwhile, and reports only the Pi's explicit answer to this tap.
 function wmArm(n) {
-  const cur = new Set(W.d.arms || []), want = !cur.has(n);
-  want ? cur.add(n) : cur.delete(n);
-  const what = n <= 2 ? "mix " + "LR"[n - 1] : n < ARM_INPUT0 ? "X" + (n - 2) : "input " + (n - ARM_INPUT0 + 1);
-  wmOp("wm_arm", { tracks: [...cur].sort((a, b) => a - b) }, r => {
-    if (!r.ok) return toast(r.error, 3500);
-    setTimeout(() => {
-      if ((W.d.arms || []).includes(n) === want) return;
-      const inp = n - ARM_INPUT0, off = want && inp >= 0 && !wmIsOn(inp);
-      toast(off ? `Input ${inp + 1} is off on the MixPre (pick its source in Menu › Inputs), so it can't be armed` : `The MixPre did not ${want ? "arm" : "disarm"} ${what}`, 3800);
-    }, 900);
+  armPend.add(n); armEls(n).forEach(e => e.classList.add("pend"));
+  wmOp("wm_arm_toggle", { track: n }, r => {
+    armPend.delete(n); armEls(n).forEach(e => e.classList.remove("pend"));
+    if (!r.ok) toast(r.error, 3800);
   });
 }
 const wmName = i => ((W.d.names || [])[i + 2] || "");   // the list starts with the two mix tracks, then the inputs
