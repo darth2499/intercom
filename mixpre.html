@@ -1338,14 +1338,35 @@ function linkResume(why) {
   lastMsgAt = now; if (closedAt !== null) closedAt = now;
   if (transport && transport.resume) transport.resume(why);
 }
-document.addEventListener("visibilitychange", () => { if (!document.hidden) linkResume("visible"); });
+const sendCaps = () => sendJson({ op: "caps", mc: 1, watch: !document.hidden });     // compact meter frames; a hidden tab needs no meters
+document.addEventListener("visibilitychange", () => { sendCaps(); if (!document.hidden) linkResume("visible"); });
 window.addEventListener("pageshow", () => linkResume("shown"));
 window.addEventListener("focus", () => linkResume("focused"));
 window.addEventListener("online", () => linkResume("online"));
+/* compact meter frame "mc": "<n_in>,<n_out>,<n_ret>,<n_trk>,<n_aux>|" + 6 hex digits per channel (vu, peak, limiter); vu / peak are dB below full scale, 255 = no reading */
+/* ---- compact meter frames */
+const MC_GROUPS = ["in", "out", "ret", "trk", "aux"];
+function decodeMc(s) {
+  const out = { in: [], out: [], ret: [], trk: [], aux: [] };
+  try {
+    const [head, d] = s.split("|"), counts = head.split(",").map(Number);
+    let p = 0;
+    MC_GROUPS.forEach((g, i) => {
+      for (let k = 0; k < (counts[i] || 0); k++, p += 6) {
+        const vu = parseInt(d.substr(p, 2), 16), pk = parseInt(d.substr(p + 2, 2), 16), lim = parseInt(d.substr(p + 4, 2), 16);
+        out[g].push([vu === 255 ? null : -vu, pk === 255 ? null : -pk, lim ? 1 : 0]);
+      }
+    });
+  } catch {}
+  return out;
+}
+/* ---- end compact meter frames */
 function handleServerMsg(m) {
   if (!m || typeof m !== "object") return;
   lastMsgAt = performance.now();
+  if (m.mc !== undefined) { m.m = decodeMc(String(m.mc)); delete m.mc; }
   if (m.t && (m.type === "hb" || m.type === "time")) tState.off = m.t - Date.now();   // calibrate op timestamps to the Pi's clock
+  if (m.type === "time") sendCaps();     // this page reads the compact meter frames (an older Pi ignores the op)
   noteResumeRx("msg");
   if (m.type === "wm" && m.m) noteResumeRx("meter");
   if (m.type === "hb") return;
