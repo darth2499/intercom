@@ -742,6 +742,8 @@ button.lr{border:0;font-family:inherit;cursor:pointer;padding:0}
 .rtime{transition:opacity .2s}
 body.tcstale .rtime{opacity:.45}
 .ltrk.pend,.lr.pend,.irow .smr .b.r.pend{outline:2px solid rgba(255,255,255,.55);outline-offset:1px}
+.wmsheet #renNote.bad{color:#FF6961}
+.wmsheet .b:disabled{opacity:.4;pointer-events:none}
 </style>
 </head>
 <body>
@@ -967,12 +969,6 @@ body.tcstale .rtime{opacity:.45}
 <aside class="sheet wmsheet" id="takesSheet" hidden>
   <h3>Takes <button class="iconbtn wmclose" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></h3>
   <div id="takeList"></div>
-  <div class="group" id="takeForm" hidden>
-    <h4 id="takeFormTitle">Edit take</h4>
-    <div class="sublabel">Take number (the file name follows it)</div><input type="text" id="tkNum" maxlength="12" autocomplete="off">
-    <div class="sublabel">Notes</div><input type="text" id="tkNotes" maxlength="120" autocomplete="off">
-    <div class="row"><button class="b" id="takeSave">Save</button></div>
-  </div>
   <div class="row"><button class="b danger" id="takeUndo" data-confirm>Undo last take</button></div>
   <p class="small">Undo moves the current take to the MixPre's trash. It asks twice.</p>
 </aside>
@@ -980,8 +976,10 @@ body.tcstale .rtime{opacity:.45}
   <h3><span id="renTitle">Rename</span> <button class="iconbtn wmclose" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></h3>
   <div class="seg" id="renWhich"><button data-v="next">Next take</button><button data-v="current">Current take</button></div>
   <div class="group" style="margin-top:var(--s3)">
-    <div class="sublabel" id="renL1">Take number</div><input type="text" id="renA" maxlength="12" autocomplete="off">
-    <div id="renBWrap"><div class="sublabel">Notes</div><input type="text" id="renB" maxlength="120" autocomplete="off"></div>
+    <div class="sublabel" id="renNameL">Name</div><input type="text" id="renName" maxlength="20" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <div id="renNumWrap"><div class="sublabel">Take number</div><input type="text" id="renNum" maxlength="5" inputmode="numeric" autocomplete="off"></div>
+    <div id="renNotesWrap"><div class="sublabel">Notes</div><input type="text" id="renNotes" maxlength="200" autocomplete="off" autocapitalize="off"></div>
+    <p class="small" id="renPreview" style="margin:var(--s2) 0 0"></p>
   </div>
   <p class="small" id="renNote"></p>
   <div class="row"><button class="b" id="renSave">Save</button></div>
@@ -1162,6 +1160,14 @@ body.tcstale .rtime{opacity:.45}
       <input id="swToken" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste a read-only token">
       <div class="row"><button class="b" id="swTokenSave">Save</button><button class="b" id="swTokenClear">Clear</button></div>
       <p class="small" id="swTokenState" style="margin-top:6px"></p>
+    </div>
+
+    <div class="group" id="profGroup" hidden>
+      <h4>Performance</h4>
+      <div class="kv"><span>Mode</span><span id="profNow">—</span></div>
+      <div class="seg" id="profSeg"><button data-v="auto">Auto</button><button data-v="full">Full</button><button data-v="light">Light</button></div>
+      <p class="small" id="profNote" style="margin-top:6px"></p>
+      <div class="row"><button class="b" id="profRestart" data-confirm hidden>Restart now</button></div>
     </div>
 
     <div class="group">
@@ -1367,7 +1373,17 @@ function applyNet(n) {
     const r = { code: n.code, relay, name: n.name || "" };
     if (!remote || remote.code !== r.code || remote.relay !== r.relay || remote.name !== r.name) { remote = r; store.set("remote", r); }
   }
-  renderNet(); renderSoftware(n.update); render();
+  renderNet(); renderSoftware(n.update); renderProfile(n.profile); render();
+}
+function renderProfile(p) {
+  $("profGroup").hidden = !p;
+  if (!p) return;
+  $("profNow").textContent = p.label + (p.auto ? " (auto)" : "");
+  document.querySelectorAll("#profSeg button").forEach(b => b.classList.toggle("on", b.dataset.v === p.cfg));
+  $("profRestart").hidden = p.cfg === p.applied;
+  $("profNote").textContent = (p.cfg !== p.applied ? "Restart to apply. " : "")
+    + (p.name === "light" ? "Light mode: no direct links (the relay or Wi‑Fi is used), slower Bluetooth polling, fewer meter frames." : "Full speed.")
+    + (p.why ? " Board: " + p.why + "." : "");
 }
 function renderSoftware(u) {
   $("swGroup").hidden = !u;
@@ -1764,8 +1780,9 @@ class DemoTransport {
       file: "Audio-004.WAV", next_file: "Audio-005.WAV", file_time: "00:00:00:00", tc: "07:38:44:07",
       drive: { sd: { status: 0, size_kb: 124966912, free_kb: 76636160, rec_left_s: 199573 } },
       names: ["Boom Mix", "Lav Mix", "Boom", "Lav 1", "Lav 2", "Lav 3", "Lav 4", "Track 6", "Boom Left", "Boom Right", "Ch 9", "Ch 10"].slice(0, n + 2) };
-    this.takes = [{ h: 6, i: 0, name: "Audio-005.WAV", number: "005", tc: "", notes: "" }, { h: 5, i: 1, name: "Audio-004.WAV", number: "004", tc: "07:36:10:12", notes: "good, plane" },
-      { h: 4, i: 2, name: "Audio-003.WAV", number: "003", tc: "07:31:02:00", notes: "" }, { h: 3, i: 3, name: "Audio-002.WAV", number: "002", tc: "07:20:41:08", notes: "wild" }];
+    this.takes = [{ h: 6, i: 0, name: "Audio-005.WAV", scene: "Audio", number: "005", tc: "", notes: "" },
+      { h: 5, i: 1, name: "Audio-004.WAV", scene: "Audio", number: "004", tc: "07:36:10:12", notes: "good, plane" },
+      { h: 4, i: 2, name: "Audio-003.WAV", scene: "Audio", number: "003", tc: "07:31:02:00", notes: "" }, { h: 3, i: 3, name: "Audio-002.WAV", scene: "Audio", number: "002", tc: "07:20:41:08", notes: "wild" }];
     this.lv = Array.from({ length: n }, (_, i) => -70 + i * 3); this.f = 0; this.fc = 0;
     this.pub({ type: "wm", full: true, ...this.u });
     this.wmTimer = setInterval(() => this.wmTick(n), 110);
@@ -1799,9 +1816,9 @@ class DemoTransport {
       case "wm_transport": {
         const a = o.action, nt = a === "rec" ? "record" : a === "stop" ? "stop" : a === "play" ? "play" : "pause";
         this.log("wm_transport " + a);
-        if (a === "rec" && rec) { this.takes.forEach(t => t.i++); const k = this.takes.length + 5; this.takes.unshift({ h: k, i: 0, name: "Audio-" + String(k).padStart(3, "0") + ".WAV", number: String(k).padStart(3, "0"), tc: u.tc, notes: "" });
+        if (a === "rec" && rec) { this.takes.forEach(t => t.i++); const k = this.takes.length + 5; this.takes.unshift({ h: k, i: 0, name: "Audio-" + String(k).padStart(3, "0") + ".WAV", scene: "Audio", number: String(k).padStart(3, "0"), tc: u.tc, notes: "" });
           this.wmDelta({ file: this.takes[1].name, next_file: this.takes[0].name, file_time: "00:00:00:00" }); return this.wmResult(o); }
-        if (nt === "stop" && rec) { this.takes.forEach(t => t.i++); const k = this.takes.length + 5; this.takes.unshift({ h: k, i: 0, name: "Audio-" + String(k).padStart(3, "0") + ".WAV", number: String(k).padStart(3, "0"), tc: "", notes: "" });
+        if (nt === "stop" && rec) { this.takes.forEach(t => t.i++); const k = this.takes.length + 5; this.takes.unshift({ h: k, i: 0, name: "Audio-" + String(k).padStart(3, "0") + ".WAV", scene: "Audio", scene: "Audio", number: String(k).padStart(3, "0"), tc: "", notes: "" });
           this.takes[1].tc = u.tc; this.wmDelta({ transport: "stop", file: this.takes[1].name, next_file: this.takes[0].name, file_time: "00:00:00:00" }); }
         else this.wmDelta({ transport: nt });
         return this.wmResult(o);
@@ -1820,10 +1837,13 @@ class DemoTransport {
         return;
       }
       case "wm_takes": return this.wmResult(o, { takes: this.takes.map(t => ({ ...t })) });
-      case "wm_take": { const t = this.takes[o.which === "next" ? 0 : 1]; if (!t) return this.wmFail(o, "No take");
-        if (o.field === "name") return this.wmFail(o, "take edit refused (reply code 1)");
-        if (rec && o.field !== "notes") return this.wmFail(o, "The take number cannot be changed while recording");
-        t[o.field] = o.value; if (o.field === "number") { t.name = "Audio-" + o.value + ".WAV"; this.wmDelta(o.which === "next" ? { next_file: t.name } : { file: t.name }); } return this.wmResult(o); }
+      case "wm_take": {   // the Name is the SceneName; the unit makes the file name "<name>-<number, 3 digits>.WAV"
+        const t = o.handle != null ? this.takes.find(x => x.h === o.handle) : this.takes[o.which === "next" ? 0 : 1]; if (!t) return this.wmFail(o, "No take");
+        if (rec && o.field !== "notes") return this.wmFail(o, "The name and number cannot be changed while recording");
+        const bad = { name: NAME_RULES.scene, number: NAME_RULES.number, notes: NAME_RULES.notes }[o.field](o.value); if (bad) return this.wmFail(o, bad);
+        t[o.field === "name" ? "scene" : o.field] = o.value;
+        if (o.field !== "notes") { t.number = String(t.number).padStart(3, "0"); t.name = fileNameOf(t.scene, t.number); if (t.i === 0) this.wmDelta({ next_file: t.name }); else if (t.i === 1) this.wmDelta({ file: t.name }); }
+        return this.wmResult(o); }
       case "wm_undo": { if (rec) return this.wmFail(o, "Undo is not possible while recording"); const k = this.takes.findIndex(t => t.i === 1); if (k < 0) return this.wmFail(o, "No current take");
         this.takes.splice(k, 1); this.takes.forEach(t => { if (t.i > 1) t.i--; }); this.wmDelta({ file: (this.takes.find(t => t.i === 1) || { name: "" }).name }); return this.wmResult(o); }
       case "wm_track_name": { const names = u.names.slice(); names[o.track - 1] = o.name; this.wmDelta({ names }); return this.wmResult(o); }
@@ -2516,18 +2536,17 @@ function wireWm() {
   $("wmPrompt").onclick = () => { $("sheet").hidden = false; $("scrim").hidden = false; $("wmGroup").scrollIntoView({ block: "start" }); };
   document.querySelectorAll(".rfile").forEach(e => e.onclick = openRenameFile);
   $("renSave").onclick = saveRename;
+  for (const id of ["renName", "renNum", "renNotes"]) $(id).addEventListener("input", renCheck);
   document.querySelectorAll("#renWhich button").forEach(b => b.onclick = () => { if (ren) { ren.which = b.dataset.v; renFill(); } });
   $("rSub").addEventListener("click", e => { if (e.target.closest(".rfn")) openRenameFile(); });
   document.querySelectorAll(".wmclose").forEach(b => b.onclick = closeWmSheets);
   confirmTap($("takeUndo"), undoTake);
-  $("takeSave").onclick = saveTake;
   document.addEventListener("keydown", e => { if (e.key === "Escape") closeWmSheets(); });
 }
 function closeWmSheets() { $("takesSheet").hidden = true; $("recSheet").hidden = true; $("renSheet").hidden = true; $("wmScrim").hidden = true; }
 function openWmSheet(id) { $(id).hidden = false; $("wmScrim").hidden = false; }
 /* ---- Takes */
-let takeEdit = null;
-function openTakes() { openWmSheet("takesSheet"); $("takeForm").hidden = true; takeEdit = null; loadTakes(); }
+function openTakes() { openWmSheet("takesSheet"); loadTakes(); }
 function loadTakes() {
   $("takeList").innerHTML = '<p class="small">Loading…</p>';
   wmOp("wm_takes", {}, r => { W.takes = r.ok ? r.takes : []; if (!r.ok) toast(r.error); renderTakes(); });
@@ -2542,62 +2561,82 @@ function renderTakes() {
     const tag = t.i === 0 ? "NEXT" : t.i === 1 ? "CURRENT" : "";
     row.innerHTML = `<div class="tk1"><b>${escapeHtml(t.name)}</b>${tag ? `<span class="tag">${tag}</span>` : ""}</div>`
       + `<div class="tk2">${t.number ? "Take " + escapeHtml(t.number) : ""}${t.tc ? " · " + escapeHtml(t.tc) : ""}${t.notes ? " · " + escapeHtml(t.notes) : ""}</div>`;
-    if (t.i <= 1) { row.classList.add("edit"); row.onclick = () => { takeEdit = t; $("takeForm").hidden = false; $("takeFormTitle").textContent = (t.i === 0 ? "Next take: " : "Current take: ") + t.name;
-      $("tkNum").value = t.number || ""; $("tkNotes").value = t.notes || ""; $("tkNum").disabled = rec; }; }
+    row.classList.add("edit"); row.onclick = () => openRenameTake(t);       // any take in the list can be renamed, not only the next and the current
     box.append(row);
   });
   $("takeUndo").disabled = rec || !list.some(t => t.i === 1);
-}
-function saveTake() {
-  const t = takeEdit; if (!t) return;
-  const which = t.i === 0 ? "next" : "current";
-  const jobs = [["number", $("tkNum").value, t.number || ""], ["notes", $("tkNotes").value, t.notes || ""]].filter(([, v, old]) => v !== old);
-  let left = jobs.length, bad = null;
-  if (!left) { $("takeForm").hidden = true; return; }
-  for (const [field, value] of jobs) wmOp("wm_take", { which, field, value }, r => { if (!r.ok) bad = r.error; if (!--left) { if (bad) toast(bad, 3500); else toast("Saved"); $("takeForm").hidden = true; setTimeout(loadTakes, 400); } });
 }
 function undoTake() {
   const cur = (W.takes || []).find(t => t.i === 1); if (!cur) return;
   wmOp("wm_undo", { handle: cur.h }, r => { toast(r.ok ? "Last take moved to the trash" : r.error, 3500); setTimeout(loadTakes, 500); });
 }
-/* ---- Rename (file name / take number, and track names) */
+/* ---- Rename: a take's Name (its SceneName: the unit builds the file name from name + take number), Number and Notes, and track names.
+   The rules mirror server/names.py (the Wingman app's input filters): name 20 letters / digits / dash, number 1-5 digits up to 32000, notes 200, track name 12. */
+const NAME_RULES = {
+  scene: v => !/^[A-Za-z0-9-]*$/.test(v) ? "A name can only use letters, digits and a dash" : v.length > 20 ? "A name can be at most 20 characters" : "",
+  number: v => !/^\d{1,5}$/.test(v) ? "A take number is 1-5 digits" : +v > 32000 ? "The highest take number is 32000" : "",
+  notes: v => !/^[A-Za-z0-9_= \-+?/\\#!*~^.,;:'`{}\[\]$@]*$/.test(v) ? "Notes can use letters, digits, spaces and . , ; : ! ? # * + - = _ / \\ ~ ^ ' ` { } [ ] $ @" : v.length > 200 ? "Notes can be at most 200 characters" : "",
+  track: v => !/^[A-Za-z0-9_ \-]*$/.test(v) ? "A track name can only use letters, digits, spaces, _ and -" : v.length > 12 ? "A track name can be at most 12 characters" : "",
+};
+const fileNameOf = (name, num) => `${name}-${String(num).padStart(3, "0")}.WAV`;   // the unit's pattern (seen on the unit: Interview + 7 -> Interview-007.WAV)
 let ren = null;
-function openRenameFile() {
+function renShow(on) { for (const id of ["renNumWrap", "renNotesWrap", "renPreview"]) $(id).hidden = !on; $("renWhich").hidden = !on || !!(ren && ren.t && ren.handle); }
+function openRenameFile() {      // the file name on the recorder card / Simple home: the next take's name
   if (!wmFresh()) return;
   if (wmRecording()) return toast("A take can't be renamed while recording");
   ren = { kind: "file", which: "next" };
-  $("renTitle").textContent = "Rename take"; $("renL1").textContent = "Take number (the file name follows it)"; $("renBWrap").hidden = false; $("renWhich").hidden = false; $("renA").maxLength = 12;
+  $("renTitle").textContent = "Rename take"; renShow(true);
   openWmSheet("renSheet"); renFill();
   wmOp("wm_takes", {}, r => { if (r.ok) { W.takes = r.takes; renFill(); } });
+}
+function openRenameTake(t) {     // a row of the Takes sheet
+  if (!wmFresh()) return;
+  ren = { kind: "file", handle: t.h, t, from: "takes" };
+  $("takesSheet").hidden = true;
+  $("renTitle").textContent = "Rename " + t.name; renShow(true);
+  openWmSheet("renSheet"); renFill();
 }
 function renFill() {
   if (!ren || ren.kind !== "file") return;
   document.querySelectorAll("#renWhich button").forEach(b => b.classList.toggle("on", b.dataset.v === ren.which));
-  const t = (W.takes || []).find(x => x.i === (ren.which === "next" ? 0 : 1));
-  $("renA").value = t ? t.number || "" : ""; $("renB").value = t ? t.notes || "" : "";
+  const t = ren.handle ? ren.t : (W.takes || []).find(x => x.i === (ren.which === "next" ? 0 : 1));
   ren.t = t || null;
-  $("renNote").textContent = t ? "" : "Loading…";
+  $("renName").value = t ? t.scene || "" : ""; $("renNum").value = t ? t.number || "" : ""; $("renNotes").value = t ? t.notes || "" : "";
+  $("renName").maxLength = 20; $("renNameL").textContent = "Name"; $("renNum").disabled = $("renName").disabled = wmRecording();
+  renCheck();
+}
+function renCheck() {
+  if (!ren) return;
+  const track = ren.kind === "track";
+  const probs = track ? [NAME_RULES.track($("renName").value)] : [NAME_RULES.scene($("renName").value), $("renNum").value ? NAME_RULES.number($("renNum").value) : "", NAME_RULES.notes($("renNotes").value)];
+  const bad = probs.find(Boolean) || "";
+  $("renNote").textContent = bad || (ren.kind === "file" && !ren.t ? "Loading…" : track ? "Renames the track on the next take." : "");
+  $("renNote").classList.toggle("bad", !!bad);
+  $("renSave").disabled = !!bad || (ren.kind === "file" && !ren.t);
+  if (!track) { const n = $("renName").value || (ren.t && ren.t.scene) || "", num = $("renNum").value || (ren.t && ren.t.number) || ""; $("renPreview").textContent = n && num ? "File name: " + fileNameOf(n, num) : ""; }
 }
 function openRenameTrack(i) {
   if (!wmFresh()) return;
   ren = { kind: "track", i };
-  $("renTitle").textContent = "Track name · input " + (i + 1); $("renL1").textContent = "Name"; $("renBWrap").hidden = true; $("renWhich").hidden = true; $("renA").maxLength = 30;
-  $("renNote").textContent = "Renames the track on the next take.";
-  openWmSheet("renSheet"); $("renA").value = wmName(i);
-  setTimeout(() => { $("renA").focus(); $("renA").select(); }, 50);
+  $("renTitle").textContent = "Track name · input " + (i + 1); renShow(false); $("renNameL").textContent = "Name";
+  $("renName").maxLength = 12; $("renName").disabled = false;
+  openWmSheet("renSheet"); $("renName").value = wmName(i); renCheck();
+  setTimeout(() => { $("renName").focus(); $("renName").select(); }, 50);
 }
 function saveRename() {
   if (!ren) return;
   if (ren.kind === "track") {
-    wmOp("wm_track_name", { track: ren.i + 3, name: $("renA").value.trim() }, r => { toast(r.ok ? "Track renamed" : r.error, 3000); });
+    wmOp("wm_track_name", { track: ren.i + 3, name: $("renName").value }, r => { toast(r.ok ? "Track renamed" : r.error, 3500); });   // names[0..1] are the mix tracks, inputs follow
     return closeWmSheets();
   }
-  const t = ren.t; if (!t) return toast("Still loading, try again");
-  const jobs = [["number", $("renA").value.trim(), t.number || ""], ["notes", $("renB").value.trim(), t.notes || ""]].filter(([, v, old]) => v !== old && (v || old));
-  if (!jobs.length) return closeWmSheets();
-  let left = jobs.length, bad = null;
-  for (const [field, value] of jobs) wmOp("wm_take", { which: ren.which, field, value }, r => { if (!r.ok) bad = r.error; if (!--left) toast(bad || "Renamed", 3000); });
+  const t = ren.t; if (!t) return;
+  const jobs = [["name", $("renName").value, t.scene || ""], ["number", $("renNum").value, t.number || ""], ["notes", $("renNotes").value, t.notes || ""]]
+    .filter(([f, v, old]) => v !== old && (f !== "number" || v));
+  const from = ren.from, target = ren.handle ? { handle: ren.handle } : { which: ren.which };
   closeWmSheets();
+  if (!jobs.length) return from === "takes" && openTakes();
+  let left = jobs.length, bad = null;
+  for (const [field, value] of jobs) wmOp("wm_take", { ...target, field, value }, r => { if (!r.ok) bad = r.error; if (!--left) { toast(bad || "Renamed", 3500); if (from === "takes") openTakes(); } });
 }
 /* ---- second-tap confirm for the recorder buttons (REC while recording starts a new take; Stop; Undo) */
 function askAgain(el, text) {
@@ -3786,6 +3825,10 @@ function wireSoftware() {
   };
   $("swTokenClear").onclick = () => { sendJson({ op: "set_update_token", token: "" }); $("swToken").value = ""; toast("Token cleared"); };
 }
+function wireProfile() {
+  document.querySelectorAll("#profSeg button").forEach(b => b.onclick = () => { sendJson({ op: "set_profile", profile: b.dataset.v }); toast("Saved - restart to apply"); });
+  confirmTap($("profRestart"), () => { sendJson({ op: "restart" }); toast("Restarting - the page reconnects in a few seconds"); });
+}
 function wireNet() {
   $("wifiScan").onclick = () => { sendJson({ op: "wifi_scan" }); toast("Scanning…"); };
   confirmTap($("wifiHotspot"), () => sendJson({ op: "hotspot" }));
@@ -3934,6 +3977,7 @@ wireNet();
 wirePairing();
 wireAudio();
 wireSoftware();
+wireProfile();
 $("homeLink").hidden = !HOME_HOST;
 $("verTap").addEventListener("click", verTap);
 $("aboutLine").addEventListener("click", verTap);
