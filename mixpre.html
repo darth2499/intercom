@@ -1373,6 +1373,10 @@ function handleServerMsg(m) {
   if (m.t && (m.type === "hb" || m.type === "time")) tState.off = m.t - Date.now();   // calibrate op timestamps to the Pi's clock
   if (m.type === "time") sendCaps();     // this page reads the compact meter frames (an older Pi ignores the op)
   noteResumeRx("msg");
+  if (m.type === "state" && m.boot) {
+    if (S.boot && S.boot !== m.boot && transport && transport.onPiRestart) transport.onPiRestart();
+    S.boot = m.boot;
+  }
   if (m.type === "wm" && m.m) noteResumeRx("meter");
   if (m.type === "hb") return;
   if (m.type === "state") applyState(m);
@@ -1623,6 +1627,7 @@ class CloudTransport {
     ws.onopen = () => {
       this.fails = 0; this.ping = setInterval(() => { try { ws.send("ping"); } catch {} }, 30000);
       if (this.dcOpen()) this.wsSend({ t: "p2p", on: true });    // a rejoined socket starts as a relay viewer
+      else if (this.online && !this.pc) this.scheduleP2P("relay reconnected", true);
     };
     ws.onmessage = e => {
       lastMsgAt = performance.now();
@@ -1649,7 +1654,7 @@ class CloudTransport {
     if (m.online) {
       if (m.name) { this.r.name = m.name; S.name = m.name; }
       this.setOnline(true);
-      if (!this.pc) this.startP2P();
+      if (!this.pc) { this.p2pFails = 0; this.startP2P(); }
     } else if (this.auto && !this.everOnline) {
       linkLog("cloud: remembered Pi is offline, showing the list");
       backToList(false); toast("That remote is offline");
@@ -1705,14 +1710,31 @@ class CloudTransport {
     render();
   }
   // ---- direct connection: tries the local network first, then the internet
+  // Retries while on the relay: 1 s, 3 s, 10 s, then every 30 s; reset to the fast end when the Pi restarts or reconnects.
+  // The relay allows 6 offers per 10 s per viewer, so at most 4 go out in any 10 s here.
+  scheduleP2P(why, reset) {
+    if (this.closed || !window.RTCPeerConnection) return;
+    if (reset) this.p2pFails = 0;
+    if (this.p2pRetry) return;
+    const d = [1000, 3000, 10000, 30000][Math.min(this.p2pFails || 0, 3)];
+    this.p2pFails = (this.p2pFails || 0) + 1;
+    linkLog(`direct connection retry in ${d / 1000} s (${why})`);
+    this.p2pRetry = setTimeout(() => { this.p2pRetry = null; if (this.online && !this.closed && !this.dcOpen()) this.startP2P(); }, d);
+  }
   async startP2P() {
     if (!window.RTCPeerConnection || this.closed) return;
+    const now = Date.now();
+    this.offerTs = (this.offerTs || []).filter(t => now - t < 10000);
+    if (this.offerTs.length >= 4) { this.scheduleP2P("rate guard"); return; }
+    this.offerTs.push(now);
+    clearTimeout(this.p2pRetry); this.p2pRetry = null;
     this.closePeer();
     const pc = this.pc = new RTCPeerConnection({ iceServers: [{ urls: STUN }] });
     const dc = this.dc = pc.createDataChannel("ctl", { ordered: true });
     dc.binaryType = "arraybuffer";
     dc.onopen = () => {
-      clearTimeout(this.p2pTimer);
+      clearTimeout(this.p2pTimer); this.p2pFails = 0;
+      linkLog("direct connection open");
       this.wsSend({ t: "p2p", on: true });
       this.updateRoute();
       this.routeTimer = setInterval(() => this.updateRoute(), 5000);
@@ -1722,9 +1744,17 @@ class CloudTransport {
       tReset();
       if (this.dc !== dc) return;
       this.peerGone();
-      if (this.online && !this.closed) setTimeout(() => { if (!this.pc && this.online) this.startP2P(); }, 5000);
+      linkLog("direct connection closed");
+      if (this.online && !this.closed) this.scheduleP2P("data channel closed");
     };
-    pc.onconnectionstatechange = () => { if (pc.connectionState === "failed" && this.pc === pc) { this.peerGone(); try { pc.close(); } catch {} } };
+    pc.onconnectionstatechange = () => {
+      if (this.pc !== pc) return;
+      clearTimeout(this.discTimer);
+      if (pc.connectionState === "failed") { this.peerGone(); try { pc.close(); } catch {} this.scheduleP2P("connection failed"); }
+      else if (pc.connectionState === "disconnected") {   // the Pi may have restarted: do not wait for ICE to give up
+        this.discTimer = setTimeout(() => { if (this.pc === pc && pc.connectionState !== "connected") { this.closePeer(); this.scheduleP2P("connection lost"); } }, 4000);
+      }
+    };
     try {
       await pc.setLocalDescription(await pc.createOffer());
       // the offer goes out when gathering is done, or 150 ms after the first public (srflx) candidate, or after 1.5 s
@@ -1740,8 +1770,8 @@ class CloudTransport {
     } catch { return; }
     // no direct link within 20 s -> keep using the relay, try again later
     this.p2pTimer = setTimeout(() => {
-      if (this.pc === pc && !this.dcOpen()) { this.closePeer(); setTimeout(() => { if (!this.pc && this.online) this.startP2P(); }, 30000); }
-    }, 20000);
+      if (this.pc === pc && !this.dcOpen()) { this.closePeer(); this.scheduleP2P("no answer"); }
+    }, 15000);
   }
   onAnswer(sdp) {
     if (this.pc && this.pc.signalingState === "have-local-offer") this.pc.setRemoteDescription({ type: "answer", sdp }).catch(() => {});
@@ -1766,7 +1796,7 @@ class CloudTransport {
   label() {
     if (!this.online) return "Waiting…";
     if (!this.dcOpen()) return "Cloud relay";
-    return this.route === "local" ? "Local network" : this.route === "relay" ? "Cloud relay" : "Internet (direct)";
+    return this.route === "local" ? "Direct (same network)" : this.route === "relay" ? "Cloud relay" : "Direct (internet)";
   }
   refreshLabel() { if (this.online && !this.graceTimer) setConn("ok", this.label()); render(); }
   wsSend(o) { if (this.ws && this.ws.readyState === 1) this.ws.send(JSON.stringify(o)); }
@@ -1789,7 +1819,13 @@ class CloudTransport {
     try { dc && dc.close(); } catch {}
     try { pc && pc.close(); } catch {}
   }
-  disconnect() { this.closed = true; this.closePeer(); try { this.ws && this.ws.close(); } catch {} }
+  // the Pi's process restarted (new boot id in its state): the old direct connection is dead, make a new one now
+  onPiRestart() {
+    linkLog("cloud: the Pi restarted, re-doing the direct connection");
+    this.closePeer(); this.p2pFails = 0; clearTimeout(this.p2pRetry); this.p2pRetry = null;
+    this.scheduleP2P("Pi restarted", true);
+  }
+  disconnect() { this.closed = true; clearTimeout(this.p2pRetry); clearTimeout(this.discTimer); this.closePeer(); try { this.ws && this.ws.close(); } catch {} }
 }
 
 /* ============================================================ demo mode (hidden: tap the version 5 times)
