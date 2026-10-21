@@ -3356,7 +3356,7 @@ function simHeader(sc) {
   const home = `<button class="lcell lhome" data-act="home" aria-label="Home">${SIM_ICON.home}</button><div class="lbatt" aria-hidden="true">${SIM_ICON.usb}</div>`;
   const title = sc.title;
   if (sc.headphone)   // Menu: headphone | title + dots | home
-    return `<div class="lhead menu"><button class="lcell lhp" data-act="hp" aria-label="Headphones">${simFormat()}${SIM_ICON.head}</button><div class="lcell ltitle"><b>${escapeHtml(title)}</b><div class="ldots">${dots}</div></div>${home}</div>`;
+    return `<div class="lhead menu"><button class="lcell lhp" data-act="hp" aria-label="Headphones">${SIM_ICON.head}</button><div class="lcell ltitle"><b>${escapeHtml(title)}</b><div class="ldots">${dots}</div></div>${home}</div>`;
   if (sc.channel) {   // channel: "n: Ch n", the small channel meter (no levels, so empty), page dots, home. Page 1 has Gain pre-selected, with the ↓ — ↑ editor row (manual p19-p20)
     const strip = `<div class="lcell lstrip"><i class="lsm"></i><i>-40 -20 0 L</i></div>`, ttl = `<div class="lcell ltitle"><b>${sim.ch + 1}: ${escapeHtml((wmFresh() && wmName(sim.ch)) || "Ch " + (sim.ch + 1))}</b></div>`;
     const dotc = `<div class="lcell ldots">${dots}</div>`;
@@ -3726,9 +3726,120 @@ function pipMirror() {
   const top = dst.querySelector(".ltop");
   if (top && sim.id === "home") fitNameIn(top, simFileBase(), top.clientWidth - 2 * parseFloat(pipWin.getComputedStyle(top).paddingLeft || 0));
 }
+
+/* ---- fallback floating window (Safari macOS / iOS and others without Document PiP): the Simple HOME screen drawn on a canvas, streamed into a muted
+   <video> that goes into the browser's own Picture-in-Picture. View-only, sends nothing. The drawing is ticked by a Web Worker timer (not rAF, and
+   not a page timer) so a hidden tab does not stall it; ~10 frames/s only while the window is open. */
+const pipCanvas = { cv: null, video: null, worker: null, colors: null };
+const LCD = n => pipCanvas.colors[n];
+function pipDraw() {
+  const cv = pipCanvas.cv, c = cv.getContext("2d"), u = cv.width / 100, ten = effModel() === 10, bt = wmFresh();
+  const tr = simTr(), inputs = hwInputs(), count = channelCount();
+  const fill = (x, y, w, h, col) => { c.fillStyle = col; c.fillRect(x * u, y * u, w * u, h * u); };
+  const grad = (x, y, w, h) => { const g = c.createLinearGradient(0, y * u, 0, (y + h) * u); g.addColorStop(0, LCD("--lcd-top")); g.addColorStop(1, LCD("--lcd-bot")); c.fillStyle = g; c.fillRect(x * u, y * u, w * u, h * u); };
+  const text = (t, x, y, size, col, weight = 400, align = "left") => { c.font = `${weight} ${size * u}px Ubuntu, Helvetica, Arial, sans-serif`; c.fillStyle = col; c.textAlign = align; c.textBaseline = "middle"; c.fillText(t, x * u, y * u); };
+  fill(0, 0, 100, 100, LCD("--lcd-bg"));
+  const X = 2.4, W = 95.2, topH = 26.2;
+  // top-left panel: file name, timecode | Q
+  grad(X, X, 68.8, topH);
+  const nameCol = tr === "rec" ? LCD("--lcd-file-rec") : tr === "play" ? LCD("--lcd-file-play") : LCD("--lcd-bold");
+  const name = simFileBase() + " WAV";
+  let size = 7.4; c.font = `700 ${size * u}px Ubuntu, sans-serif`; while (c.measureText(name).width > 56 * u && size > 5.2) { size -= 0.2; c.font = `700 ${size * u}px Ubuntu, sans-serif`; }
+  text(name, X + 12.5, X + topH * 0.27, size, nameCol, 700);
+  c.strokeStyle = "#e08a1c"; c.lineWidth = 0.9 * u; c.lineJoin = "round"; c.beginPath(); [[0, 7], [2.4, 6], [4, 1], [6.5, 12], [8.6, 3], [10.5, 8]].forEach(([dx, dy], i) => c[i ? "lineTo" : "moveTo"]((X + 2 + dx * 0.8) * u, (X + 2.5 + dy * 0.6) * u)); c.stroke();
+  const tcEl = document.querySelector("#sscreen .rtime");
+  text((tcEl && tcEl.textContent) || "--:--:--", X + 2.2, X + topH * 0.75, 8.6, tr === "stop" ? LCD("--lcd-bold") : nameCol, 400);
+  fill(X + 51.8, X + topH * 0.55, 0.4, topH * 0.4, LCD("--lcd-grey"));
+  text("Q", X + 60.3, X + topH * 0.75, 10, LCD("--lcd-bold"), 700, "center");
+  // right column: power strip, menu tile
+  fill(X + 70, X + 2, 12, 1.6, LCD("--lcd-batt")); fill(X + 81, X + 0.6, 12, 4.2, LCD("--lcd-batt"));   // the generic USB-power icon (the unit's power source is not readable)
+  grad(X + 69.2, X + 5.8, 26, topH - 5.8);
+  [0, 1, 2].forEach(i => fill(X + 76, X + 5.8 + (topH - 5.8) * 0.48 + (i - 1) * 4.2, 12, 2.3, LCD("--lcd-bold")));
+  // meters
+  const my = X + topH, lw = 7.5, bx = X + lw + 1.2, bw = W - lw - 1.2, rowH = 4.6;
+  const lvl = db => Math.max(0, Math.min(1, (db + 50) / 50)) * 0.87;
+  const bar = (x, y, w, h, db, hold, vertical) => {
+    const f = bt ? lvl(db) : 0; if (f <= 0) return;
+    const g = c.createLinearGradient(x * u, 0, (x + w) * u, 0); g.addColorStop(0, LCD("--lcd-mg")); g.addColorStop(0.522, LCD("--lcd-mg")); g.addColorStop(0.522, LCD("--lcd-my")); g.addColorStop(0.818, LCD("--lcd-my")); g.addColorStop(0.818, LCD("--lcd-mr")); g.addColorStop(1, LCD("--lcd-mr"));
+    c.fillStyle = g; c.fillRect(x * u, y * u, w * f * u, h * u);
+    if (bt && hold > -50) { c.fillStyle = LCD("--lcd-mpeak"); const hx = x + w * lvl(hold); c.beginPath(); c.moveTo(hx * u, (y + h * 0.1) * u); c.lineTo((hx + 0.55) * u, (y + h / 2) * u); c.lineTo(hx * u, (y + h * 0.9) * u); c.lineTo((hx - 0.55) * u, (y + h / 2) * u); c.fill(); }
+  };
+  const meterH = 36.5;
+  fill(X, my, W, meterH, "#000");
+  [0.174, 0.348, 0.52, 0.66, 0.87].forEach(t => fill(bx + bw * t - 0.1, my, 0.2, meterH, "rgba(216,224,220,.5)"));
+  const pk = k => (W.pk && W.pk[k]) ?? -120, hd = k => (W.hd && W.hd[k]) ?? -120;
+  bar(bx, my, bw, rowH, pk("o0"), hd("o0")); bar(bx, my + rowH + 0.5, bw, rowH, pk("o1"), hd("o1"));
+  const band = my + 2 * rowH + 1; fill(X, band, W, rowH, "#7c878b");
+  ["-50", "-40", "-30", "-20", "-12", "0", "L"].forEach((t, i, a) => text(t, bx + 1 + (bw - 2) * (i / (a.length - 1)) * (i === a.length - 1 ? 1 : 0.995), band + rowH / 2 + 0.2, 4.4, "#eef2ee", 400, i === 0 ? "left" : i === a.length - 1 ? "right" : "center"));
+  const mixCol = k => (simMixCls(k) === " arm" ? LCD("--lcd-red") : LCD("--lcd-trk"));
+  [[0, "L"], [1, "R"]].forEach(([k, t]) => { fill(X, my + k * (rowH + 0.5), lw, rowH, mixCol(k)); text(t, X + lw / 2, my + k * (rowH + 0.5) + rowH / 2 + 0.2, 3.6, "#fff", 700, "center"); });
+  if (!ten) {
+    const ry0 = band + rowH + 0.5, rh = (my + meterH - ry0 - 0.5 * (count - 1)) / count;
+    for (let i = 0; i < count; i++) {
+      const y = ry0 + i * (rh + 0.5), cls = simTrkCls(i, inputs), on = cls.includes("arm");
+      if (cls.includes("off")) text(String(i + 1), X + lw / 2, y + rh / 2, Math.min(3.4, rh * 0.8), "#fff", 700, "center");
+      else { fill(X, y, lw, rh, on ? LCD("--lcd-red") : LCD("--lcd-trk")); text(String(i + 1), X + lw / 2, y + rh / 2 + 0.1, Math.min(3.4, rh * 0.8), on ? "#fff" : "#3a4347", 700, "center"); }
+      bar(bx, y, bw, rh, pk("i" + i), hd("i" + i));
+      text(simName(i), bx + bw * 0.435, y + rh / 2 + 0.1, Math.min(3.1, rh * 0.8), "#fff", 700, "center");
+    }
+  } else {
+    const n = count, cw = bw / n, base = my + meterH - 5.5;
+    for (let i = 0; i < n; i++) {
+      const cls = simTrkCls(i, 8), on = cls.includes("arm"), x = bx + i * cw;
+      const f = bt ? Math.max(0, Math.min(1, (pk("i" + i) + 50) / 50)) : 0;
+      if (f > 0) { c.fillStyle = LCD("--lcd-mg"); c.fillRect((x + cw * 0.18) * u, (base - f * 14) * u, cw * 0.64 * u, f * 14 * u); }
+      c.save(); c.translate((x + cw / 2) * u, (band + rowH + 14) * u); c.rotate(-Math.PI / 2); text(simName(i), 0, 0, 2.6, "#fff", 700, "left"); c.restore();
+      fill(x + 0.3, base + 0.8, cw - 0.6, 4.2, cls.includes("off") ? "#000" : on ? LCD("--lcd-red") : LCD("--lcd-trk")); text(String(i + 1), x + cw / 2, base + 2.9, 3.2, cls.includes("off") ? "#fff" : on ? "#fff" : "#3a4347", 700, "center");
+    }
+  }
+  // status bar: card icon, remaining | elapsed
+  const fy = my + meterH + 1.4, fh = 7.8; grad(X, fy, W, fh);
+  const rem = document.querySelector("#sscreen .lsdr"), el = document.querySelector("#sscreen .lsdt");
+  fill(X + 2, fy + 1.6, 3.4, 4.6, "#4a78b8");
+  let xx = X + 7; const rt = rem && rem.textContent; if (rt) { text(rt, xx, fy + fh / 2 + 0.2, 4.6, LCD("--lcd-text")); xx += rt.length * 2.7 + 2; }
+  text((el && el.textContent) || "—", xx, fy + fh / 2 + 0.2, 4.6, tr === "rec" ? LCD("--lcd-file-rec") : tr === "play" ? LCD("--lcd-file-play") : LCD("--lcd-text"));
+}
+// The video, canvas and stream are prepared ahead (when the button is wired), so the click itself only plays and asks for Picture-in-Picture in
+// the same call stack: Safari (macOS and iOS) only honours that inside the user's tap.
+async function pipVideoPrepare() {
+  if (pipCanvas.video) return;
+  const v = document.createElement("video"), cv = document.createElement("canvas");
+  cv.width = 720; cv.height = 554;
+  const cs = getComputedStyle($("sscreen")); pipCanvas.colors = {};
+  for (const n of ["--lcd-bg", "--lcd-top", "--lcd-bot", "--lcd-text", "--lcd-bold", "--lcd-red", "--lcd-batt", "--lcd-grey", "--lcd-mg", "--lcd-my", "--lcd-mr", "--lcd-mpeak", "--lcd-file-rec", "--lcd-file-play", "--lcd-trk"]) pipCanvas.colors[n] = cs.getPropertyValue(n).trim();
+  try { await Promise.all([document.fonts.load("700 20px Ubuntu"), document.fonts.load("400 20px Ubuntu")]); } catch {}
+  pipCanvas.cv = cv;
+  pipDraw();
+  v.muted = true; v.playsInline = true; v.setAttribute("playsinline", ""); v.srcObject = cv.captureStream(10);
+  v.style.cssText = "position:fixed;width:2px;height:2px;opacity:.01;pointer-events:none;left:0;top:0";
+  document.body.append(v);
+  const stop = () => { if (pipCanvas.worker) pipCanvas.worker.terminate(); pipCanvas.worker = null; v.pause(); $("pipBtn").classList.remove("on"); };
+  v.addEventListener("leavepictureinpicture", stop);
+  v.addEventListener("webkitpresentationmodechanged", () => { if (v.webkitPresentationMode !== "picture-in-picture") stop(); });
+  try { await v.play(); v.pause(); } catch {}      // load the stream's metadata now (Picture-in-Picture refuses a video that has none); paused again at once
+  pipCanvas.video = v;
+}
+function pipVideoOpen() {   // called straight from the click
+  const v = pipCanvas.video;
+  if (!v) { toast("The floating window is still getting ready, tap again"); pipVideoPrepare(); return Promise.resolve(); }
+  pipDraw();
+  v.play().catch(() => {});
+  let p;
+  if (v.requestPictureInPicture) p = v.requestPictureInPicture();
+  else if (v.webkitSetPresentationMode) { v.webkitSetPresentationMode("picture-in-picture"); p = Promise.resolve(); }
+  else return Promise.reject(new Error("this browser has no Picture-in-Picture for video"));
+  return p.then(() => {
+    const wk = new Worker(URL.createObjectURL(new Blob(["setInterval(()=>postMessage(0),100)"], { type: "text/javascript" })));
+    wk.onmessage = () => { try { pipDraw(); } catch {} };
+    pipCanvas.worker = wk;
+    $("pipBtn").classList.add("on");
+  });
+}
+const pipSupported = () => !!window.documentPictureInPicture || !!document.pictureInPictureEnabled || !!document.createElement("video").webkitSupportsPresentationMode?.("picture-in-picture");
 async function pipToggle() {
   if (pipWin) { pipWin.close(); return; }
-  if (!window.documentPictureInPicture) return;
+  if (pipCanvas.worker) { if (document.pictureInPictureElement) await document.exitPictureInPicture(); else pipCanvas.video.webkitSetPresentationMode && pipCanvas.video.webkitSetPresentationMode("inline"); return; }
+  if (!window.documentPictureInPicture) return pipVideoOpen();
   if (!$("sscreen").firstChild) renderSimple();                 // the copy may never have been drawn (Advanced view)
   pipAttach(await documentPictureInPicture.requestWindow({ width: 360, height: 280 }));
 }
@@ -3774,7 +3885,8 @@ function applyView() {
 }
 function setView(v) { view = v; store.set("view", v); applyView(); render(); }
 function wireSimple() {
-  if (window.documentPictureInPicture) { $("pipBtn").hidden = false; $("pipBtn").onclick = () => pipToggle().catch(e => toast("Floating window: " + (e && e.message || e), 3500)); }
+  if (pipSupported() && !window.documentPictureInPicture) setTimeout(() => pipVideoPrepare().catch(() => {}), 1500);
+  if (pipSupported()) { $("pipBtn").hidden = false; $("pipBtn").onclick = () => pipToggle().catch(e => toast("Floating window: " + (e && e.message || e), 3500)); }
   $("sscreen").addEventListener("click", simAct);
   $("sKnob").onclick = simEnter;
   $("sBack").onclick = simBack;
