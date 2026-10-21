@@ -272,6 +272,10 @@ details.sys > summary .sech{margin:0}
 .audiorow select{flex:1;min-width:0}
 .audiorow input[type=range]{flex:1}
 
+.updbanner{position:fixed;left:50%;transform:translateX(-50%);bottom:max(var(--s3),env(safe-area-inset-bottom));z-index:29;display:flex;gap:var(--s2);align-items:center;background:rgba(36,39,43,.97);color:#fff;padding:8px var(--s3);border-radius:var(--r1);font-size:var(--t3);max-width:calc(100% - 24px)}
+.updbanner[hidden]{display:none}
+.updbanner .b{min-height:36px;padding:0 var(--s3)}
+body.ctl .updbanner{bottom:calc(var(--tabh) + var(--s3))}
 .toast{position:fixed;left:50%;bottom:max(var(--s5),env(safe-area-inset-bottom));transform:translateX(-50%);background:rgba(36,39,43,.97);color:#fff;padding:10px var(--s4);border-radius:var(--r1);font-size:var(--t3);z-index:30;max-width:calc(100% - 32px);text-align:center;transition:opacity .25s;pointer-events:none}
 
 /* phone and tablet: one screen per tab, bottom tab bar */
@@ -1153,9 +1157,9 @@ body.tcstale .rtime{opacity:.45}
         <button class="b" id="swInstall" data-confirm hidden>Install update</button>
       </div>
       <div class="row"><button class="b" id="swRollback" data-confirm hidden>Go back to previous version</button></div>
-      <div class="sublabel">Install updates</div>
-      <div class="seg" id="swAuto"><button data-v="0">When I tap Install</button><button data-v="1">At start‑up</button></div>
-      <p class="small" style="margin-top:6px">Automatic installs only happen right after the Pi starts, never while recording.</p>
+      <div class="sublabel">Updates</div>
+      <div class="seg" id="swAuto"><button data-v="off">Off</button><button data-v="ask">Ask</button><button data-v="auto">Auto install</button></div>
+      <p class="small" style="margin-top:6px">Off: no background checks. Ask: updates download in the background and a banner offers them; nothing installs until you tap. Auto install: installs on its own once nobody has been connected for 2 minutes. Never while recording.</p>
       <div class="sublabel">GitHub token (for a private repo)</div>
       <input id="swToken" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste a read-only token">
       <div class="row"><button class="b" id="swTokenSave">Save</button><button class="b" id="swTokenClear">Clear</button></div>
@@ -1191,6 +1195,7 @@ body.tcstale .rtime{opacity:.45}
   <p class="hint" id="aboutLine" style="text-align:center;user-select:none;-webkit-user-select:none">MixPre Remote · web 0.2.0</p>
 </aside>
 
+<div class="updbanner" id="updBanner" hidden><span id="updText">Update ready</span><button class="b" id="updInstall">Install</button><button class="b" id="updClose" aria-label="Dismiss">✕</button></div>
 <div class="toast" id="toast" style="opacity:0"></div>
 
 <!-- QR codes: qrcode-generator 1.4.4 · © 2009 Kazuhiko Arase · MIT license · https://github.com/kazuhikoarase/qrcode-generator -->
@@ -1406,6 +1411,18 @@ function renderProfile(p) {
     + (p.name === "light" ? "Light mode: no direct links (the relay or Wi‑Fi is used), slower Bluetooth polling, fewer meter frames." : "Full speed.")
     + (p.why ? " Board: " + p.why + "." : "");
 }
+/* "Update ready" banner: Ask mode only (Auto installs itself, Off never checks); dismissed per version, comes back with the next one */
+let updU = null;
+function renderUpdBanner() {
+  const u = updU, a = u && u.available;
+  const show = !!u && u.status === "ready" && !u.waiting && u.mode !== "auto" && !!a && store.get("updDismissed", "") !== (a.commit || a.version || "x");
+  $("updBanner").hidden = !show;
+  if (!show) return;
+  const rec = isRecording();
+  $("updText").textContent = "Update ready" + (a.version ? " · " + a.version : "");
+  $("updInstall").disabled = rec;
+  $("updInstall").textContent = rec ? "Stop recording to install" : "Install";
+}
 function renderSoftware(u) {
   $("swGroup").hidden = !u;
   $("settingsBtn").classList.toggle("badge", !!u && u.status === "ready");   // System is collapsed, so flag a waiting update on the gear
@@ -1421,7 +1438,8 @@ function renderSoftware(u) {
   $("swInstall").hidden = u.status !== "ready" || !!u.waiting;     // an install that is waiting for the recording to end needs no second tap
   $("swRollback").hidden = !u.can_rollback;
   $("swCheck").disabled = ["checking", "downloading", "installing"].includes(u.status);
-  document.querySelectorAll("#swAuto button").forEach(b => b.classList.toggle("on", (b.dataset.v === "1") === !!u.auto));
+  document.querySelectorAll("#swAuto button").forEach(b => b.classList.toggle("on", b.dataset.v === (u.mode || (u.auto ? "auto" : "ask"))));
+  updU = u; renderUpdBanner();
   $("swTokenState").textContent = u.token_set ? "A token is saved on the Pi (it is never shown again)." : "No token saved.";
 }
 const sendJson = obj => transport && transport.sendJson && transport.sendJson(obj);
@@ -3069,6 +3087,7 @@ function renderRecorder() {
 }
 function render() {
   renderRecorder();
+  renderUpdBanner();
   $("brand").textContent = $("lname").textContent = S.name || "MixPre Remote";
   const btOn = wmFresh(), only = btOnly();
   document.body.classList.toggle("btonly", only);
@@ -3837,7 +3856,9 @@ function wireSoftware() {
   $("swCheck").onclick = () => { sendJson({ op: "update_check" }); toast("Checking for updates…"); };
   confirmTap($("swInstall"), () => sendJson({ op: "update_install" }));
   confirmTap($("swRollback"), () => sendJson({ op: "update_rollback" }));
-  document.querySelectorAll("#swAuto button").forEach(b => b.onclick = () => sendJson({ op: "update_settings", auto: b.dataset.v === "1" }));
+  document.querySelectorAll("#swAuto button").forEach(b => b.onclick = () => sendJson({ op: "update_settings", mode: b.dataset.v }));
+  $("updInstall").onclick = () => { if (!isRecording()) { sendJson({ op: "update_install" }); toast("Installing - the page reconnects in about 15 seconds", 4000); } };
+  $("updClose").onclick = () => { if (updU && updU.available) store.set("updDismissed", updU.available.commit || updU.available.version || "x"); renderUpdBanner(); };
   $("swNotice").onclick = () => sendJson({ op: "update_dismiss" });
   $("swTokenSave").onclick = () => {
     const t = $("swToken").value.trim();
