@@ -3501,6 +3501,8 @@ function simRemote(m) {
   if (!(m.seq > simSeq)) return;
   simSeq = m.seq;
   if (m.by === simClientId()) return;                                  // our own change, already applied
+  if (m.by === "mixpre" && CHANNEL_SCREENS.includes(String(m.screen)) && performance.now() - (simClosedAt[m.ch | 0] ?? -1e9) < CLOSE_HOLD_MS) return;   // a close from this page wins
+  if (m.by === "mixpre" && CHANNEL_SCREENS.includes(String(m.screen))) unitOpenCh = m.ch | 0;   // the unit moved us there, so its page is open
   sim.id = String(m.screen); sim.page = m.page | 0; sim.ch = m.ch | 0; sim.armed = false;
   chReturn = m.prev ? { id: m.prev.screen, page: m.prev.page } : null;
   if (view === "simple" && ctlOn) renderSimple();
@@ -3564,12 +3566,25 @@ function enterChannel(n) {
   if (!inChannelPage()) chReturn = { id: sim.id, page: sim.page };
   sim.ch = n; simGo("channel");
 }
+// Which channel's page we believe is open ON THE UNIT (-1 = unknown). The Open CC is a toggle: sent while the unit's page is already closed it
+// would OPEN it again (and Knob Press = Ch.View+Solo would then solo it and drag every copy back into the channel). So the toggle is only
+// sent when we know the page is open: we opened it, the unit moved us there, or the channel's solo LED is lit (an open page solos it).
+let unitOpenCh = -1;
+const simClosedAt = {};   // channel -> when this page closed it: unit-side solos for it are ignored for a moment (the bridge does the same)
+const CLOSE_HOLD_MS = 4000;
+function openChannel(n) { openOnMixPre(n); unitOpenCh = n; enterChannel(n); }
+// how a close reaches the unit: [unsolo?, "open-cc" | "esc" | "none"]. Pure, so every mode can be checked.
+function closePlan({ midi, kb, lit, known }) {
+  if (midi && known) return { unsolo: lit, via: "open-cc" };
+  if (kb) return { unsolo: midi && lit, via: "esc" };           // Esc closes an open page and does nothing on a closed one: never a toggle
+  return { unsolo: false, via: "none" };                         // Bluetooth-only (or MIDI-only, page unknown): close the copy only
+}
 function simCloseChannel() {
-  const i = sim.ch;
-  if (viaMidi(i)) {
-    if (isLit(i, "s")) pressSMR(i, "s");   // solo CC toggles it off
-    tapCC(CC.open + i);                    // Open CC toggles the channel page closed
-  } else if (!simKeys(SIMPLE_KEYS.back)) return;
+  const i = sim.ch, plan = closePlan({ midi: viaMidi(i), kb: hasKb(), lit: isLit(i, "s"), known: unitOpenCh === i || isLit(i, "s") });
+  if (plan.unsolo) pressSMR(i, "s");                             // the solo CC toggles it off
+  if (plan.via === "open-cc") tapCC(CC.open + i);
+  else if (plan.via === "esc" && !simKeys(SIMPLE_KEYS.back)) return;
+  unitOpenCh = -1; simClosedAt[i] = performance.now();
   const r = chReturn || { id: "home", page: 0 }; chReturn = null;
   simGo(r.id, r.page);
 }
@@ -3594,7 +3609,7 @@ function simAct(e) {
       if (wmFresh() && btOnly()) { wmArm(+b.dataset.n - 1 + ARM_INPUT0); break; }   // Bluetooth only: the number arms the track
       const n = +b.dataset.n - 1;
       if (!viaMidi(n) && !needs("kb")) break;
-      openOnMixPre(n); enterChannel(n); break;
+      openChannel(n); break;
     }
     case "page": {
       const to = +b.dataset.p, d = to - sim.page; if (!d || !needs("kb")) break;
@@ -3606,7 +3621,7 @@ function simAct(e) {
       if (!t || t.unm) return toast("Not mapped yet");
       if (t.openCh !== undefined) {   // Inputs > Ch 5 / 6 Screen: the same as tapping the track on Home (Open CC, or the digit key). The tile key is not sent too: the Open CC toggles
         if (!viaMidi(t.openCh) && !needs("kb")) break;
-        openOnMixPre(t.openCh); enterChannel(t.openCh); break;
+        openChannel(t.openCh); break;
       }
       if (t.smr) { pressSMR(sim.ch, t.smr); break; }
       if (t.local) { simGo(t.to); break; }
