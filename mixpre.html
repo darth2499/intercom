@@ -2429,8 +2429,9 @@ const tcClock = {
   },
 };
 /* ---- end timecode display clock */
-// The time to show: the display clock's timecode. (Timecode "off" showing the file's elapsed time stays off until the unit's number for Off is verified.)
-const TC_OFF_VERIFIED = false;
+// The time to show: the display clock's timecode, or with Timecode "Off" (mode 0 on the unit, verified by stepping its TC Mode) the file's elapsed time as the
+// recorder does ("If timecode is Off, displays the time counter of the recording file", manual p7).
+const TC_OFF_VERIFIED = true;
 const tcShown = () => tcClock.read(performance.now());
 const wmClock = () => {
   if (!TC_OFF_VERIFIED || W.d.tc_mode_idx !== 0) { const r = tcShown(); return r ? r.text : W.d.tc; }
@@ -2455,7 +2456,7 @@ const WM_LABEL = {
   rate: { 2: "48 kHz" },
   fps: { 0: "23.98", 1: "24", 2: "25", 3: "29.97", 4: "29.97 DF", 5: "30", 6: "30 DF" },   // all seven checked on the unit by stepping its Frame Rate setting (CODE.MD)
   bitDepth: { 2: "32-bit float" },
-  tcMode: { 8: "EXT (mode 8)" },       // the unit's screen shows EXT for 8; the other modes are not checked yet
+  tcMode: { 0: "Off", 2: "Rec Run", 8: "Free Run" },   // checked on the unit by stepping its TC Mode (the Wingman enum order does not match); the other modes are not checked yet
   ballistics: {},                         // none checked yet
 };
 // the SD card as the unit reports it over Bluetooth: size and free space in KiB, record time left in seconds
@@ -2464,8 +2465,7 @@ const LOW_SPACE_S = 600;
 const fmtLeft = sec => sec >= 3600 ? `${Math.floor(sec / 3600)}h${String(Math.floor(sec % 3600 / 60)).padStart(2, "0")}` : `${Math.floor(sec / 60)}min`;
 const fmtGB = kb => Math.floor(kb / 1e6) + "GB";   // the unit's "GB": KiB / 1,000,000, truncated (124,966,912 -> 124GB)
 const fmtHR = sec => Math.floor(sec / 3600) + " HR";
-const TC_EXT_MODES = [8];   // checked on the unit (its screen shows EXT); the other external modes are not verified
-const tcBadge = () => TC_EXT_MODES.includes(W.d.tc_mode_idx) ? "EXT" : "";
+const tcBadge = () => WM_LABEL.tcMode[W.d.tc_mode_idx] ? "TC " + WM_LABEL.tcMode[W.d.tc_mode_idx] : "";
 
 function renderWmSettings() {
   const on = !!S.wmLink, st = W.d.link || "off";
@@ -3331,9 +3331,9 @@ const simTrkCls = (i, inputs) => wmFresh() ? (wmIsArmed(i) ? " arm" : i < inputs
 const simMixCls = k => wmFresh() ? (wmMixArmed(k) ? " arm" : " idle") : "";
 const simName = i => wmFresh() ? wmName(i) : "";
 // (the status bar's right side stays blank: the headphone preset can't be read, and the sample rate / bit depth mappings are not all verified)
-const simExt = () => wmFresh() && TC_EXT_MODES.includes(W.d.tc_mode_idx);
 function simHomeTop() {
-  const batt = simExt() ? '<div class="lbatt ext" aria-hidden="true">EXT</div>' : `<div class="lbatt" aria-hidden="true">${SIM_ICON.usb}</div>`;
+  // the strip at the top right is the power source (the unit's own "EXT" there means external power, not timecode): we can't read it, so the generic icon
+  const batt = `<div class="lbatt" aria-hidden="true">${SIM_ICON.usb}</div>`;
   return `<div class="lhtop"><div class="lhl"><button class="ltop" data-act="files" aria-label="File list"><span class="wav">${SIM_ICON.wave}<span class="fn">${escapeHtml(simFileBase())}</span>WAV</span></button><div class="ltc"><span class="lbig rtime">--:--:--</span><button class="lq" data-act="cue" aria-label="Cue marker">Q</button></div></div>
       <button class="lcdtile lhmenu" data-act="menu" aria-label="Menu">${SIM_ICON.menu}</button>${batt}</div>`;
 }
@@ -3554,8 +3554,6 @@ function updateSimpleHome() {
   const hs = document.querySelector("#sscreen .lhome-s");
   if (hs && hs.dataset.m + ":" + hs.dataset.n !== effModel() + ":" + channelCount()) return renderSimple();   // another model or channel count
   if (hs) hs.dataset.tr = simTr();
-  const ext = simExt(), has = !!document.querySelector("#sscreen .lbatt.ext");
-  if (ext !== has && hs) return renderSimple();
   document.querySelectorAll("#sscreen .lr").forEach((b, k) => { const c = simMixCls(b.dataset.b === "2" ? 1 : 0); b.classList.toggle("arm", c === " arm"); b.classList.toggle("idle", c === " idle"); });
   document.querySelectorAll("#sscreen [data-act=trname]").forEach(e => { const t = simName(+e.dataset.i); if (e.textContent !== t) e.textContent = t; });
   simFitName();
