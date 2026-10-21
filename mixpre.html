@@ -3131,7 +3131,7 @@ function render() {
   $("wmPrompt").hidden = !prompt; $("wmPrompt").textContent = prompt;
   if (only) {
     if (store.get("tab", "rec") !== "rec") setTab("rec");
-    if (view === "simple" && sim.id !== "home") { sim.id = "home"; sim.page = 0; renderSimple(); }
+    if (view === "simple" && sim.id !== "home") { simSet("home", 0, "Bluetooth-only"); renderSimple(); }
     closeChannel();
   }
   $("preNote").hidden = !btOn;
@@ -3314,7 +3314,17 @@ const sim = { id: "home", page: 0, armed: false, ch: 0, kbLower: false };
 const SIM_ANY_MODEL = ["home", "channel", "chFader", "chPan", "notMapped"];
 const simScreen = () => effModel() === 6 || SIM_ANY_MODEL.includes(sim.id) ? (MENU_6II[sim.id] || MENU_6II.notMapped)
   : { kind: "unmapped", title: "MixPre-" + effModel() + " II menus", back: "home", msg: "The MixPre-" + effModel() + " II menus aren't mapped yet." };
-function simGo(id, page = 0) { sim.id = id; sim.page = page; sim.armed = false; renderSimple(); simPublish(); }
+// Every change of the copy position goes through simSet, which keeps the last 80 changes with their source (window.simTrace; channel moves also
+// go to the Settings log as "copy: ..."), so a screen that moves by itself can be traced to a local tap, a remote `simple` (seq / by) or the model switch.
+const simTrace = window.simTrace = [];
+function simSet(id, page, why) {
+  if (sim.id !== id) {
+    simTrace.push(`${new Date().toISOString().slice(11, 23)} ${sim.id} -> ${id} (${why})`); if (simTrace.length > 80) simTrace.shift();
+    if (id === "channel" || inChannelPage()) addLog(`copy: ${sim.id} -> ${id} (${why})`);
+  }
+  sim.id = id; sim.page = page;
+}
+function simGo(id, page = 0, why = "local tap") { simSet(id, page, why); sim.armed = false; renderSimple(); simPublish(); }
 const simAfter = (rule, sc) => simGo(rule === "back" ? (sc.back || "home") : "home");
 const simKeys = (...keys) => needs("kb") && (tapKey(0, ...keys), true);
 
@@ -3490,7 +3500,9 @@ let simSlider = null;
 // The Pi keeps the one shared copy position (`simple` messages) and also moves it for MixPre-side solos
 // (server/simple_sync.py, unverified on hardware): this page only sends its own navigation and applies what the Pi broadcasts.
 let simSeq = 0, simEpoch = null;
-const simClientId = () => Aud.myId || (simClientId.anon = simClientId.anon || Math.random().toString(36).slice(2, 10));
+// Our name on `simple_nav`, stable for this page load. It used to follow Aud.myId, which the relay / bridge reassigns on every (re)connect: the echo of
+// our own navigation then came back under another name and was applied as if a second viewer had moved, dragging the copy back to an older screen.
+const simClientId = () => simClientId.id = simClientId.id || Math.random().toString(36).slice(2, 10);
 function simPublish() {
   if (!transport || transport.kind === "Demo") return;
   sendJson({ op: "simple_nav", screen: sim.id, page: sim.page, ch: sim.ch, kb: simScreen().kind === "keyboard", by: simClientId(), base: simSeq,
@@ -3501,9 +3513,11 @@ function simRemote(m) {
   if (!(m.seq > simSeq)) return;
   simSeq = m.seq;
   if (m.by === simClientId()) return;                                  // our own change, already applied
-  if (m.by === "mixpre" && CHANNEL_SCREENS.includes(String(m.screen)) && performance.now() - (simClosedAt[m.ch | 0] ?? -1e9) < CLOSE_HOLD_MS) return;   // a close from this page wins
+  if (CHANNEL_SCREENS.includes(String(m.screen)) && performance.now() - (simClosedAt[m.ch | 0] ?? -1e9) < CLOSE_HOLD_MS) {   // a close from this page wins: no move back into that channel, from the unit or a late echo
+    addLog(`copy: ignored remote ${m.screen} (seq ${m.seq} by ${m.by}) right after closing channel ${(m.ch | 0) + 1} here`); return;
+  }
   if (m.by === "mixpre" && CHANNEL_SCREENS.includes(String(m.screen))) unitOpenCh = m.ch | 0;   // the unit moved us there, so its page is open
-  sim.id = String(m.screen); sim.page = m.page | 0; sim.ch = m.ch | 0; sim.armed = false;
+  simSet(String(m.screen), m.page | 0, `remote seq ${m.seq} by ${m.by}`); sim.ch = m.ch | 0; sim.armed = false;
   chReturn = m.prev ? { id: m.prev.screen, page: m.prev.page } : null;
   if (view === "simple" && ctlOn) renderSimple();
 }
