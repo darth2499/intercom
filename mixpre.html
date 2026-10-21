@@ -2289,7 +2289,8 @@ const wmClient = Math.random().toString(36).slice(2, 7);
 /* ---- Recording safety (frozen rule, CODE.MD Task 33): the Pi decides. Stop / record / play go out as `transport` ops carrying this page session's id,
    a sequence number and a timestamp. While the MixPre is recording (or that is unknown) the Pi refuses them unless they carry a one-time nonce it issued
    to this page after a first-tap `transport_intent`, valid 5 s. Nonces live in memory only: never stored, never kept across a reload or a reconnect. */
-const tState = { sid: Math.random().toString(36).slice(2, 10), seq: 0, off: 0, nonces: {} };
+const tState = { sid: Math.random().toString(36).slice(2, 10), seq: 0, off: 0, nonces: {}, last: {} };
+const T_MIN_GAP = 900;   // ms: the second tap must come after a pause; rapid taps (spamming the button) never confirm, they only restart the wait
 const tNow = () => Date.now() + tState.off;
 const tSend = (action, nonce) => sendJson({ op: "transport", action, sid: tState.sid, seq: ++tState.seq, ts: tNow(), nonce: nonce || null });
 const tIntent = action => sendJson({ op: "transport_intent", action, sid: tState.sid });
@@ -2302,8 +2303,13 @@ function tShowAsk(action, on) {
   });
 }
 function tPress(action) {
+  const now = performance.now(), prev = tState.last[action] ?? -1e9;
+  tState.last[action] = now;
   const have = tState.nonces[action];
-  if (have && performance.now() < have.until) { delete tState.nonces[action]; tShowAsk(action, false); return tSend(action, have.nonce); }   // the second tap
+  if (have && now < have.until) {
+    if (now - prev < T_MIN_GAP) return;                                         // a rapid repeat is not a deliberate second tap
+    delete tState.nonces[action]; tShowAsk(action, false); return tSend(action, have.nonce);   // the second tap, after a pause
+  }
   delete tState.nonces[action];
   if (isRecording()) { tIntent(action); tShowAsk(action, true); return; }      // we know it is recording: ask first, send nothing
   tSend(action);                                                                // otherwise the Pi decides (it asks us to confirm when it must)
@@ -2318,7 +2324,7 @@ function onTransportResult(m) {
   if (m.confirm) { tIntent(m.action); tShowAsk(m.action, true); return; }        // the Pi wants a deliberate second tap
   if (m.error !== "duplicate") toast(m.error || "The MixPre refused", 3500);
 }
-const tReset = () => { tState.nonces = {}; ["rec", "stop", "play"].forEach(a => tShowAsk(a, false)); };
+const tReset = () => { tState.nonces = {}; tState.last = {}; ["rec", "stop", "play"].forEach(a => tShowAsk(a, false)); };
 function wmOp(op, args = {}, cb) {
   const id = wmClient + (++wmSeq);
   wmMine.add(id); if (cb) wmCb[id] = cb;
