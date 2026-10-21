@@ -2381,8 +2381,8 @@ const wmName = i => ((W.d.names || [])[i + 2] || "");   // the list starts with 
 /* ---- Timecode display clock. The unit's timecode reaches the page about 4 times a second, so showing samples as they come looks stepped. This keeps a local
    clock at the real frame rate between samples. It only ever shows a time the last sample plus the elapsed time justifies, never steps backwards
    (a late sample holds the display until it catches up), shows a stopped timecode exactly as sampled (no extrapolation), and freezes (dimmed) when no fresh
-   sample has arrived for TC_STALE_MS. fps_idx -> [real frames per second, frames per second counted, drop frame]; the indices follow the Wingman enum and
-   are being checked against the unit's Timecode > Frame Rate setting. An index missing here is shown as sampled, never extrapolated. */
+   sample has arrived for TC_STALE_MS. fps_idx -> [real frames per second, frames per second counted, drop frame]; verified on the unit by stepping its
+   Timecode > Frame Rate (23.98, 24, 25, 29.97 ND, 29.97 DF, 30, 30 DF = 0..6). An index missing here is shown as sampled, never extrapolated. */
 const TC_RATES = { 0: [24000 / 1001, 24, false], 1: [24, 24, false], 2: [25, 25, false], 3: [30000 / 1001, 30, false], 4: [30000 / 1001, 30, true],
   5: [30, 30, false], 6: [30, 30, true] };
 const TC_STALE_MS = 1000;
@@ -2446,7 +2446,7 @@ const WM_LABEL = {
   // Only values checked on Yuki's MixPre-10 II have a name; everything else shows as "Value N". The Wingman enum order does NOT match this unit
   // (rate 2 is 48 kHz here, where the enum says 47.952). Add a name only after seeing the unit's own screen with that number.
   rate: { 2: "48 kHz" },
-  fps: { 0: "23.98" },
+  fps: { 0: "23.98", 1: "24", 2: "25", 3: "29.97", 4: "29.97 DF", 5: "30", 6: "30 DF" },   // all seven checked on the unit by stepping its Frame Rate setting (CODE.MD)
   bitDepth: { 2: "32-bit float" },
   tcMode: { 8: "EXT (mode 8)" },       // the unit's screen shows EXT for 8; the other modes are not checked yet
   ballistics: {},                         // none checked yet
