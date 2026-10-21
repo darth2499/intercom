@@ -133,23 +133,22 @@ body.recon main{opacity:.55;transition:opacity .2s}
 .rbtn{border:0;background:var(--btn);color:var(--text);display:grid;place-items:center;border-radius:50%;cursor:pointer;touch-action:manipulation;user-select:none;-webkit-user-select:none;transition:transform .06s}
 .rbtn:active,.rbtn.pressed{transform:scale(.94)}
 .rbtn.sm{width:60px;height:60px}
-.rbtn.rec{width:84px;height:84px;background:var(--red);border:4px solid #3A1714}
-.rbtn.rec i{width:28px;height:28px;border-radius:14px;background:#fff;transition:border-radius .15s}
+/* REC looks like Stop / Play / Undo (same size, same dark button) with the word REC; it turns red while recording */
+.rbtn.rec{width:60px;height:60px;font-weight:700;font-size:var(--t2);letter-spacing:.04em}
+.rbtn.rec i{display:none}
+.rbtn.rec::before{content:"REC"}
 .rbtn.play.on{background:var(--green);color:#04210C}
 .rpills{display:flex;gap:var(--s2);width:100%}
 .rpills .rp{flex:1;height:44px;border-radius:var(--r2);border:0;background:var(--panel2);color:#C9CDD3;font-weight:500;font-size:var(--t2);cursor:pointer;touch-action:manipulation;user-select:none;-webkit-user-select:none}
 .rpills .rp:active,.rpills .rp.pressed{filter:brightness(.85)}
 .rec-on .rstate{color:#FF6961} .rec-on .rstate .rdot{background:var(--red)}
-.rec-on .rbtn.rec i{border-radius:6px}
+.rec-on .rbtn.rec{background:var(--red);color:#fff}
 .play-on .rstate{color:var(--green)} .play-on .rstate .rdot{background:var(--green)}
 .rbar{height:64px;flex:none;border-radius:var(--r3);background:var(--panel);display:flex;align-items:center;gap:10px;padding:0 var(--s2) 0 var(--s4)}
 .rbar .rdot{width:10px;height:10px;border-radius:50%;background:var(--faint)}
 .rec-on .rbar .rdot{background:var(--red)}
 .rbar .rtime{flex:1;font-size:22px}
 .rbar .rbtn{width:48px;height:48px}
-.rbar .rbtn.rec{border:0}
-.rbar .rbtn.rec i{width:16px;height:16px;border-radius:8px}
-.rec-on .rbar .rbtn.rec i{border-radius:4px}
 
 /* inputs list */
 .inlist{display:flex;flex-direction:column;gap:var(--s1);overflow-y:auto;min-height:0}
@@ -303,7 +302,7 @@ body.ctl .updbanner{bottom:calc(var(--tabh) + var(--s3))}
   .rtime{font-size:40px}
   .rctl{gap:22px;margin-top:0}
   .rbtn.sm{width:52px;height:52px}
-  .rbtn.rec{width:72px;height:72px}
+  .rbtn.rec{width:52px;height:52px}
   .rpills .rp{height:40px}
   .rbar{height:52px}
   .rbar .rbtn{width:40px;height:40px}
@@ -322,7 +321,7 @@ body.ctl .updbanner{bottom:calc(var(--tabh) + var(--s3))}
   .rtime{font-size:34px}
   .rctl{gap:18px}
   .rbtn.sm{width:48px;height:48px}
-  .rbtn.rec{width:64px;height:64px}
+  .rbtn.rec{width:48px;height:48px}
   .rbar{height:48px}
   .rbar .rbtn{width:40px;height:40px}
   .irow{height:44px}
@@ -340,7 +339,7 @@ body.ctl .updbanner{bottom:calc(var(--tabh) + var(--s3))}
   .rtime{font-size:30px}
   .rctl{gap:14px}
   .rbtn.sm{width:44px;height:44px}
-  .rbtn.rec{width:56px;height:56px}
+  .rbtn.rec{width:44px;height:44px}
   .rpills .rp{height:40px}
   .rbar{height:44px}
   .rbar .rbtn{width:40px;height:40px}
