@@ -1066,6 +1066,12 @@ body.tcstale .rtime{opacity:.45}
     <div class="seg" id="viewSeg"><button data-v="simple">Simple</button><button data-v="advanced">Advanced</button></div>
   </div>
 
+  <div class="group" id="pipCtlGroup" hidden>
+    <h4>PiP controls</h4>
+    <p>Adds Stop, REC, Play and Undo under the floating screen copy (Chrome / Edge). They go through the same two-tap safety as the buttons on the page. Off keeps the floating window view-only.</p>
+    <div class="seg" id="pipCtlSeg"><button data-v="0">Off</button><button data-v="1">On</button></div>
+  </div>
+
   <div class="group">
     <h4>MixPre model</h4>
     <p>Sets the channels and the Simple screen. Auto follows the MixPre linked over Bluetooth; pick one by hand for when it isn't linked.</p>
@@ -2410,7 +2416,8 @@ const tSend = (action, nonce) => sendJson({ op: "transport", action, sid: tState
 const tIntent = action => sendJson({ op: "transport_intent", action, sid: tState.sid });
 const T_ASK = { rec: "Tap again: new take", stop: "Tap again to stop", play: "Tap again to play", pause: "Tap again" };
 function tShowAsk(action, on) {
-  document.querySelectorAll(`[data-tr="${action === "pause" ? "play" : action}"]`).forEach(el => {
+  const sel = `[data-tr="${action === "pause" ? "play" : action}"]`;
+  [...document.querySelectorAll(sel), ...(pipWin ? pipWin.document.querySelectorAll(sel) : [])].forEach(el => {
     clearTimeout(el._askT); el._ask = false; el.classList.toggle("ask", on);
     if (on) { el.setAttribute("data-ask", T_ASK[action] || "Tap again"); el._askT = setTimeout(() => { el.classList.remove("ask"); el.removeAttribute("data-ask"); }, 5000); }
     else el.removeAttribute("data-ask");
@@ -3715,13 +3722,22 @@ function fitNameIn(top, full, avail) {
    Nothing here sends anything. The mirror copies the live copy's markup (meters are inline styles) from the PiP window's own animation-frame loop,
    which keeps running while the main tab is hidden; the file name is re-fitted to the small window. */
 let pipWin = null;
+const pipCtlOn = () => store.get("pipCtl", "0") === "1";
 function pipMirror() {
   if (!pipWin) return;
   const src = $("sscreen"), dst = pipWin.document.getElementById("sscreen");
   if (!dst || !src.firstChild) return;
   dst.innerHTML = src.innerHTML;
   dst.className = src.className; dst.dataset.kind = src.dataset.kind || ""; dst.dataset.chan = src.dataset.chan || "";
-  pipWin.document.body.className = document.body.className;
+  pipWin.document.body.className = document.body.className + (pipCtlOn() ? " pipctl" : "");
+  const bar = pipWin.document.getElementById("piprec");   // the buttons follow the page's own recorder state (red REC while recording, Undo only when allowed)
+  const mainBar = document.querySelector(".rbar");
+  if (bar && mainBar) {
+    bar.classList.toggle("rec-on", mainBar.classList.contains("rec-on")); bar.classList.toggle("play-on", mainBar.classList.contains("play-on"));
+    const um = mainBar.querySelector('[data-tr="undo"]'), up = bar.querySelector('[data-tr="undo"]');
+    if (um && up) { up.hidden = um.hidden; up.disabled = um.disabled; bar.querySelector(".rbbtns").classList.toggle("four", !um.hidden); }
+    const pm = mainBar.querySelector('[data-tr="play"]'), pp = bar.querySelector('[data-tr="play"]'); if (pm && pp) pp.classList.toggle("on", pm.classList.contains("on"));
+  }
   const w = dst.clientWidth; if (w) dst.style.setProperty("--u", (w / 100) + "px");
   const top = dst.querySelector(".ltop");
   if (top && sim.id === "home") fitNameIn(top, simFileBase(), top.clientWidth - 2 * parseFloat(pipWin.getComputedStyle(top).paddingLeft || 0));
@@ -3848,9 +3864,13 @@ function pipAttach(win) {   // `win` is the floating window (or, in tests, an if
   const css = [...document.styleSheets].map(sh => { try { return [...sh.cssRules].map(r => r.cssText).join("\n"); } catch { return ""; } }).join("\n");
   const st = win.document.createElement("style");
   st.textContent = css + "\nhtml,body{margin:0;height:100%;background:#0d0f0e;overflow:hidden}#pipwrap{height:100%;display:grid;place-items:center;pointer-events:none;user-select:none}" +
-    "#pipbox{width:min(100vw,calc(100vh*1.3))}#pipbox .sscreen{width:100%;height:auto}";
+    "#pipbox{width:min(100vw,calc((100vh - var(--pipctl,0px))*1.3))}#pipbox .sscreen{width:100%;height:auto}" +
+    "#pipwrap{height:calc(100% - var(--pipctl,0px))}#piprec{position:fixed;left:0;right:0;bottom:0;height:var(--pipctlh);display:none;align-items:center;padding:0 6px;background:#0d0f0e}" +
+    "body.pipctl{--pipctl:52px;--pipctlh:52px}body.pipctl #piprec{display:flex}#piprec .rbbtns{width:100%;gap:8px}#piprec .rbtn{height:40px;min-width:40px}";
   win.document.head.append(st);
-  win.document.body.innerHTML = '<div id="pipwrap"><div id="pipbox"><div class="sscreen" id="sscreen"></div></div></div>';
+  win.document.body.innerHTML = '<div id="pipwrap"><div id="pipbox"><div class="sscreen" id="sscreen"></div></div></div><div class="rbar" id="piprec"></div>';
+  win.document.getElementById("piprec").innerHTML = RBAR_HTML.slice(RBAR_HTML.indexOf('<div class="rbbtns">'));   // only the button row, not the timer
+  win.document.querySelectorAll("#piprec [data-tr]").forEach(wireTrButton);
   let last = 0;
   const loop = t => { if (pipWin !== win) return; if (t - last > 60) { last = t; pipMirror(); } win.requestAnimationFrame(loop); };
   win.requestAnimationFrame(loop);
@@ -3886,6 +3906,12 @@ function applyView() {
 function setView(v) { view = v; store.set("view", v); applyView(); render(); }
 function wireSimple() {
   if (pipSupported() && !window.documentPictureInPicture) setTimeout(() => pipVideoPrepare().catch(() => {}), 1500);
+  if (window.documentPictureInPicture) {   // transport buttons only where the window is a real page (the video fallback cannot host buttons)
+    $("pipCtlGroup").hidden = false;
+    const paint = () => document.querySelectorAll("#pipCtlSeg button").forEach(b => b.classList.toggle("on", b.dataset.v === (pipCtlOn() ? "1" : "0")));
+    document.querySelectorAll("#pipCtlSeg button").forEach(b => b.onclick = () => { store.set("pipCtl", b.dataset.v); paint(); });
+    paint();
+  }
   if (pipSupported()) { $("pipBtn").hidden = false; $("pipBtn").onclick = () => pipToggle().catch(e => toast("Floating window: " + (e && e.message || e), 3500)); }
   $("sscreen").addEventListener("click", simAct);
   $("sKnob").onclick = simEnter;
@@ -3915,17 +3941,22 @@ function sendText(t) {   // typed on the MixPre's USB keyboard, 18 bytes per mes
   const bytes = new TextEncoder().encode(t);
   for (let i = 0; i < bytes.length; i += 18) send(OP.TYPE, [...bytes.slice(i, i + 18)]);
 }
-function wireRecorder() {
-  // stop / record / play: one tap per press, through the Pi's recording-safety guard (see tPress). Rewind / fast forward below stay held buttons.
-  const tbtn = (el, action) => bindHold(el, () => { if (!el._held) { el._held = true; tPress(el.dataset.tr === "play" && W.d.transport === "play" && wmFresh() ? "pause" : action); } return true; },
+// Stop / REC / Play / Undo, wired identically on the page and in the floating window (PiP controls): one tap per press, through the Pi's
+// recording-safety guard (tPress: first tap = transport_intent, the second after a pause carries the nonce). Nothing else sends a transport.
+function wireTrButton(el) {
+  const k = el.dataset.tr;
+  if (k === "stop" || k === "play" || k === "rec") bindHold(el, () => { if (!el._held) { el._held = true; tPress(k === "play" && W.d.transport === "play" && wmFresh() ? "pause" : k); } return true; },
     () => { el._held = false; });
+  else if (k === "undo") el.onclick = () => { if (el.disabled || !wmFresh()) return; if (askAgain(el, "Tap again to undo")) wmOp("wm_undo", {}, r => toast(r.ok ? "Last take moved to the trash" : r.error, 3500)); };
+}
+function wireRecorder() {
+  // Rewind / fast forward below stay held buttons.
   document.querySelectorAll("[data-tr]").forEach(el => {
     const k = el.dataset.tr;
-    if (k === "stop" || k === "play" || k === "rec") tbtn(el, k);
+    if (k === "stop" || k === "play" || k === "rec" || k === "undo") wireTrButton(el);
     else if (k === "rew") holdCC(el, () => CC.rew, { start: () => needs("kb") && send(OP.HOLD_KEY, 0, KEY.LEFT), end: () => send(OP.REL_KEY) });
     else if (k === "ff") holdCC(el, () => CC.ff, { start: () => needs("kb") && send(OP.HOLD_KEY, 0, KEY.RIGHT), end: () => send(OP.REL_KEY) });
     else if (k === "cue") el.onclick = cueMark;
-    else if (k === "undo") el.onclick = () => { if (el.disabled || !wmFresh()) return; if (askAgain(el, "Tap again to undo")) wmOp("wm_undo", {}, r => toast(r.ok ? "Last take moved to the trash" : r.error, 3500)); };
   });
 }
 function wire() {
