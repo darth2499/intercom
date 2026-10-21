@@ -739,6 +739,8 @@ button.lr{border:0;font-family:inherit;cursor:pointer;padding:0}
   .sbar{height:auto}
   .sbar .rtime{font-size:15px}
 }
+.rtime{transition:opacity .2s}
+body.tcstale .rtime{opacity:.45}
 </style>
 </head>
 <body>
@@ -758,7 +760,6 @@ button.lr{border:0;font-family:inherit;cursor:pointer;padding:0}
 </header>
 
 <main>
-  <div class="btline" id="btLine" hidden></div>
   <div class="btline pick" id="wmPrompt" hidden></div>
   <!-- CONNECT / REMOTE LIST -->
   <section id="connect" class="connect">
@@ -1379,7 +1380,7 @@ function renderSoftware(u) {
   const icon = { uptodate: "✓ ", ready: "⬇︎ ", needs_image: "⚠︎ ", error: "⚠︎ " }[u.status] || "";
   $("swStatus").textContent = icon + (u.message || (u.status === "idle" ? "Checks automatically when the Pi has internet." : ""))
     + (u.status === "ready" && a ? ` (${date(a.ct)})` : "");
-  $("swInstall").hidden = u.status !== "ready";
+  $("swInstall").hidden = u.status !== "ready" || !!u.waiting;     // an install that is waiting for the recording to end needs no second tap
   $("swRollback").hidden = !u.can_rollback;
   $("swCheck").disabled = ["checking", "downloading", "installing"].includes(u.status);
   document.querySelectorAll("#swAuto button").forEach(b => b.classList.toggle("on", (b.dataset.v === "1") === !!u.auto));
@@ -1769,7 +1770,7 @@ class DemoTransport {
     this.f += 2.6;   // 23.98 fps timecode, 110 ms per tick
     const adv = (t, k) => { const [h, m, s, f] = t.split(":").map(Number); let T = (((h * 60 + m) * 60 + s) * 24 + f) + k; T = Math.floor(T); const ff = T % 24, ss = Math.floor(T / 24) % 60, mm = Math.floor(T / 1440) % 60, hh = Math.floor(T / 86400) % 24; const p = x => String(x).padStart(2, "0"); return `${p(hh)}:${p(mm)}:${p(ss)}:${p(ff)}`; };
     u.tc = adv(u.tc, 2.6); if (rec) { u.file_time = adv(u.file_time, 2.6); u.drive = { sd: { ...u.drive.sd, free_kb: u.drive.sd.free_kb - 4000, rec_left_s: u.drive.sd.rec_left_s - 1 } }; }
-    const t = Date.now() / 1000, up = { tc: u.tc };
+    const t = Date.now() / 1000, up = { tc: u.tc, tcn: (this.tcn = (this.tcn || 0) + 1) };
     if (rec) { up.file_time = u.file_time; if (this.f % 1 < 0.2) up.drive = u.drive; }
     // meters: peak dB per input, a slow wandering signal on the armed ones; [vu(none), peak, limiter]
     const inm = [], armed = u.arms;
@@ -2355,8 +2356,9 @@ function applyWm(m) {
   for (const k in m) {
     if (k === "type" || k === "full") continue;
     if (k === "m") { W.m = m.m; wmMeterUpdate(m.m); }
-    else { W.d[k] = m[k]; if (k !== "tc" && k !== "file_time") state = true; }
+    else { W.d[k] = m[k]; if (k !== "tc" && k !== "tcn" && k !== "file_time") state = true; }
   }
+  if ("tcn" in m || m.full) tcClock.sample(W.d.tc, W.d.fps_idx, performance.now());
   W.at = performance.now();
   if (state || m.full) { if (!wmRaf) wmRaf = setTimeout(() => { wmRaf = 0; render(); }, 30); /* not requestAnimationFrame: it pauses in a hidden tab and would block later renders */ }
   else { tickTimer(); drawLevelMeters(); }
@@ -2376,9 +2378,55 @@ function wmArm(n) {
   });
 }
 const wmName = i => ((W.d.names || [])[i + 2] || "");   // the list starts with the two mix tracks, then the inputs
-// timecode off: the file's elapsed time, plus the pre-roll the unit counts while recording (HH:MM:SS:FF)
+/* ---- Timecode display clock. The unit's timecode reaches the page about 4 times a second, so showing samples as they come looks stepped. This keeps a local
+   clock at the real frame rate between samples. It only ever shows a time the last sample plus the elapsed time justifies, never steps backwards
+   (a late sample holds the display until it catches up), shows a stopped timecode exactly as sampled (no extrapolation), and freezes (dimmed) when no fresh
+   sample has arrived for TC_STALE_MS. fps_idx -> [real frames per second, frames per second counted, drop frame]; the indices follow the Wingman enum and
+   are being checked against the unit's Timecode > Frame Rate setting. An index missing here is shown as sampled, never extrapolated. */
+const TC_RATES = { 0: [24000 / 1001, 24, false], 1: [24, 24, false], 2: [25, 25, false], 3: [30000 / 1001, 30, false], 4: [30000 / 1001, 30, true],
+  5: [30, 30, false], 6: [30, 30, true] };
+const TC_STALE_MS = 1000;
+function tcFramesOf(h, m, s, f, nominal, drop) {
+  let n = ((h * 60 + m) * 60 + s) * nominal + f;
+  if (drop) { const mins = h * 60 + m; n -= 2 * (mins - Math.floor(mins / 10)); }          // drop frames 0 and 1 of every minute except each tenth
+  return n;
+}
+function tcTextOf(n, nominal, drop) {
+  const day = nominal * 86400;
+  n = ((n % day) + day) % day;
+  if (drop) {                                                                              // back to the displayed (dropped) numbering
+    const per10 = nominal * 600 - 18, perMin = nominal * 60 - 2, d = Math.floor(n / per10), r = n % per10;
+    n += 18 * d + (r >= 2 ? 2 * Math.floor((r - 2) / perMin) : 0);
+  }
+  const f = n % nominal, t = Math.floor(n / nominal), p = x => String(x).padStart(2, "0");
+  return `${p(Math.floor(t / 3600) % 24)}:${p(Math.floor(t / 60) % 60)}:${p(t % 60)}${drop ? ";" : ":"}${p(f)}`;
+}
+const tcClock = {
+  s: null, shown: null, running: false,
+  sample(text, idx, now) {          // a fresh sample from the unit: "HH:MM:SS:FF" (or ;) and the frame-rate index
+    const m = /(\d+)[:;](\d+)[:;](\d+)[:;.](\d+)/.exec(text || ""); if (!m) return;
+    const [h, mi, sec, f] = m.slice(1).map(Number), info = TC_RATES[idx], prev = this.s;
+    if (!info) { this.s = { text, at: now, frames: null }; this.shown = null; this.running = false; return; }
+    const frames = tcFramesOf(h, mi, sec, f, info[1], info[2]);
+    this.running = !!(prev && prev.frames != null && frames !== prev.frames && now - prev.at < 1500);     // moving between two samples
+    this.s = { text, at: now, frames, rate: info[0], nominal: info[1], drop: info[2] };
+  },
+  read(now) {                       // what to show now: { text, stale } or null before the first sample
+    const s = this.s; if (!s) return null;
+    if (s.frames == null) return { text: s.text, stale: now - s.at > TC_STALE_MS };
+    if (now - s.at > TC_STALE_MS) return { text: this.shown == null ? s.text : tcTextOf(this.shown, s.nominal, s.drop), stale: true };    // frozen
+    const target = s.frames + (this.running ? Math.floor((now - s.at) / 1000 * s.rate) : 0);
+    // forward only; a stopped or re-jammed timecode (not running) or a jump of over a second is shown as sampled
+    if (this.shown == null || !this.running || target >= this.shown || this.shown - target > s.nominal) this.shown = target;
+    return { text: tcTextOf(this.shown, s.nominal, s.drop), stale: false };
+  },
+};
+/* ---- end timecode display clock */
+// The time to show: the display clock's timecode. (Timecode "off" showing the file's elapsed time stays off until the unit's number for Off is verified.)
+const TC_OFF_VERIFIED = false;
+const tcShown = () => tcClock.read(performance.now());
 const wmClock = () => {
-  if (W.d.tc_mode_idx !== 0) return W.d.tc;
+  if (!TC_OFF_VERIFIED || W.d.tc_mode_idx !== 0) { const r = tcShown(); return r ? r.text : W.d.tc; }
   const t = W.d.file_time, pre = wmRecording() ? S.pre || 0 : 0;
   if (!t || !pre) return t;
   const [h, m, s, f] = t.split(":").map(Number), T = h * 3600 + m * 60 + s + pre, p = n => String(n).padStart(2, "0");
@@ -2395,10 +2443,13 @@ const BT_ONLY_LINE = "USB not connected · Bluetooth controls only";
 const WM_LABEL = {
   link: { off: "Off", connecting: "Connecting…", authenticating: "Authenticating…", linked: "Linked", retrying: "Looking for the MixPre…", choose: "Several MixPres found: pick one",
     password: "Needs the Wingman password", nokey: "Needs the Bluetooth key" },
-  rate: { 0: "44.1 kHz", 1: "47.952 kHz", 2: "47.952 kHz (F)", 3: "48 kHz", 4: "48.048 kHz", 5: "48.048 kHz (F)", 6: "88.2 kHz", 7: "96 kHz", 8: "192 kHz" },
-  fps: { 0: "23.98", 1: "24", 2: "25", 3: "29.97", 4: "29.97 DF", 5: "30", 6: "30 DF" },
-  tcMode: { 0: "Off", 1: "Rec Run", 2: "Free Run", 3: "Free Run, auto-mute", 4: "Free Run, jam once", 5: "24 hour", 6: "24 hour, auto-mute", 7: "EXT", 8: "EXT, auto-rec", 9: "EXT, continuous", 10: "EXT, auto-rec continuous" },
-  ballistics: { 0: "VU", 2: "Peak", 3: "Peak + VU" },
+  // Only values checked on Yuki's MixPre-10 II have a name; everything else shows as "Value N". The Wingman enum order does NOT match this unit
+  // (rate 2 is 48 kHz here, where the enum says 47.952). Add a name only after seeing the unit's own screen with that number.
+  rate: { 2: "48 kHz" },
+  fps: { 0: "23.98" },
+  bitDepth: { 2: "32-bit float" },
+  tcMode: { 8: "EXT (mode 8)" },       // the unit's screen shows EXT for 8; the other modes are not checked yet
+  ballistics: {},                         // none checked yet
 };
 // the SD card as the unit reports it over Bluetooth: size and free space in KiB, record time left in seconds
 const wmCard = () => wmFresh() && W.d.drive && W.d.drive.sd;
@@ -2406,7 +2457,8 @@ const LOW_SPACE_S = 600;
 const fmtLeft = sec => sec >= 3600 ? `${Math.floor(sec / 3600)}h${String(Math.floor(sec % 3600 / 60)).padStart(2, "0")}` : `${Math.floor(sec / 60)}min`;
 const fmtGB = kb => Math.floor(kb / 1e6) + "GB";   // the unit's "GB": KiB / 1,000,000, truncated (124,966,912 -> 124GB)
 const fmtHR = sec => Math.floor(sec / 3600) + " HR";
-const tcBadge = () => { const m = W.d.tc_mode_idx; return m === 0 ? "TC off" : m >= 7 ? "EXT" : m === undefined ? "" : "INT"; };
+const TC_EXT_MODES = [8];   // checked on the unit (its screen shows EXT); the other external modes are not verified
+const tcBadge = () => TC_EXT_MODES.includes(W.d.tc_mode_idx) ? "EXT" : "";
 
 function renderWmSettings() {
   const on = !!S.wmLink, st = W.d.link || "off";
@@ -2442,7 +2494,6 @@ function wireWm() {
   $("wmMsgSend").onclick = () => { const t = $("wmMsg").value.trim(); if (t) wmOp("wm_message", { text: t, seconds: 5 }, r => toast(r.ok ? "Shown on the MixPre" : r.error)); };
   $("sTakes").onclick = openTakes; $("btTakes").onclick = openTakes; $("btRecSet").onclick = openRecSettings;
   $("wmScrim").onclick = closeWmSheets;
-  $("btLine").textContent = BT_ONLY_LINE;
   $("wmPrompt").onclick = () => { $("sheet").hidden = false; $("scrim").hidden = false; $("wmGroup").scrollIntoView({ block: "start" }); };
   document.querySelectorAll(".rfile").forEach(e => e.onclick = openRenameFile);
   $("renSave").onclick = saveRename;
@@ -2546,7 +2597,7 @@ const RBAR_HTML = `<div class="rbtop"><span class="rdot"></span><span class="rti
 /* ---- Recorder settings */
 const REC_SET = [
   ["sample_rate", "sample_rate_idx", "Sample rate", WM_LABEL.rate],
-  ["bit_depth", "bit_depth", "Bit depth", { 0: "16-bit", 1: "24-bit", 2: "32-bit float" }],   // 2 = 32 float confirmed on Yuki's unit; 0 and 1 follow the unit's own order
+  ["bit_depth", "bit_depth", "Bit depth", WM_LABEL.bitDepth],
   ["tc_mode", "tc_mode_idx", "Timecode mode", WM_LABEL.tcMode],
   ["fps", "fps_idx", "Frame rate", WM_LABEL.fps],
   ["ballistics", "ballistics_idx", "Meter ballistics", WM_LABEL.ballistics],
@@ -2556,13 +2607,15 @@ function openRecSettings() { openWmSheet("recSheet"); renderRecSettings(); }
 function renderRecSettings() {
   const box = $("recSetBox"); if ($("recSheet").hidden) return;
   const locked = wmRecording() || wmPlaying();
-  $("recSetNote").textContent = locked ? "Settings can't change while recording or playing." : "These change the MixPre itself. Values the page doesn't know are shown as the unit's own number.";
+  $("recSetNote").textContent = locked ? "Settings can't change while recording or playing." : "These change the MixPre itself. Only values checked on the unit have a name; the rest are the unit's own number, shown as Value N.";
   box.innerHTML = "";
   for (const [name, key, label, table] of REC_SET) {
     const cur = W.d[key];
     const row = document.createElement("label"); row.className = "rsrow"; row.innerHTML = `<span>${label}</span>`;
     let el;
-    if (table) { el = document.createElement("select"); const vals = Object.keys(table).map(Number); if (cur !== undefined && !vals.includes(cur)) vals.push(cur);
+    if (table) { el = document.createElement("select"); const top = { sample_rate: 8, bit_depth: 2, tc_mode: 10, fps: 6, ballistics: 3 }[name]; const vals = [];
+      for (let v = 0; v <= top; v++) vals.push(v);
+      if (cur !== undefined && !vals.includes(cur)) vals.push(cur);
       vals.forEach(v => { const o = document.createElement("option"); o.value = v; o.textContent = table[v] || "Value " + v; el.append(o); }); }
     else { el = document.createElement("input"); el.type = "number"; el.min = 0; el.max = 59; }
     el.value = cur === undefined ? "" : cur; el.disabled = locked;
@@ -2881,10 +2934,16 @@ const fmtFileTime = (t, plus = 0) => { let [h, m, sec] = String(t).split(":").ma
 const fmtClock = sec => { sec = Math.max(0, Math.floor(sec)); const p = n => String(n).padStart(2, "0"); return `${p(Math.floor(sec / 3600))}:${p(Math.floor(sec % 3600 / 60))}:${p(sec % 60)}`; };
 const isRecording = () => ctlOn && (wmFresh() ? wmRecording() : hasMidi() && !!(S.transport & 16));
 const isPlaying = () => ctlOn && !isRecording() && (wmFresh() ? wmPlaying() : hasMidi() && !!(S.transport & 1));
-function tickTimer() {
+function paintTc() {                // the big time everywhere (recorder card, compact bar, Simple copy): the display clock, a frozen dimmed time, or our own REC timer
+  const ck = tcShown(), frozen = !!ck && (ck.stale || !wmFresh()) && performance.now() - tcClock.s.at < 30000;   // lost link / no fresh sample: keep the last time, dimmed
   const bt = wmFresh() && wmClock();
-  const t = bt ? wmClock() : isRecording() && recElapsed() != null ? fmtClock(recElapsed()) : "--:--:--";
+  const t = bt ? wmClock() : frozen ? ck.text : isRecording() && recElapsed() != null ? fmtClock(recElapsed()) : "--:--:--";
+  document.body.classList.toggle("tcstale", !!ck && (frozen || (bt && ck.stale)));
   document.querySelectorAll(".rtime").forEach(e => { if (e.textContent !== t) e.textContent = t; });
+  return bt;
+}
+function tickTimer() {
+  const bt = paintTc();
   const sd = document.querySelector("#sscreen .lsdt");   // Simple home status bar (manual p20): while recording / playing the file's elapsed time with a yellow file icon, else the SD icon and "—" (time left is unknown)
   if (sd) {
     const live = wmFresh() && (isRecording() || isPlaying()) && W.d.file_time;   // the unit's own file time over Bluetooth, else our REC timer
@@ -2902,6 +2961,8 @@ function tickTimer() {
 
 }
 setInterval(tickTimer, 250);
+// one animation-frame loop paints the timecode smoothly for the recorder card, the compact bar and the Simple copy alike
+(function tcLoop() { requestAnimationFrame(tcLoop); if (ctlOn && wmFresh()) paintTc(); })();
 function renderRecorder() {
   const recording = isRecording(), playing = isPlaying(), bt = wmFresh();
   document.body.classList.toggle("recording", recording);
@@ -2910,7 +2971,7 @@ function renderRecorder() {
   document.querySelector(".rstext").textContent = recording ? "RECORDING" : playing ? "PLAYING" : bt && W.d.transport === "pause" ? "PAUSED" : "STOPPED";
   const sub = [];
   if (bt) {
-    const fr = (W.d.fps || "") + (W.d.fps && /DF/.test(W.d.fps) ? "" : ""), badge = tcBadge();
+    const fr = WM_LABEL.fps[W.d.fps_idx] || "", badge = tcBadge();
     sub.push([fr, badge].filter(Boolean).join(" · "));
     const f = recording || playing ? W.d.file : W.d.next_file;
     if (f) sub.push((recording || playing ? "" : "Next: ") + f);
@@ -2932,7 +2993,6 @@ function render() {
   $("brand").textContent = $("lname").textContent = S.name || "MixPre Remote";
   const btOn = wmFresh(), only = btOnly();
   document.body.classList.toggle("btonly", only);
-  $("btLine").hidden = !only;
   const prompt = !S.wmLink ? "" : W.d.link === "choose" ? `${(W.d.units || []).length} MixPres found — pick one` : W.d.link === "password" ? "The MixPre needs its Wingman password" : "";
   $("wmPrompt").hidden = !prompt; $("wmPrompt").textContent = prompt;
   if (only) {
@@ -3263,20 +3323,15 @@ const simFileBase = () => { const f = wmFresh() ? (W.d.file || "") : ""; return 
 const simTrkCls = (i, inputs) => wmFresh() ? (wmIsArmed(i) ? " arm" : i < inputs && !wmIsOn(i) ? " off" : "") : (S.arm & (1 << i) ? " arm" : "");
 const simMixCls = k => wmFresh() ? (wmMixArmed(k) ? " arm" : " idle") : "";
 const simName = i => wmFresh() ? wmName(i) : "";
-// the unit's recording format over Bluetooth ("48 kHz · 32f"); blank without it: the headphone preset is not something we can read
-const simFormat = () => {
-  if (!wmFresh()) return "";
-  const rate = WM_LABEL.rate[W.d.sample_rate_idx], bits = { 0: "16", 1: "24", 2: "32f" }[W.d.bit_depth];
-  return [rate, bits].filter(Boolean).join(" · ");
-};
-const simExt = () => wmFresh() && (W.d.tc_mode_idx || 0) >= 7;
+// (the status bar's right side stays blank: the headphone preset can't be read, and the sample rate / bit depth mappings are not all verified)
+const simExt = () => wmFresh() && TC_EXT_MODES.includes(W.d.tc_mode_idx);
 function simHomeTop() {
   const batt = simExt() ? '<div class="lbatt ext" aria-hidden="true">EXT</div>' : `<div class="lbatt" aria-hidden="true">${SIM_ICON.usb}</div>`;
   return `<div class="lhtop"><div class="lhl"><button class="ltop" data-act="files" aria-label="File list"><span class="wav">${SIM_ICON.wave}<span class="fn">${escapeHtml(simFileBase())}</span>WAV</span></button><div class="ltc"><span class="lbig rtime">--:--:--</span><button class="lq" data-act="cue" aria-label="Cue marker">Q</button></div></div>
       <button class="lcdtile lhmenu" data-act="menu" aria-label="Menu">${SIM_ICON.menu}</button>${batt}</div>`;
 }
 const SIM_SCALE = '<div class="lbar"><span>-50</span><span>-40</span><span>-30</span><span>-20</span><span>-12</span><span>0</span><span>L</span></div>';
-const SIM_FOOT = `<div class="lfoot lcdtile"><span class="lsd">${SIM_ICON.sd}<b class="lsdr"></b><b class="lsdt">—</b></span><span class="lhpn">${simFormat()}</span></div>`;
+const SIM_FOOT = `<div class="lfoot lcdtile"><span class="lsd">${SIM_ICON.sd}<b class="lsdr"></b><b class="lsdt">—</b></span><span class="lhpn"></span></div>`;
 function simHome() { return effModel() === 10 ? simHome10() : simHome6(); }
 function simHome6() {
   const inputs = hwInputs(), count = channelCount();                      // 3 II: 5 rows, 6 II: 6 rows (3 or 4 inputs, then the software channels)
@@ -3497,7 +3552,6 @@ function updateSimpleHome() {
   document.querySelectorAll("#sscreen .lr").forEach((b, k) => { const c = simMixCls(b.dataset.b === "2" ? 1 : 0); b.classList.toggle("arm", c === " arm"); b.classList.toggle("idle", c === " idle"); });
   document.querySelectorAll("#sscreen [data-act=trname]").forEach(e => { const t = simName(+e.dataset.i); if (e.textContent !== t) e.textContent = t; });
   simFitName();
-  const hf = document.querySelector("#sscreen .lhpn"), ft = simFormat(); if (hf && hf.textContent !== ft) hf.textContent = ft;
   const inputs = channelCount();
   document.querySelectorAll("#sscreen .ltrk").forEach((b, i) => { const c = simTrkCls(i, inputs); b.classList.toggle("arm", c === " arm"); b.classList.toggle("off", c === " off"); });
 }
