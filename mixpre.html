@@ -1068,7 +1068,7 @@ body.tcstale .rtime{opacity:.45}
 
   <div class="group" id="pipCtlGroup" hidden>
     <h4>PiP controls</h4>
-    <p>Adds Stop, REC, Play and Undo under the floating screen copy (Chrome / Edge). They go through the same two-tap safety as the buttons on the page. Off keeps the floating window view-only.</p>
+    <p>Adds Stop, REC, Play and Undo under the floating screen copy (Chrome / Edge). They go through the same two-tap safety as the buttons on the page. Off keeps the floating window view-only. Takes effect the next time the window is opened. Firefox opens this as an ordinary small window, which cannot be always-on-top (a browser limit); Chrome and Edge keep it on top.</p>
     <div class="seg" id="pipCtlSeg"><button data-v="0">Off</button><button data-v="1">On</button></div>
   </div>
 
@@ -3857,7 +3857,8 @@ async function pipToggle() {
   if (pipCanvas.worker) { if (document.pictureInPictureElement) await document.exitPictureInPicture(); else pipCanvas.video.webkitSetPresentationMode && pipCanvas.video.webkitSetPresentationMode("inline"); return; }
   if (!window.documentPictureInPicture) return pipVideoOpen();
   if (!$("sscreen").firstChild) renderSimple();                 // the copy may never have been drawn (Advanced view)
-  pipAttach(await documentPictureInPicture.requestWindow({ width: 360, height: 280 }));
+  // exactly the mirror (13:10) plus, with PiP controls on, the 52 px button row: no scrollbars, no blank margins
+  pipAttach(await documentPictureInPicture.requestWindow({ width: 360, height: Math.round(360 / 1.3) + (pipCtlOn() ? 52 : 0) }));
 }
 function pipAttach(win) {   // `win` is the floating window (or, in tests, an iframe's window): same document API
   pipWin = win;
