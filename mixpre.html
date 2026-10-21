@@ -1594,6 +1594,9 @@ class CloudTransport {
       if (m.name) { this.r.name = m.name; S.name = m.name; }
       this.setOnline(true);
       if (!this.pc) this.startP2P();
+    } else if (this.auto && !this.everOnline) {
+      linkLog("cloud: remembered Pi is offline, showing the list");
+      backToList(false); toast("That remote is offline");
     } else {
       this.closePeer();
       this.softOffline(null, "Pi presence went offline");
@@ -1603,7 +1606,8 @@ class CloudTransport {
   softOffline(text, reason) {
     if (!this.online || this.graceTimer) return;
     linkLog("cloud: " + reason + ", waiting up to 15 s");
-    setConn("warn", "Reconnecting…"); setRecon(true);
+    clearTimeout(this.reconTimer);   // a blip under 2 s stays invisible (no status change, no dimming)
+    this.reconTimer = setTimeout(() => { if (this.graceTimer) { setConn("warn", "Reconnecting…"); setRecon(true); } }, 2000);
     this.graceTimer = setTimeout(() => { this.graceTimer = null; linkLog("cloud: offline (" + reason + ")"); this.setOnline(false, text); }, 15000);
   }
   // back in the foreground: keep the last view, probe relay socket and data channel, replace dead ones at once
@@ -1634,7 +1638,8 @@ class CloudTransport {
     const was = this.online;
     this.online = on;
     if (on && this.graceTimer) { clearTimeout(this.graceTimer); this.graceTimer = null; }
-    if (on) setRecon(false);
+    if (on) clearTimeout(this.reconTimer);
+    if (on) { setRecon(false); this.everOnline = true; }
     if (on) { setSearching(false); showControl(true); this.refreshLabel(); if (!was) Aud.hello(); }
     else {
       showControl(false);
@@ -1707,7 +1712,7 @@ class CloudTransport {
     if (!this.dcOpen()) return "Cloud relay";
     return this.route === "local" ? "Local network" : this.route === "relay" ? "Cloud relay" : "Internet (direct)";
   }
-  refreshLabel() { if (this.online) setConn("ok", this.label()); render(); }
+  refreshLabel() { if (this.online && !this.graceTimer) setConn("ok", this.label()); render(); }
   wsSend(o) { if (this.ws && this.ws.readyState === 1) this.ws.send(JSON.stringify(o)); }
   send(u8) {
     if (this.dcOpen()) { this.dc.send(u8); return true; }
@@ -2265,9 +2270,11 @@ function wireAudio() {
   Aud.render();
 }
 
-function startCloud(r) {
+function startCloud(r, auto = false) {
   if (transport) transport.disconnect();
+  store.set("auto", true);                       // the next reload goes straight back to this Pi
   transport = new CloudTransport(r);
+  transport.auto = auto;                         // opened without a tap: fall back to the list if the Pi is not online
   transport.connect();
 }
 
@@ -3889,12 +3896,13 @@ function startListPolling() {
   refreshList();
   listTimer = setInterval(refreshList, 5000);
 }
-function backToList() {
+function backToList(asked = true) {
   Aud.reset();
   if (transport) transport.disconnect();
   transport = null; S.name = ""; S.net = null;
+  if (asked) store.set("auto", false);           // the list was asked for: a reload shows it too
   setSearching(false); setConn("", "Offline"); showControl(false); render();
-  refreshList();
+  startListPolling();
 }
 
 /* ============================================================ connecting indicator */
@@ -3924,6 +3932,7 @@ if (!PI_SERVED) {
   const pm = location.hash.match(/pair=([A-Za-z0-9_-]+)/);
   if (pm) { addToken(pm[1]); try { history.replaceState(null, "", location.pathname + location.search); } catch {} setTimeout(() => toast("Phone paired"), 400); }
 }
+resumeMark = { t0: 0, why: "load" };           // ms since navigation start until the first frame / meter (window.__resumeTimes)
 if (params.has("wmdemo")) {
   // ?wmdemo=10 (or 6): the page against a pretend MixPre that is linked over Bluetooth (screenshots, trying the UI)
   $("choices").hidden = true;
@@ -3948,7 +3957,7 @@ if (params.has("wmdemo")) {
     $("listStatus").textContent = "Looking…";
     refreshList();
   };
-  $("backBtn").onclick = backToList;
+  $("backBtn").onclick = () => backToList();
   $("pasteForm").onsubmit = e => {
     e.preventDefault();
     if (!addToken(tokenFromText($("pasteInput").value))) return toast("That doesn't look like a pairing link");
@@ -3956,7 +3965,10 @@ if (params.has("wmdemo")) {
   };
   $("useKey").onclick = e => { e.preventDefault(); wantKeyForm = true; showSetup(""); };
   document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshList(); });
-  startListPolling();
+  // Reload: go straight back to the Pi used last (its relay socket answers with presence at once);
+  // the list only shows when that Pi is offline, or after the back button
+  if (remote && remote.code && remote.relay && store.get("auto", true) && !params.has("list")) startCloud(remote, true);
+  else startListPolling();
   // No internet on a laptop usually means it just joined the MixPre's Wi-Fi -> point at the local page
   let fails = 0;
   setInterval(async () => {
