@@ -558,6 +558,7 @@ body.simple .tabbar [data-tab]{display:none}
 .tabbar .rail-only#railView{font-size:11px;font-weight:600;border-radius:var(--r1);width:56px}
 #viewBtn{flex:none}
 #pipBtn.on{background:var(--accent);color:#fff}
+#pipBtn.dim{opacity:.55}
 @media (max-width:899px) and (min-height:501px){ body.simple .tabbar{display:none!important} }
 /* Simple view in landscape phones and on wide screens: screen on the left, controls on the right */
 @media (orientation:landscape) and (max-height:500px){
@@ -2576,6 +2577,10 @@ const WM_LABEL = {
 };
 // the SD card as the unit reports it over Bluetooth: size and free space in KiB, record time left in seconds
 const wmCard = () => wmFresh() && W.d.drive && W.d.drive.sd;
+// The unit's own statuses: 0 = media ready, 6 = full, anything else = no usable media; a size of 0 is an empty slot too. Only a drive reply that says so counts:
+// no reply at all stays "unknown" (dashes), never "No SD card" or "0min".
+const wmNoCard = () => { const c = wmCard(); return !!c && ((c.status !== 0 && c.status !== 6) || c.size_kb === 0); };
+const NO_CARD = "No SD card";
 const LOW_SPACE_S = 600;
 const fmtLeft = sec => sec >= 3600 ? `${Math.floor(sec / 3600)}h${String(Math.floor(sec % 3600 / 60)).padStart(2, "0")}` : `${Math.floor(sec / 60)}min`;
 const fmtGB = kb => Math.floor(kb / 1e6) + "GB";   // the unit's "GB": KiB / 1,000,000, truncated (124,966,912 -> 124GB)
@@ -3029,7 +3034,7 @@ function renderStatus() {
   $("statusHead").className = "headline " + st.cls; $("statusHeadText").textContent = st.long;
   $("devInfo").innerHTML = [
     ["Name", S.name || "—"], ["Link", transport ? transport.label() : "—"], ["USB to MixPre", S.usb ? "connected" : "not detected"],
-    ["USB mode", S.mode], ["MIDI", S.midi ? "ready" : "—"], ["SD card", wmCard() ? `${fmtGB(wmCard().free_kb)} / ${fmtHR(wmCard().rec_left_s)} free · ${fmtGB(wmCard().size_kb)}` : "—"], ["MixPre Bluetooth", !S.wmLink ? "off" : wmFresh() ? "linked ✓" : (WM_LABEL.link[W.d.link] || "waiting").toLowerCase()], ["Keyboard", S.hid ? "ready" : "—"], ["Bridge version", S.version || "—"],
+    ["USB mode", S.mode], ["MIDI", S.midi ? "ready" : "—"], ["SD card", wmNoCard() ? NO_CARD : wmCard() ? `${fmtGB(wmCard().free_kb)} / ${fmtHR(wmCard().rec_left_s)} free · ${fmtGB(wmCard().size_kb)}` : "—"], ["MixPre Bluetooth", !S.wmLink ? "off" : wmFresh() ? "linked ✓" : (WM_LABEL.link[W.d.link] || "waiting").toLowerCase()], ["Keyboard", S.hid ? "ready" : "—"], ["Bridge version", S.version || "—"],
   ].map(([k, v]) => `<span>${k}</span><span>${escapeHtml(v)}</span>`).join("");
   $("devLine").textContent = (S.name || "Not connected") + (transport ? " · " + transport.label() : "");
 }
@@ -3091,13 +3096,15 @@ function tickTimer() {
     const card = wmCard();
     let v = live ? fmtFileTime(W.d.file_time, isRecording() ? S.pre || 0 : 0) : !bt && isRecording() && recElapsed() != null ? fmtRec(recElapsed()) : "—";
     const running = v !== "—";
-    if (!running && card) v = fmtLeft(card.rec_left_s);   // stopped: time left on the card
+    const noCard = wmNoCard();
+    if (!running && noCard) v = NO_CARD;
+    else if (!running && card) v = fmtLeft(card.rec_left_s);   // stopped: time left on the card
     if (sd.textContent !== v) sd.textContent = v;
-    const rem = running && card ? fmtLeft(card.rec_left_s) : "";   // while running the card's time left goes to the LEFT of the elapsed time, as on the unit
+    const rem = running && card && !noCard ? fmtLeft(card.rec_left_s) : "";   // while running the card's time left goes to the LEFT of the elapsed time, as on the unit
     const lr = sd.parentElement.querySelector(".lsdr"); if (lr && lr.textContent !== rem) lr.textContent = rem;
     const act = running ? (isRecording() ? "rec" : "play") : "";
     if (sd.parentElement.dataset.act !== act) sd.parentElement.dataset.act = act;
-    sd.classList.toggle("low", !running && !!card && card.rec_left_s < LOW_SPACE_S);
+    sd.classList.toggle("low", !running && !!card && (noCard || card.rec_left_s < LOW_SPACE_S));   // the near-full warning only for a real card
   }
 
 }
@@ -3114,18 +3121,18 @@ function renderRecorder() {
   if (bt) {
     const fr = WM_LABEL.fps[W.d.fps_idx] || "", badge = tcBadge();
     sub.push([fr, badge].filter(Boolean).join(" · "));
-    const f = recording || playing ? W.d.file : W.d.next_file;
-    if (f) sub.push((recording || playing ? "" : "Next: ") + f);
-    const card = wmCard();
-    if (card) sub.push((card.rec_left_s < LOW_SPACE_S ? "Low space: " : "") + fmtLeft(card.rec_left_s) + " left on the card");
+    const card = wmCard(), noCard = wmNoCard();
+    const f = noCard ? "" : recording || playing ? W.d.file : W.d.next_file;      // no card: no file name, as the unit's own screen
+    if (f) sub.push({ t: (recording || playing ? "" : "Next: ") + f, k: "fn" });
+    if (card) sub.push(noCard ? { t: NO_CARD, k: "card low" } : { t: (card.rec_left_s < LOW_SPACE_S ? "Low space: " : "") + fmtLeft(card.rec_left_s) + " left on the card", k: "card" + (card.rec_left_s < LOW_SPACE_S ? " low" : "") });
   }
-  $("rSub").innerHTML = sub.map((x, k) => `<span${k === 1 ? ' class="rfn" title="Rename"' : k === 2 ? ` class="rcard${/^Low/.test(x) ? " low" : ""}"` : ""}>${escapeHtml(x)}${k === 1 ? " ✎" : ""}</span>`).join("");
+  $("rSub").innerHTML = sub.map((x, i) => typeof x === "string" ? `<span>${escapeHtml(x)}</span>` : x.k === "fn" ? `<span class="rfn" title="Rename">${escapeHtml(x.t)} ✎</span>` : `<span class="rcard${x.k.includes("low") ? " low" : ""}">${escapeHtml(x.t)}</span>`).join("");
   $("wmPills").hidden = !bt;
   const canUndo = bt && !recording && !playing && !!W.d.file;
   document.querySelectorAll('[data-tr="undo"]').forEach(b => { b.hidden = !bt; b.disabled = !canUndo; });
   $("rCtl").classList.toggle("four", bt);
   document.querySelectorAll(".rbbtns").forEach(e => e.classList.toggle("four", bt));
-  document.querySelectorAll(".rfile").forEach(e => { e.textContent = bt ? (recording || playing ? W.d.file : W.d.next_file) || "" : ""; });
+  document.querySelectorAll(".rfile").forEach(e => { e.textContent = bt && !wmNoCard() ? (recording || playing ? W.d.file : W.d.next_file) || "" : ""; });
   document.querySelectorAll('[data-tr="play"]').forEach(b => b.classList.toggle("on", playing));
   tickTimer();
 }
@@ -3832,12 +3839,17 @@ async function pipVideoPrepare() {
   const stop = () => { if (pipCanvas.worker) pipCanvas.worker.terminate(); pipCanvas.worker = null; v.pause(); $("pipBtn").classList.remove("on"); };
   v.addEventListener("leavepictureinpicture", stop);
   v.addEventListener("webkitpresentationmodechanged", () => { if (v.webkitPresentationMode !== "picture-in-picture") stop(); });
-  try { await v.play(); v.pause(); } catch {}      // load the stream's metadata now (Picture-in-Picture refuses a video that has none); paused again at once
+  // load the stream's metadata now (Picture-in-Picture refuses a video that has none); paused again at once. A browser that never starts it (iOS home-screen app) times out.
+  await Promise.race([v.play(), new Promise((_, no) => setTimeout(() => no(new Error("the video did not start")), 2000))]);
+  v.pause();
   pipCanvas.video = v;
 }
 function pipVideoOpen() {   // called straight from the click
   const v = pipCanvas.video;
-  if (!v) { toast("The floating window is still getting ready, tap again"); pipVideoPrepare(); return Promise.resolve(); }
+  if (!v) {
+    toast(pipCanvas.failed ? "PiP isn't available in this browser (" + pipCanvas.failed + ")" : "Getting the floating window ready, tap again in a moment", 3500);
+    return Promise.resolve();
+  }
   pipDraw();
   v.play().catch(() => {});
   let p;
@@ -3851,7 +3863,13 @@ function pipVideoOpen() {   // called straight from the click
     $("pipBtn").classList.add("on");
   });
 }
-const pipSupported = () => !!window.documentPictureInPicture || !!document.pictureInPictureEnabled || !!document.createElement("video").webkitSupportsPresentationMode?.("picture-in-picture");
+// Where each path works. Document PiP: desktop Chrome / Edge / Firefox (a real page window). Video PiP: desktop browsers and iPhone / iPad Safari in a tab.
+// Not on iOS: the home-screen app (standalone) and Firefox / Chrome / Edge there (no web video PiP), whatever they claim; feature checks first, the UA is the backstop.
+const IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const pipIosBlocked = () => IOS && (navigator.standalone === true || matchMedia("(display-mode: standalone)").matches || /FxiOS|CriOS|EdgiOS|OPiOS/.test(navigator.userAgent));
+const pipVideoOk = () => !pipIosBlocked() && (!!document.pictureInPictureEnabled || !!document.createElement("video").webkitSupportsPresentationMode?.("picture-in-picture"));
+const pipSupported = () => !!window.documentPictureInPicture || pipVideoOk();
+const PIP_NEEDS_SAFARI = "PiP works in Safari, not in the home-screen app or other iPhone browsers. Open mixremote.app/mixpre in Safari.";
 async function pipToggle() {
   if (pipWin) { pipWin.close(); return; }
   if (pipCanvas.worker) { if (document.pictureInPictureElement) await document.exitPictureInPicture(); else pipCanvas.video.webkitSetPresentationMode && pipCanvas.video.webkitSetPresentationMode("inline"); return; }
@@ -3906,7 +3924,7 @@ function applyView() {
 }
 function setView(v) { view = v; store.set("view", v); applyView(); render(); }
 function wireSimple() {
-  if (pipSupported() && !window.documentPictureInPicture) setTimeout(() => pipVideoPrepare().catch(() => {}), 1500);
+  if (pipVideoOk() && !window.documentPictureInPicture) setTimeout(() => pipVideoPrepare().catch(e => { pipCanvas.failed = (e && e.message) || "it did not start"; }), 1500);
   if (window.documentPictureInPicture) {   // transport buttons only where the window is a real page (the video fallback cannot host buttons)
     $("pipCtlGroup").hidden = false;
     const paint = () => document.querySelectorAll("#pipCtlSeg button").forEach(b => b.classList.toggle("on", b.dataset.v === (pipCtlOn() ? "1" : "0")));
@@ -3914,6 +3932,7 @@ function wireSimple() {
     paint();
   }
   if (pipSupported()) { $("pipBtn").hidden = false; $("pipBtn").onclick = () => pipToggle().catch(e => toast("Floating window: " + (e && e.message || e), 3500)); }
+  else if (pipIosBlocked()) { $("pipBtn").hidden = false; $("pipBtn").classList.add("dim"); $("pipBtn").onclick = () => toast(PIP_NEEDS_SAFARI, 5000); }   // say why instead of a button that does nothing
   $("sscreen").addEventListener("click", simAct);
   $("sKnob").onclick = simEnter;
   $("sBack").onclick = simBack;
