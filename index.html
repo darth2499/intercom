@@ -1002,7 +1002,7 @@ button.stat:active{opacity:.7}
               sender watchdog re-acquires a lost input, listener auto-resyncs a bloated buffer. */
 
 /* ============ Config ============ */
-const VERSION = '0.17.62-beta';                     // shown on the home screen — go to 1.0.0 when ready
+const VERSION = '0.17.63-beta';                     // shown on the home screen — go to 1.0.0 when ready
 const PREFIX = 'asahina-intercom-';            // namespace for room ids on the PeerJS server
 const ICE = [
   { urls: 'stun:stun.l.google.com:19302' },
@@ -1081,6 +1081,12 @@ function ensureCtx(){
       if (ctx.state !== 'running' && (S.active || L.active)) ctx.resume().catch(()=>{});
       // Listener boost runs through Web Audio; if iOS pauses it, fall back to the plain player.
       if (window.LB?.cur && L.net !== 'direct') audioEl.muted = ctx.state === 'running';
+      // A meter wired up while the context was still paused (opened from a QR link, no tap yet) can stay
+      // silent on phones even after it runs: wire it again from scratch.
+      if (ctx.state === 'running' && L.active && meters.listenMeter?.cold) {
+        if (L.dl && RX.node) startMeter('listenMeter', 'listenDb', RX.node, L.channels, onListenLevel);
+        else if (LB.stream || audioEl.srcObject) startMeter('listenMeter', 'listenDb', LB.stream || audioEl.srcObject, L.channels, onListenLevel);
+      }
     };
   }
   if (ctx.state !== 'running') ctx.resume().catch(()=>{});
@@ -1380,7 +1386,7 @@ function startMeter(elId, dbId, input, channels, onLevel){
     }
   };
 
-  const m = { src, own, split, sink, ro, raf:0, last:performance.now(), frame:0, draw, st };
+  const m = { src, own, split, sink, ro, raf:0, last:performance.now(), frame:0, draw, st, cold: c.state !== 'running' };
   const tick = () => {
     const now = performance.now();
     if (now - m.last < 30) { m.raf = requestAnimationFrame(tick); return; }   // cap at ~30 fps
@@ -3373,9 +3379,15 @@ if (qp && /^\d{4}$/.test(qp)) {
   $('codeIn').value = qp; openListen();
   { const u = new URL(location.href); u.searchParams.delete('code'); history.replaceState(null, '', u.pathname + u.search); }       // a reload later shouldn't rejoin an old room
   join();
-  // Opened from a link/QR there's been no tap yet, and phones only allow sound after one: the first touch unlocks it.
-  const unlock = () => { ensureCtx(); if (L.active) audioEl.play().then(() => $('tapAudio').hidden = true).catch(() => {}); };
-  document.addEventListener('pointerdown', unlock, { once: true, capture: true });
+  // Opened from a link/QR there's been no tap yet, and phones only allow sound after one: the first tap unlocks it.
+  // A touch-down doesn't count as a tap on phones, so listen for the end of the tap, and keep trying until Web Audio
+  // runs (the plain player can play while Web Audio is still paused, which left the meter and waveform dead).
+  const evs = ['touchend', 'pointerup', 'click', 'keydown'];
+  const unlock = () => {
+    ensureCtx(); if (L.active) audioEl.play().then(() => $('tapAudio').hidden = true).catch(() => {});
+    if (ctx.state === 'running') evs.forEach(t => document.removeEventListener(t, unlock, true));
+  };
+  evs.forEach(t => document.addEventListener(t, unlock, true));
 }
 if (!window.Peer) setTimeout(() => { if (!window.Peer) alert('Couldn’t load the connection library. Check your internet connection and reload.'); }, 3000);
 </script>
