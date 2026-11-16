@@ -142,6 +142,8 @@ a.tile{text-decoration:none;color:inherit}
 .pw{display:flex;align-items:center;gap:14px}
 .pw b{font-family:ui-rounded,"SF Pro Rounded",-apple-system,system-ui,sans-serif;font-size:20px;letter-spacing:.02em}
 .linkbtn.sm{display:inline;margin:0;padding:4px 2px;font-size:15px}
+.linkbtn:disabled{opacity:.5;pointer-events:none}
+#pwNew{white-space:nowrap}
 .pwrow{gap:10px}
 .pwin{flex:1;min-width:0;border:0;background:none;font-size:17px;padding:14px 0;outline:none;color:var(--label)}
 .pwin::placeholder{color:var(--label3)}
@@ -840,7 +842,7 @@ button.stat:active{opacity:.7}
         <div class="row"><span>Tone reads</span><span class="selwrap"><select id="toneRef">
           <option value="-20">−20 dBFS</option><option value="-18">−18 dBFS</option>
           <option value="-14">−14 dBFS</option><option value="-12">−12 dBFS</option></select></span></div>
-        <div class="row" id="pwRow"><span>Remote password</span><button class="linkbtn sm" id="pwNew">New password</button></div>
+        <div class="row" id="pwRow"><span>Remote password</span><span style="display:flex;align-items:center;gap:10px;min-width:0"><b id="pwShow" hidden style="color:var(--orange);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap"></b><button class="linkbtn sm" id="pwNew">New password</button></span></div>
       </div>
       <p class="note" id="toneNote" hidden></p>
       <p class="note" id="ctlNote" hidden></p>
@@ -1000,7 +1002,7 @@ button.stat:active{opacity:.7}
               sender watchdog re-acquires a lost input, listener auto-resyncs a bloated buffer. */
 
 /* ============ Config ============ */
-const VERSION = '0.17.61-beta';                     // shown on the home screen — go to 1.0.0 when ready
+const VERSION = '0.17.62-beta';                     // shown on the home screen — go to 1.0.0 when ready
 const PREFIX = 'asahina-intercom-';            // namespace for room ids on the PeerJS server
 const ICE = [
   { urls: 'stun:stun.l.google.com:19302' },
@@ -1559,6 +1561,8 @@ function paintCtl(){
   $('ctlSw').checked = S.ctlOn;
   $('pwOut').textContent = S.ctlOn ? S.pw : 'Off';
   $('pwRow').style.opacity = S.ctlOn ? 1 : .4;
+  $('pwNew').disabled = !S.ctlOn;
+  if (!S.ctlOn) $('pwShow').hidden = true;
   const n = [...S.listeners.values()].filter(e => e.authed).length;
   $('ctlState').textContent = !S.ctlOn ? 'Off' : n ? `On · ${n} in control` : 'On';
   paintPwBox();
@@ -1609,7 +1613,16 @@ async function applyCtl(key, v){
   broadcastState();
 }
 $('ctlSw').addEventListener('change', e => { S.ctlOn = e.target.checked; store.set('ic-ctl', S.ctlOn ? '1' : '0'); if (!S.ctlOn) revokeAll('off'); else broadcastState(); paintCtl(); });
-$('pwNew').addEventListener('click', () => { S.pw = newPw(); store.set('ic-pw', S.pw); revokeAll('changed'); paintCtl(); });
+$('pwNew').addEventListener('click', () => {
+  if (!S.ctlOn) return;
+  const n = [...S.listeners.values()].filter(e => e.authed).length;
+  if (n && !confirm(n > 1 ? `Make a new password? The ${n} listeners in control will need it to change settings again.` : 'Make a new password? The listener in control will need it to change settings again.')) return;
+  S.pw = newPw(); store.set('ic-pw', S.pw); revokeAll('changed');
+  PWV.show = true; PWV.dots = ''; paintCtl();
+  const sh = $('pwShow');
+  sh.textContent = S.pw; sh.hidden = false;
+  clearTimeout(sh._t); sh._t = setTimeout(() => { sh.hidden = true; sh.textContent = ''; }, 8000);
+});
 
 function hostState(full){
   const st = { type:'mode', mode:S.mode, channels:chans(), ver:VERSION, issue: S.issue || '', ctl: !!S.ctlOn, muted: !!S.muted,
